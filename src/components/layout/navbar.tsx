@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, User, Menu, X } from 'lucide-react'
@@ -18,14 +19,20 @@ export function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center">
-              <div className="text-2xl font-bold text-primary">
-                Rezzy
+            <Link href="/" className="flex items-center group">
+              <div className="relative w-12 h-12 transition-transform duration-300 group-hover:scale-110">
+                <Image
+                  src="/logo.png"
+                  alt="Rezzy Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
               </div>
             </Link>
           </div>

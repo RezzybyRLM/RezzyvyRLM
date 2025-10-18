@@ -1,0 +1,13 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /auth/
+
+# Host
+Host: rezzybyrlm.us
+
+# Sitemaps
+Sitemap: rezzybyrlm.us/sitemap.xml
+Sitemap: https://rezzybyrlm.com/sitemap.xml

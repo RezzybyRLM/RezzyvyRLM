@@ -5,19 +5,6 @@
       "maxDuration": 30
     }
   },
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "APIFY_API_TOKEN": "@apify_api_token",
-    "STRIPE_PUBLIC_KEY": "@stripe_public_key",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "NEXT_PUBLIC_SITE_URL": "@site_url",
-    "RESEND_API_KEY": "@resend_api_key",
-    "NEXT_PUBLIC_VERCEL_ANALYTICS_ID": "@vercel_analytics_id"
-  },
   "crons": [
     {
       "path": "/api/cron/job-alerts",

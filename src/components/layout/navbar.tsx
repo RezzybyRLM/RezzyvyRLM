@@ -50,28 +50,34 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <Link
-              href="/jobs"
-              className="text-gray-700 hover:text-primary transition-colors"
+              href="/"
+              className="text-gray-700 hover:text-primary transition-colors font-medium"
             >
-              Find Jobs
+              HOME
             </Link>
             <Link
-              href="/companies"
+              href="/resume-services"
               className="text-gray-700 hover:text-primary transition-colors"
             >
-              Companies
+              Resume Services
             </Link>
             <Link
-              href="/about"
+              href="/about-us"
               className="text-gray-700 hover:text-primary transition-colors"
             >
-              About
+              About Us
             </Link>
             <Link
-              href="/donate"
+              href="/contact-us"
               className="text-gray-700 hover:text-primary transition-colors"
             >
-              Donate
+              Contact Us
+            </Link>
+            <Link
+              href="/cart"
+              className="text-gray-700 hover:text-primary transition-colors"
+            >
+              Cart
             </Link>
           </div>
 
@@ -137,32 +143,39 @@ export function Navbar() {
 
               {/* Mobile Links */}
               <Link
-                href="/jobs"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
+                href="/"
+                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Find Jobs
+                HOME
               </Link>
               <Link
-                href="/companies"
+                href="/resume-services"
                 className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Companies
+                Resume Services
               </Link>
               <Link
-                href="/about"
+                href="/about-us"
                 className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                About
+                About Us
               </Link>
               <Link
-                href="/donate"
+                href="/contact-us"
                 className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Donate
+                Contact Us
+              </Link>
+              <Link
+                href="/cart"
+                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Cart
               </Link>
 
               {/* Mobile Auth Buttons */}

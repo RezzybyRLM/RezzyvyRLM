@@ -2,17 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Search, MapPin, Star, Users, Zap, Target, CheckCircle, ArrowRight, Play, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin, Send, Menu, X } from 'lucide-react'
+import { Users, ArrowRight, Play, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin, Send, CheckCircle } from 'lucide-react'
 
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
     setIsVisible(true)
@@ -134,113 +132,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center group">
-                <div className="relative w-12 h-12 transition-transform duration-300 group-hover:scale-110">
-                  <Image
-                    src="/logo.png"
-                    alt="Rezzy Logo"
-                    width={48}
-                    height={48}
-                    className="object-contain"
-                    priority
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent) {
-                        parent.innerHTML = '<div class="text-2xl font-bold text-primary">Rezzy</div>';
-                      }
-                    }}
-                  />
-                </div>
-              </Link>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-700 hover:text-primary transition-colors font-medium">
-                HOME
-              </Link>
-              <Link href="/resume-services" className="text-gray-700 hover:text-primary transition-colors">
-                Resume Services
-              </Link>
-              <Link href="/about-us" className="text-gray-700 hover:text-primary transition-colors">
-                About Us
-              </Link>
-              <Link href="/contact-us" className="text-gray-700 hover:text-primary transition-colors">
-                Contact Us
-              </Link>
-              <Link href="/cart" className="text-gray-700 hover:text-primary transition-colors">
-                Cart
-              </Link>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                {isMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          {isMenuOpen && (
-            <div className="md:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
-                <Link
-                  href="/"
-                  className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  HOME
-                </Link>
-                <Link
-                  href="/resume-services"
-                  className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Resume Services
-                </Link>
-                <Link
-                  href="/about-us"
-                  className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  About Us
-                </Link>
-                <Link
-                  href="/contact-us"
-                  className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Contact Us
-                </Link>
-                <Link
-                  href="/cart"
-                  className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Cart
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-20 overflow-hidden">

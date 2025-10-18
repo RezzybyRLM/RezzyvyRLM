@@ -266,13 +266,13 @@ export default function HomePage() {
             {/* Left Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(0, 3).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
                     {feature.icon}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                    <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
                   </div>
                 </div>
               ))}
@@ -292,13 +292,13 @@ export default function HomePage() {
             {/* Right Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(3, 6).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
                     {feature.icon}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                    <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
                   </div>
                 </div>
               ))}
@@ -314,24 +314,24 @@ export default function HomePage() {
           <div className="relative max-w-4xl mx-auto">
             <div className="overflow-hidden rounded-2xl">
               <div 
-                className="flex transition-transform duration-500 ease-in-out"
+                className="flex transition-transform duration-700 ease-in-out"
                 style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
               >
                 {testimonials.map((testimonial, index) => (
                   <div key={index} className="w-full flex-shrink-0 px-4">
-                    <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-300">
+                    <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group">
                       <CardContent className="pt-8 pb-8 px-8">
                         <div className="text-center">
-                          <Quote className="h-12 w-12 text-primary/20 mx-auto mb-6" />
-                          <p className="text-lg md:text-xl text-gray-700 mb-8 italic leading-relaxed">
+                          <Quote className="h-12 w-12 text-primary/20 mx-auto mb-6 animate-pulse" />
+                          <p className="text-lg md:text-xl text-gray-700 mb-8 italic leading-relaxed group-hover:text-gray-900 transition-colors duration-300">
                             "{testimonial.content}"
                           </p>
                           <div className="flex items-center justify-center space-x-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
+                            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                               <Users className="h-8 w-8 text-primary" />
                             </div>
                             <div className="text-left">
-                              <div className="font-bold text-gray-900 text-lg">{testimonial.name}</div>
+                              <div className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors duration-300">{testimonial.name}</div>
                               <div className="text-gray-600">{testimonial.role}</div>
                             </div>
                           </div>
@@ -343,19 +343,36 @@ export default function HomePage() {
               </div>
             </div>
             
-            {/* Testimonial Indicators */}
-            <div className="flex justify-center mt-8 space-x-2">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index === currentTestimonial 
-                      ? 'bg-primary scale-125' 
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
+            {/* Testimonial Navigation */}
+            <div className="flex justify-center mt-8 space-x-4">
+              <button
+                onClick={() => setCurrentTestimonial((prev) => prev === 0 ? testimonials.length - 1 : prev - 1)}
+                className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+              >
+                <ArrowRight className="h-5 w-5 text-primary rotate-180" />
+              </button>
+              
+              {/* Testimonial Indicators */}
+              <div className="flex space-x-2">
+                {testimonials.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentTestimonial(index)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      index === currentTestimonial 
+                        ? 'bg-primary scale-125' 
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
+              
+              <button
+                onClick={() => setCurrentTestimonial((prev) => prev === testimonials.length - 1 ? 0 : prev + 1)}
+                className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+              >
+                <ArrowRight className="h-5 w-5 text-primary" />
+              </button>
             </div>
           </div>
         </div>
@@ -409,8 +426,11 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Essential Package</span>
                     <span className="text-sm font-bold text-primary">97%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full" style={{width: '97%'}}></div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
+                      style={{width: '97%'}}
+                    ></div>
                   </div>
                 </div>
                 <div>
@@ -418,8 +438,11 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Accelerated Package</span>
                     <span className="text-sm font-bold text-primary">90%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full" style={{width: '90%'}}></div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
+                      style={{width: '90%'}}
+                    ></div>
                   </div>
                 </div>
                 <div>
@@ -427,8 +450,11 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Definitive Package</span>
                     <span className="text-sm font-bold text-primary">85%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full" style={{width: '85%'}}></div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
+                      style={{width: '85%'}}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -459,13 +485,13 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, index) => (
-              <Card key={index} className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ${plan.featured ? 'border-2 border-primary shadow-xl' : 'border-0'}`}>
+              <Card key={index} className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
                 <CardHeader className="pb-4">
                   {plan.featured && (
-                    <Badge className="mb-4 bg-primary text-white">Most Popular</Badge>
+                    <Badge className="mb-4 bg-primary text-white animate-pulse">Most Popular</Badge>
                   )}
-                  <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                  <div className="text-4xl md:text-5xl font-bold text-primary mb-2">
+                  <CardTitle className="text-2xl font-bold group-hover:text-primary transition-colors duration-300">{plan.name}</CardTitle>
+                  <div className="text-4xl md:text-5xl font-bold text-primary mb-2 group-hover:scale-110 transition-transform duration-300">
                     {plan.price}
                     <span className="text-lg text-gray-500">{plan.interval}</span>
                   </div>
@@ -473,14 +499,14 @@ export default function HomePage() {
                 <CardContent>
                   <ul className="space-y-3 mb-8">
                     {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start text-sm text-gray-600">
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <li key={featureIndex} className="flex items-start text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-300">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
                         {feature}
                       </li>
                     ))}
                   </ul>
                   <Button 
-                    className={`w-full ${plan.featured ? 'bg-primary hover:bg-primary/90' : 'bg-gray-900 hover:bg-gray-800'}`}
+                    className={`w-full transition-all duration-300 hover:scale-105 ${plan.featured ? 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl' : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'}`}
                     asChild
                   >
                     <Link href={plan.link} target="_blank" rel="noopener noreferrer">
@@ -621,6 +647,151 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Custom CSS Animations */}
+      <style jsx global>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes bounce {
+          0%, 20%, 53%, 80%, 100% {
+            transform: translate3d(0,0,0);
+          }
+          40%, 43% {
+            transform: translate3d(0, -8px, 0);
+          }
+          70% {
+            transform: translate3d(0, -4px, 0);
+          }
+          90% {
+            transform: translate3d(0, -2px, 0);
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+        
+        @keyframes wiggle {
+          0%, 7% {
+            transform: rotateZ(0);
+          }
+          15% {
+            transform: rotateZ(-15deg);
+          }
+          20% {
+            transform: rotateZ(10deg);
+          }
+          25% {
+            transform: rotateZ(-10deg);
+          }
+          30% {
+            transform: rotateZ(6deg);
+          }
+          35% {
+            transform: rotateZ(-4deg);
+          }
+          40%, 100% {
+            transform: rotateZ(0);
+          }
+        }
+        
+        .animate-fadeInUp {
+          animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .animate-slideInLeft {
+          animation: slideInLeft 0.8s ease-out;
+        }
+        
+        .animate-slideInRight {
+          animation: slideInRight 0.8s ease-out;
+        }
+        
+        .animate-bounce-custom {
+          animation: bounce 2s infinite;
+        }
+        
+        .animate-pulse-custom {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .animate-wiggle {
+          animation: wiggle 1s ease-in-out;
+        }
+        
+        /* Smooth scrolling */
+        html {
+          scroll-behavior: smooth;
+        }
+        
+        /* Enhanced hover effects */
+        .hover-lift {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Gradient text animation */
+        .gradient-text {
+          background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #06b6d4, #10b981);
+          background-size: 400% 400%;
+          animation: gradientShift 3s ease infinite;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        @keyframes gradientShift {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+      `}</style>
     </div>
   )
 }

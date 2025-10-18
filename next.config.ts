@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Disable turbopack for production builds (Vercel compatibility)
   turbopack: {
     rules: {
       '*.svg': {
@@ -16,6 +17,9 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
+    // Optimize images for Vercel
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60,
   },
   async headers() {
     return [
@@ -42,6 +46,9 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
+  // Ensure proper static file handling
+  trailingSlash: false,
+  // Fix workspace root detection
   outputFileTracingRoot: __dirname,
 }
 

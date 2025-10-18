@@ -32,6 +32,16 @@ export function Navbar() {
                   width={48}
                   height={48}
                   className="object-contain"
+                  priority
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = '<div class="text-2xl font-bold text-primary">Rezzy</div>';
+                    }
+                  }}
                 />
               </div>
             </Link>

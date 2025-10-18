@@ -6,22 +6,96 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, ArrowRight, Play, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin, Send, CheckCircle } from 'lucide-react'
+import { Users, ArrowRight, Play, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin, Send, CheckCircle, ShoppingCart, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { addToCart } from '@/lib/cart/actions'
+import { submitContactForm } from '@/lib/contact/actions'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Skeleton } from '@/components/ui/skeleton-loader'
 
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [addingToCart, setAddingToCart] = useState<string | null>(null)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  })
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false)
+  const [contactMessage, setContactMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const supabase = createClient()
 
   useEffect(() => {
     setIsVisible(true)
     
     // Auto-rotate testimonials
-    const interval = setInterval(() => {
+    const testimonialInterval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
     }, 5000)
-    
-    return () => clearInterval(interval)
+
+    // Auto-rotate hero slides (logo and text)
+    const heroInterval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % 2)
+    }, 10000)
+
+    return () => {
+      clearInterval(testimonialInterval)
+      clearInterval(heroInterval)
+    }
   }, [])
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [supabase.auth])
+
+  const handleAddToCart = async (packageName: string, packageType: string, price: number) => {
+    if (!user) {
+      window.location.href = '/auth/login?redirectTo=/'
+      return
+    }
+
+    setAddingToCart(packageType)
+    try {
+      await addToCart({
+        package_name: packageName,
+        package_type: packageType,
+        price: price
+      })
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+    } finally {
+      setAddingToCart(null)
+    }
+  }
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmittingContact(true)
+    setContactMessage(null)
+
+    try {
+      const result = await submitContactForm(contactForm)
+      if (result.success) {
+        setContactMessage({ type: 'success', text: 'Message sent successfully! We\'ll get back to you soon.' })
+        setContactForm({ name: '', email: '', subject: '', message: '' })
+      } else {
+        setContactMessage({ type: 'error', text: result.error || 'Failed to send message. Please try again.' })
+      }
+    } catch (error) {
+      setContactMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' })
+    } finally {
+      setIsSubmittingContact(false)
+    }
+  }
 
   const features = [
     {
@@ -134,30 +208,95 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 min-h-screen flex items-center overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
             <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                Rezzy, The Powerful Tool to Streamline Your Employment Search!
-              </h1>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-              <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed italic">
-                We are not just another resume service; we support, empower, and free your time so you can live your life while still actively pursuing your next career move.
+              {/* Sliding Hero Content */}
+              <div className="relative h-96 md:h-[500px] lg:h-[600px] overflow-hidden">
+                {/* Logo Slide */}
+                <div 
+                  className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ease-in-out ${
+                    currentSlide === 0 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-full'
+                  }`}
+                >
+                  <img 
+                    src="/logo.png" 
+                    alt="Rezzy Logo" 
+                    className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
+                  />
+                </div>
+
+                {/* Text Slide */}
+                <div 
+                  className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-1000 ease-in-out ${
+                    currentSlide === 1 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-full'
+                  }`}
+                >
+                  <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-primary mb-6 leading-tight tracking-tight">
+                    DYNAMIC | POWERFUL
+                  </h1>
+                  
+                  {/* Decorative Line */}
+                  <div className="w-32 h-2 bg-gradient-to-r from-primary to-primary-dark mx-auto mb-8 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+              
+              {/* Subheading */}
+              <p className="text-xl md:text-2xl lg:text-3xl text-gray-600 mb-12 max-w-5xl mx-auto leading-relaxed font-light italic">
+                Not just another resume service! We support, empower, and free your time so you can live your life while still actively pursuing your next career move.
               </p>
+              
+              {/* CTA Button */}
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="h-16 px-12 text-xl font-bold rounded-2xl hover:scale-110 transition-all duration-500 group border-3 border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white shadow-xl hover:shadow-2xl"
+                asChild
+              >
+                <Link href="#services">
+                  LEARN MORE
+                  <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform duration-300" />
+                </Link>
+              </Button>
             </div>
+          </div>
+        </div>
+        
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center">
+            <div className="w-1 h-3 bg-gray-400 rounded-full mt-2 animate-pulse"></div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Main Services Section */}
+      <section id="services" className="section-padding bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto container-padding">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
+              Rezzy, The Powerful Tool to Streamline Your Employment Search!
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
+            <p className="text-responsive-md text-gray-600 max-w-4xl mx-auto italic">
+              We are not just another resume service; we support, empower, and free your time so you can live your life while still actively pursuing your next career move.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
             {/* Left Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(0, 3).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300">
+                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 animate-fadeInUp" style={{ animationDelay: `${index * 0.2}s` }}>
                   <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
                     {feature.icon}
                   </div>
@@ -171,8 +310,8 @@ export default function HomePage() {
 
             {/* Center Column - Main Image */}
             <div className="lg:col-span-1 flex justify-center">
-              <div className="relative w-full max-w-md">
-                <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 text-center">
+              <div className="relative w-full max-w-md animate-float">
+                <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 text-center card-elevated">
                   <div className="text-6xl mb-4">💼</div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">EMPOWERED</h3>
                   <p className="text-gray-600">Your career journey starts here</p>
@@ -183,7 +322,7 @@ export default function HomePage() {
             {/* Right Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(3, 6).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300">
+                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 animate-fadeInUp" style={{ animationDelay: `${(index + 3) * 0.2}s` }}>
                   <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
                     {feature.icon}
                   </div>
@@ -199,8 +338,11 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <section className="section-padding bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
+        {/* Professional Background */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M50%200L100%2050L50%20100L0%2050z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+        
+        <div className="max-w-7xl mx-auto container-padding relative">
           {/* Testimonial Slider */}
           <div className="relative max-w-4xl mx-auto">
             <div className="overflow-hidden rounded-2xl">
@@ -210,7 +352,7 @@ export default function HomePage() {
               >
                 {testimonials.map((testimonial, index) => (
                   <div key={index} className="w-full flex-shrink-0 px-4">
-                    <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group">
+                    <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group card-glass">
                       <CardContent className="pt-8 pb-8 px-8">
                         <div className="text-center">
                           <Quote className="h-12 w-12 text-primary/20 mx-auto mb-6 animate-pulse" />
@@ -269,34 +411,51 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-primary via-primary to-secondary relative overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            CHECK OUT OUR REZZY PACKAGES
-          </h2>
-          <p className="text-xl md:text-2xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Essential Package | Accelerated Package | Definitive Package
-          </p>
-          <Button size="lg" variant="secondary" className="h-14 px-8 text-lg font-semibold rounded-xl hover:scale-105 transition-all duration-300 group" asChild>
-            <Link href="https://rezzybyrlm.com/products-and-services/">
-              <Play className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
-              ORDER NOW
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </Button>
+      {/* Call-to-Action Section */}
+      <section className="section-padding bg-gradient-to-br from-primary via-primary to-secondary relative overflow-hidden">
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90"></div>
+        
+        <div className="max-w-5xl mx-auto container-padding text-center relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            {/* Left Column */}
+            <div className="text-left md:text-left">
+              <h2 className="text-responsive-xl font-bold text-white mb-6 leading-tight">
+                CHECK OUT OUR REZZY PACKAGES
+              </h2>
+              <p className="text-responsive-md text-white/90 mb-6">
+                Essential Package | Accelerated Package | Definitive Package
+              </p>
+            </div>
+            
+            {/* Right Column */}
+            <div className="flex justify-center md:justify-end">
+              <Button 
+                size="lg" 
+                variant="secondary" 
+                className="h-14 px-8 text-lg font-semibold rounded-xl hover:scale-105 transition-all duration-300 group bg-white text-primary hover:bg-white/90 shadow-xl hover:shadow-2xl"
+                asChild
+              >
+                <Link href="#pricing">
+                  <Play className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
+                  ORDER NOW
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="section-padding bg-white">
+        <div className="max-w-7xl mx-auto container-padding">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
               Why Choose Us
             </h2>
             <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-            <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto italic">
+            <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
               Rezzy has an inside and unique perspective on the hiring process with a proven and extensive selection of services and tools that put you ahead of the competition.
             </p>
           </div>
@@ -317,10 +476,10 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Essential Package</span>
                     <span className="text-sm font-bold text-primary">97%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="progress-bar">
                     <div 
-                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
-                      style={{width: '97%'}}
+                      className="progress-fill animate-progressFill"
+                      style={{'--progress-width': '97%'} as React.CSSProperties}
                     ></div>
                   </div>
                 </div>
@@ -329,10 +488,10 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Accelerated Package</span>
                     <span className="text-sm font-bold text-primary">90%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="progress-bar">
                     <div 
-                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
-                      style={{width: '90%'}}
+                      className="progress-fill animate-progressFill"
+                      style={{'--progress-width': '90%'} as React.CSSProperties}
                     ></div>
                   </div>
                 </div>
@@ -341,17 +500,17 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-gray-700">Definitive Package</span>
                     <span className="text-sm font-bold text-primary">85%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="progress-bar">
                     <div 
-                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-2000 ease-out animate-pulse"
-                      style={{width: '85%'}}
+                      className="progress-fill animate-progressFill"
+                      style={{'--progress-width': '85%'} as React.CSSProperties}
                     ></div>
                   </div>
                 </div>
               </div>
             </div>
             <div className="text-center">
-              <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8">
+              <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 card-elevated">
                 <div className="text-6xl mb-4">📊</div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Success Rates</h3>
                 <p className="text-gray-600">Proven results across all our packages</p>
@@ -362,21 +521,21 @@ export default function HomePage() {
       </section>
 
       {/* Pricing Plans Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="section-padding bg-gray-50">
+        <div className="max-w-7xl mx-auto container-padding">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
               Pricing Plans
             </h2>
             <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-            <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto italic">
+            <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
               Rezzy offers a variety of packages so our clients can pick and choose what best fits their needs.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, index) => (
-              <Card key={index} className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
+              <Card key={index} className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 card-professional ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
                 <CardHeader className="pb-4">
                   {plan.featured && (
                     <Badge className="mb-4 bg-primary text-white animate-pulse">Most Popular</Badge>
@@ -396,14 +555,34 @@ export default function HomePage() {
                       </li>
                     ))}
                   </ul>
-                  <Button 
-                    className={`w-full transition-all duration-300 hover:scale-105 ${plan.featured ? 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl' : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'}`}
-                    asChild
-                  >
-                    <Link href={plan.link} target="_blank" rel="noopener noreferrer">
-                      VIEW PACKAGE
-                    </Link>
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      className={`w-full transition-all duration-300 hover:scale-105 ${plan.featured ? 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl' : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'}`}
+                      onClick={() => handleAddToCart(plan.name, plan.name.toLowerCase().replace(' package', ''), parseInt(plan.price.replace('$', '')))}
+                      disabled={addingToCart === plan.name.toLowerCase().replace(' package', '')}
+                    >
+                      {addingToCart === plan.name.toLowerCase().replace(' package', '') ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          ADD TO CART
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      asChild
+                    >
+                      <Link href={plan.link} target="_blank" rel="noopener noreferrer">
+                        VIEW PACKAGE
+                      </Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -411,20 +590,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Contact Form Section */}
+      <section className="section-padding bg-white">
+        <div className="max-w-7xl mx-auto container-padding">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
               Contact Us
             </h2>
             <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <Card className="shadow-2xl">
+            <Card className="shadow-2xl card-elevated">
               <CardContent className="p-8">
-                <form className="space-y-6">
+                {contactMessage && (
+                  <div className={`mb-6 p-4 rounded-lg ${
+                    contactMessage.type === 'success' 
+                      ? 'bg-green-50 text-green-800 border border-green-200' 
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {contactMessage.text}
+                  </div>
+                )}
+                <form onSubmit={handleContactSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -432,8 +620,11 @@ export default function HomePage() {
                       </label>
                       <Input 
                         type="text" 
-                        className="w-full"
+                        className="input-professional"
                         placeholder="Enter your name"
+                        value={contactForm.name}
+                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                        required
                       />
                     </div>
                     <div>
@@ -442,8 +633,11 @@ export default function HomePage() {
                       </label>
                       <Input 
                         type="email" 
-                        className="w-full"
+                        className="input-professional"
                         placeholder="Enter your email"
+                        value={contactForm.email}
+                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                        required
                       />
                     </div>
                   </div>
@@ -453,8 +647,10 @@ export default function HomePage() {
                     </label>
                     <Input 
                       type="text" 
-                      className="w-full"
+                      className="input-professional"
                       placeholder="Enter subject"
+                      value={contactForm.subject}
+                      onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
                     />
                   </div>
                   <div>
@@ -462,13 +658,29 @@ export default function HomePage() {
                       Your Message
                     </label>
                     <textarea 
-                      className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="input-professional h-32 resize-none"
                       placeholder="Enter your message"
+                      value={contactForm.message}
+                      onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                      required
                     />
                   </div>
-                  <Button type="submit" className="w-full h-12 text-lg bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90">
-                    <Send className="mr-2 h-5 w-5" />
-                    SEND
+                  <Button 
+                    type="submit" 
+                    className="btn-primary w-full h-12 text-lg"
+                    disabled={isSubmittingContact}
+                  >
+                    {isSubmittingContact ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        SENDING...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-5 w-5" />
+                        SEND
+                      </>
+                    )}
                   </Button>
                 </form>
               </CardContent>
@@ -479,7 +691,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto container-padding">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Social Links */}
             <div className="text-center md:text-left">
@@ -516,7 +728,7 @@ export default function HomePage() {
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-4">Menu</h3>
               <div className="space-y-2">
-                <Link href="/" className="block text-gray-300 hover:text-white transition-colors">HOME</Link>
+                <Link href="/" className="block text-gray-300 hover:text-white transition-colors">Home</Link>
                 <Link href="/resume-services" className="block text-gray-300 hover:text-white transition-colors">Resume Services</Link>
                 <Link href="/about-us" className="block text-gray-300 hover:text-white transition-colors">About Us</Link>
                 <Link href="/contact-us" className="block text-gray-300 hover:text-white transition-colors">Contact Us</Link>
@@ -538,151 +750,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-
-      {/* Custom CSS Animations */}
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        @keyframes bounce {
-          0%, 20%, 53%, 80%, 100% {
-            transform: translate3d(0,0,0);
-          }
-          40%, 43% {
-            transform: translate3d(0, -8px, 0);
-          }
-          70% {
-            transform: translate3d(0, -4px, 0);
-          }
-          90% {
-            transform: translate3d(0, -2px, 0);
-          }
-        }
-        
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.7;
-          }
-        }
-        
-        @keyframes wiggle {
-          0%, 7% {
-            transform: rotateZ(0);
-          }
-          15% {
-            transform: rotateZ(-15deg);
-          }
-          20% {
-            transform: rotateZ(10deg);
-          }
-          25% {
-            transform: rotateZ(-10deg);
-          }
-          30% {
-            transform: rotateZ(6deg);
-          }
-          35% {
-            transform: rotateZ(-4deg);
-          }
-          40%, 100% {
-            transform: rotateZ(0);
-          }
-        }
-        
-        .animate-fadeInUp {
-          animation: fadeInUp 0.8s ease-out;
-        }
-        
-        .animate-slideInLeft {
-          animation: slideInLeft 0.8s ease-out;
-        }
-        
-        .animate-slideInRight {
-          animation: slideInRight 0.8s ease-out;
-        }
-        
-        .animate-bounce-custom {
-          animation: bounce 2s infinite;
-        }
-        
-        .animate-pulse-custom {
-          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        .animate-wiggle {
-          animation: wiggle 1s ease-in-out;
-        }
-        
-        /* Smooth scrolling */
-        html {
-          scroll-behavior: smooth;
-        }
-        
-        /* Enhanced hover effects */
-        .hover-lift {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .hover-lift:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        
-        /* Gradient text animation */
-        .gradient-text {
-          background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #06b6d4, #10b981);
-          background-size: 400% 400%;
-          animation: gradientShift 3s ease infinite;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        
-        @keyframes gradientShift {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-      `}</style>
     </div>
   )
 }

@@ -1,48 +1,104 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, Trash2, Plus, Minus, CreditCard, ArrowLeft } from 'lucide-react'
+import { ShoppingCart, Trash2, Plus, Minus, CreditCard, ArrowLeft, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { getCartItems, updateCartItemQuantity, removeFromCart, getCartTotal, CartItem } from '@/lib/cart/actions'
+import { Skeleton } from '@/components/ui/skeleton-loader'
+import { useRouter } from 'next/navigation'
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'Essential Package',
-      price: 200,
-      description: 'One-on-One Consultation, Resume, Bio, Cover Letter, Unlimited Revisions, VCard QR Code',
-      quantity: 1,
-      image: '💼'
-    },
-    {
-      id: 2,
-      name: 'Accelerated Package',
-      price: 300,
-      description: 'Enhanced package with Reference List, Thank You Letter, Additional Resume',
-      quantity: 1,
-      image: '🚀'
-    }
-  ])
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const supabase = createClient()
 
-  const updateQuantity = (id: number, newQuantity: number) => {
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      
+      if (!user) {
+        router.push('/auth/login?redirectTo=/cart')
+        return
+      }
+
+      try {
+        const items = await getCartItems()
+        setCartItems(items)
+      } catch (error) {
+        console.error('Failed to load cart items:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getUser()
+  }, [supabase.auth, router])
+
+  const updateQuantity = async (id: string, newQuantity: number) => {
     if (newQuantity < 1) return
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id ? { ...item, quantity: newQuantity } : item
+    
+    setUpdating(id)
+    try {
+      await updateCartItemQuantity(id, newQuantity)
+      setCartItems(items => 
+        items.map(item => 
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
       )
-    )
+    } catch (error) {
+      console.error('Failed to update quantity:', error)
+    } finally {
+      setUpdating(null)
+    }
   }
 
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id))
+  const removeItem = async (id: string) => {
+    setUpdating(id)
+    try {
+      await removeFromCart(id)
+      setCartItems(items => items.filter(item => item.id !== id))
+    } catch (error) {
+      console.error('Failed to remove item:', error)
+    } finally {
+      setUpdating(null)
+    }
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
   const tax = subtotal * 0.08 // 8% tax
   const total = subtotal + tax
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+              <ShoppingCart className="h-8 w-8 mr-3 text-primary" />
+              Shopping Cart
+            </h1>
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null // Will redirect
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -92,15 +148,22 @@ export default function CartPage() {
                     <div className="flex items-start space-x-4">
                       {/* Item Image */}
                       <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center text-2xl">
-                        {item.image}
+                        {item.package_type === 'essential' ? '💼' : 
+                         item.package_type === 'accelerated' ? '🚀' : 
+                         item.package_type === 'definitive' ? '📈' : '📦'}
                       </div>
                       
                       {/* Item Details */}
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{item.name}</h3>
-                            <p className="text-gray-600 text-sm mb-3">{item.description}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{item.package_name}</h3>
+                            <p className="text-gray-600 text-sm mb-3">
+                              {item.package_type === 'essential' ? 'One-on-One Consultation, Resume, Bio, Cover Letter, Unlimited Revisions, VCard QR Code' :
+                               item.package_type === 'accelerated' ? 'Enhanced package with Reference List, Thank You Letter, Additional Resume' :
+                               item.package_type === 'definitive' ? 'Complete career solution with LinkedIn optimization and interview coaching' :
+                               'Professional package'}
+                            </p>
                             <div className="text-2xl font-bold text-primary">
                               ${item.price}
                             </div>
@@ -111,9 +174,14 @@ export default function CartPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => removeItem(item.id)}
+                            disabled={updating === item.id}
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {updating === item.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                         
@@ -125,7 +193,7 @@ export default function CartPage() {
                               variant="outline"
                               size="icon"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
+                              disabled={item.quantity <= 1 || updating === item.id}
                               className="h-8 w-8"
                             >
                               <Minus className="h-3 w-3" />
@@ -135,6 +203,7 @@ export default function CartPage() {
                               variant="outline"
                               size="icon"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              disabled={updating === item.id}
                               className="h-8 w-8"
                             >
                               <Plus className="h-3 w-3" />
@@ -162,7 +231,7 @@ export default function CartPage() {
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex justify-between items-center text-sm">
                       <div>
-                        <div className="font-medium">{item.name}</div>
+                        <div className="font-medium">{item.package_name}</div>
                         <div className="text-gray-500">Qty: {item.quantity}</div>
                       </div>
                       <div className="font-medium">

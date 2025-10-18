@@ -105,8 +105,8 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
@@ -115,16 +115,16 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto container-padding section-padding">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600">Manage your account information and preferences</p>
+          <h1 className="text-responsive-xl font-bold text-gray-900">Profile Settings</h1>
+          <p className="text-responsive-md text-gray-600">Manage your account information and preferences</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Form */}
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="card-professional">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <User className="mr-2 h-5 w-5" />
@@ -147,6 +147,7 @@ export default function ProfilePage() {
                     value={profile.full_name}
                     onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                     placeholder="Enter your full name"
+                    className="input-professional"
                   />
                 </div>
 
@@ -160,7 +161,7 @@ export default function ProfilePage() {
                       type="email"
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="pl-10"
+                      className="input-professional pl-10"
                       placeholder="Enter your email"
                     />
                   </div>
@@ -176,17 +177,17 @@ export default function ProfilePage() {
                       type="text"
                       value={profile.location}
                       onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                      className="pl-10"
+                      className="input-professional pl-10"
                       placeholder="City, State or Remote"
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-end space-x-4">
-                  <Button variant="outline" onClick={handleSignOut}>
+                  <Button variant="outline" onClick={handleSignOut} className="btn-secondary">
                     Sign Out
                   </Button>
-                  <Button onClick={handleSave} disabled={saving}>
+                  <Button onClick={handleSave} disabled={saving} className="btn-primary">
                     {saving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -206,7 +207,7 @@ export default function ProfilePage() {
 
           {/* Account Info */}
           <div className="space-y-6">
-            <Card>
+            <Card className="card-professional">
               <CardHeader>
                 <CardTitle>Account Information</CardTitle>
               </CardHeader>
@@ -232,20 +233,20 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-professional">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start btn-secondary">
                   <Calendar className="mr-2 h-4 w-4" />
                   View Interview Sessions
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start btn-secondary">
                   <MapPin className="mr-2 h-4 w-4" />
                   Manage Job Alerts
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start btn-secondary">
                   <User className="mr-2 h-4 w-4" />
                   Resume Manager
                 </Button>

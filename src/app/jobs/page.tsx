@@ -119,15 +119,15 @@ function JobsPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto container-padding section-padding">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Your Next Job</h1>
-          <p className="text-gray-600">Discover opportunities from Indeed and premium employers</p>
+        <div className="mb-8 text-center">
+          <h1 className="text-responsive-xl font-bold text-gray-900 mb-4">Find Your Next Job</h1>
+          <p className="text-responsive-md text-gray-600">Discover opportunities from Indeed and premium employers</p>
         </div>
 
         {/* Search Bar */}
-        <Card className="mb-8">
+        <Card className="mb-8 card-professional">
           <CardContent className="p-6">
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -139,7 +139,7 @@ function JobsPageContent() {
                       placeholder="Job title, keywords, or company"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="input-professional pl-10"
                     />
                   </div>
                 </div>
@@ -151,12 +151,12 @@ function JobsPageContent() {
                       placeholder="Location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      className="pl-10"
+                      className="input-professional pl-10"
                     />
                   </div>
                 </div>
               </div>
-              <Button type="submit" disabled={loading} className="w-full md:w-auto">
+              <Button type="submit" disabled={loading} className="btn-primary w-full md:w-auto">
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -171,7 +171,7 @@ function JobsPageContent() {
         </Card>
 
         {/* Filters */}
-        <Card className="mb-8">
+        <Card className="mb-8 card-professional">
           <CardHeader>
             <CardTitle className="flex items-center">
               <Settings className="mr-2 h-5 w-5" />
@@ -187,7 +187,7 @@ function JobsPageContent() {
                 <select
                   value={filters.jobType}
                   onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="input-professional"
                 >
                   <option value="">All Types</option>
                   <option value="full-time">Full-time</option>
@@ -204,7 +204,7 @@ function JobsPageContent() {
                 <select
                   value={filters.datePosted}
                   onChange={(e) => handleFilterChange('datePosted', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="input-professional"
                 >
                   <option value="">Any Time</option>
                   <option value="today">Today</option>
@@ -229,7 +229,7 @@ function JobsPageContent() {
         {/* Results */}
         <div className="space-y-6">
           {error && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-red-200 bg-red-50 card-professional">
               <CardContent className="p-6">
                 <div className="flex items-center text-red-800">
                   <AlertCircle className="mr-2 h-5 w-5" />
@@ -247,7 +247,7 @@ function JobsPageContent() {
           )}
 
           {!loading && !error && jobs.length === 0 && searchQuery && (
-            <Card>
+            <Card className="card-professional">
               <CardContent className="p-6 text-center">
                 <p className="text-gray-600">No jobs found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
@@ -274,7 +274,7 @@ function JobsPageContent() {
           )}
 
           {!loading && !error && !searchQuery && (
-            <Card>
+            <Card className="card-professional">
               <CardContent className="p-6 text-center">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Start Your Job Search
@@ -300,8 +300,8 @@ export default function JobsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-gray-600">Loading jobs...</p>
         </div>
       </div>

@@ -244,7 +244,7 @@ export default function GeoJobManager({
                     </div>
 
                     <p className="text-sm text-gray-600 line-clamp-2">
-                      {job.description || 'No description available'}
+                      No description available
                     </p>
                   </div>
 

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Deactivate the job alert
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('job_alerts')
       .update({ is_active: false })
       .eq('id', alertId)

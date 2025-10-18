@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Get company information
-    const { data: company, error: companyError } = await supabase
+    const { data: company, error: companyError } = await (supabase as any)
       .from('companies')
       .select('*')
       .eq('id', companyId)
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get active jobs for this company
-    const { data: jobs, error: jobsError } = await supabase
+    const { data: jobs, error: jobsError } = await (supabase as any)
       .from('jobs')
       .select('*')
       .eq('company_id', companyId)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         logo_url: company.logo_url,
         website: company.website,
       },
-      jobs: jobs.map(job => ({
+      jobs: jobs.map((job: any) => ({
         id: job.id,
         title: job.title,
         location: job.location,

@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { emailService } from '@/lib/email/client'
+import { Database } from '@/lib/types/database'
 
-interface JobAlert {
-  id: string
-  user_id: string
-  search_query: string
-  location: string | null
-  frequency: string
-  last_sent_at: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
+type JobAlert = Database['public']['Tables']['job_alerts']['Row']
+type JobAlertUpdate = Database['public']['Tables']['job_alerts']['Update']
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,8 +58,8 @@ export async function GET(request: NextRequest) {
         }
 
         // Get user information
-        const { data: user, error: userError } = await supabase
-          .from('users')
+        const { data: user, error: userError } = await (supabase as any)
+          .from('profiles')
           .select('email, full_name')
           .eq('id', alert.user_id)
           .single()
@@ -96,7 +88,7 @@ export async function GET(request: NextRequest) {
 
         if (!jobsData.success || !jobsData.jobs || jobsData.jobs.length === 0) {
           // No new jobs found, update last_sent_at to avoid checking again today
-          const { error: updateError } = await supabase
+          const { error: updateError } = await (supabase as any)
             .from('job_alerts')
             .update({ last_sent_at: now.toISOString() })
             .eq('id', alert.id)
@@ -135,7 +127,7 @@ export async function GET(request: NextRequest) {
 
         if (emailSent) {
           // Update last_sent_at
-          const { error: updateError } = await supabase
+          const { error: updateError } = await (supabase as any)
             .from('job_alerts')
             .update({ last_sent_at: now.toISOString() })
             .eq('id', alert.id)

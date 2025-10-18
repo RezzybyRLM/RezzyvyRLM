@@ -74,7 +74,8 @@ export class LocationService {
     const hasPermission = await this.requestLocationPermission()
     if (hasPermission && this.userLocation) {
       // Reverse geocode to get city/state info
-      await this.reverseGeocode(this.userLocation.latitude, this.userLocation.longitude)
+      const location = this.userLocation as LocationData
+      await this.reverseGeocode(location.latitude, location.longitude)
     }
 
     return this.userLocation

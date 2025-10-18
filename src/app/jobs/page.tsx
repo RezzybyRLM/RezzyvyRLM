@@ -107,7 +107,7 @@ function JobsPageContent() {
       title: job.title,
       company_name: job.company,
       location: job.location,
-      description: job.description || '',
+      description: '', // JobLocation doesn't have description
       apply_url: job.applyUrl,
       salary_range: job.salary || '',
       job_type: 'Full-time', // Default value

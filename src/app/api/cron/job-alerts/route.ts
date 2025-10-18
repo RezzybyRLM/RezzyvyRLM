@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { emailService } from '@/lib/email/client'
 
+interface JobAlert {
+  id: string
+  user_id: string
+  search_query: string
+  location: string | null
+  frequency: string
+  last_sent_at: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Verify this is a legitimate cron request (Vercel cron jobs)
@@ -35,7 +47,7 @@ export async function GET(request: NextRequest) {
     let errorCount = 0
 
     // Process each job alert
-    for (const alert of jobAlerts) {
+    for (const alert of (jobAlerts as JobAlert[])) {
       try {
         // Check if it's time to send this alert based on frequency
         const now = new Date()
@@ -84,10 +96,14 @@ export async function GET(request: NextRequest) {
 
         if (!jobsData.success || !jobsData.jobs || jobsData.jobs.length === 0) {
           // No new jobs found, update last_sent_at to avoid checking again today
-          await supabase
+          const { error: updateError } = await supabase
             .from('job_alerts')
             .update({ last_sent_at: now.toISOString() })
             .eq('id', alert.id)
+          
+          if (updateError) {
+            console.error('Error updating job alert:', updateError)
+          }
           
           continue
         }
@@ -119,10 +135,14 @@ export async function GET(request: NextRequest) {
 
         if (emailSent) {
           // Update last_sent_at
-          await supabase
+          const { error: updateError } = await supabase
             .from('job_alerts')
             .update({ last_sent_at: now.toISOString() })
             .eq('id', alert.id)
+          
+          if (updateError) {
+            console.error('Error updating job alert:', updateError)
+          }
           
           processedCount++
           console.log(`Job alert sent to ${user.email} for "${alert.search_query}"`)

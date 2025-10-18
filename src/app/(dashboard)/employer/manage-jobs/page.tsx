@@ -18,7 +18,8 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Briefcase
 } from 'lucide-react'
 import Link from 'next/link'
 

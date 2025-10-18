@@ -15,7 +15,6 @@ import { JobLocation } from '@/lib/location/service'
 function JobsPageContent() {
   const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<TransformedJob[]>([])
-  const [filteredJobs, setFilteredJobs] = useState<TransformedJob[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -47,7 +46,6 @@ function JobsPageContent() {
 
       if (data.success) {
         setJobs(data.jobs)
-        setFilteredJobs(data.jobs)
       } else {
         setError(data.error || 'Failed to fetch jobs')
       }
@@ -70,6 +68,7 @@ function JobsPageContent() {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
+  // Apply filters to jobs
   const filteredJobs = jobs.filter(job => {
     if (filters.jobType && job.job_type !== filters.jobType) return false
     if (filters.datePosted) {
@@ -115,7 +114,7 @@ function JobsPageContent() {
       source: job.source,
       scraped_at: new Date().toISOString(),
     }))
-    setFilteredJobs(convertedJobs)
+    setJobs(convertedJobs)
   }
 
   return (

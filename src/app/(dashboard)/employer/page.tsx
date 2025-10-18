@@ -13,7 +13,9 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Settings
 } from 'lucide-react'
 import Link from 'next/link'
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,7 +56,15 @@ export default function EmployerLayout({
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex w-full max-w-xs flex-1 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <h2 className="text-lg font-semibold text-gray-900">Employer Dashboard</h2>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={100}
+                height={32}
+                className="object-contain"
+              />
+            </Link>
             <Button
               variant="ghost"
               size="sm"
@@ -95,7 +104,15 @@ export default function EmployerLayout({
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-grow flex-col overflow-y-auto bg-white border-r border-gray-200">
           <div className="flex h-16 items-center px-6">
-            <h2 className="text-lg font-semibold text-gray-900">Employer Dashboard</h2>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={100}
+                height={32}
+                className="object-contain"
+              />
+            </Link>
           </div>
           <nav className="flex-1 px-4 py-4">
             <ul className="space-y-2">

@@ -48,7 +48,7 @@ export async function createDonationCheckoutSession(
             product_data: {
               name: 'Rezzy Donation',
               description: 'Support AI-powered job search tools',
-              images: ['https://rezzybyrlm.com/images/logo.png'],
+              images: ['https://rezzybyrlm.com/logo.png'],
             },
             unit_amount: amount,
           },

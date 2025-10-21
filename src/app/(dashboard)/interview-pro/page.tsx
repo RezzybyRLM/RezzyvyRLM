@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Mic, MicOff, Play, Pause, RotateCcw, Volume2, VolumeX, Loader2 } from 'lucide-react'
+import { geminiVoiceService, VOICE_PROFILES, VoiceProfile, SUPPORTED_LANGUAGES } from '@/lib/voice/gemini-voice'
 
 interface InterviewSession {
   id: string
@@ -13,6 +14,8 @@ interface InterviewSession {
   currentQuestionIndex: number
   responses: string[]
   feedback: string[]
+  aiResponses: string[]
+  conversationHistory: Array<{ role: 'user' | 'ai', content: string }>
   isActive: boolean
   startTime: Date | null
 }
@@ -24,9 +27,11 @@ export default function InterviewProPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedRole, setSelectedRole] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<VoiceProfile>(VOICE_PROFILES[0])
+  const [useGeminiVoice, setUseGeminiVoice] = useState(true)
+  const [selectedLanguage, setSelectedLanguage] = useState('en-US')
   
   const recognitionRef = useRef<any>(null)
-  const synthesisRef = useRef<any>(null)
 
   const jobRoles = [
     'Software Engineer',
@@ -66,6 +71,33 @@ export default function InterviewProPage() {
       } else {
         setError('Speech recognition is not supported in this browser.')
       }
+
+      // Check browser compatibility for TTS
+      const browserInfo = geminiVoiceService.getBrowserInfo()
+      console.log('Browser TTS Support:', browserInfo)
+      
+      // Get supported languages
+      const supportedLanguages = geminiVoiceService.getSupportedLanguages()
+      console.log('Supported languages:', supportedLanguages)
+      
+      if (!browserInfo.supported) {
+        setError('Text-to-speech is not supported in this browser. Please use Chrome, Edge, Safari, or Firefox.')
+      }
+
+      // Listen for speech synthesis end events
+      const handleSpeechEnd = () => {
+        setIsSpeaking(false)
+      }
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.addEventListener('end', handleSpeechEnd)
+      }
+
+      return () => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.removeEventListener('end', handleSpeechEnd)
+        }
+      }
     }
   }, [])
 
@@ -101,6 +133,8 @@ export default function InterviewProPage() {
           currentQuestionIndex: 0,
           responses: [],
           feedback: [],
+          aiResponses: [],
+          conversationHistory: [],
           isActive: true,
           startTime: new Date(),
         }
@@ -117,18 +151,136 @@ export default function InterviewProPage() {
     }
   }
 
-  const speakQuestion = (question: string) => {
+  const handleSpeechResult = async (transcript: string) => {
+    if (!session) return
+
+    setIsProcessing(true)
+
+    try {
+      // Add user's response to conversation history
+      const updatedConversationHistory = [
+        ...session.conversationHistory,
+        { role: 'user' as const, content: transcript }
+      ]
+
+      // Build conversation context for Gemini
+      const conversationContext = `
+Job Role: ${session.jobRole}
+Current Question: ${session.questions[session.currentQuestionIndex]}
+Previous responses: ${session.responses.join(' | ')}
+Conversation so far:
+${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : 'Interviewer'}: ${msg.content}`).join('\n')}
+`
+
+      // Use Gemini to generate conversational response
+      let aiResponse = ''
+      if (useGeminiVoice) {
+        aiResponse = await geminiVoiceService.generateAndSpeakResponse(transcript, conversationContext)
+      } else {
+        // Fallback: analyze response using existing API
+        const response = await fetch('/api/ai/interview/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            question: session.questions[session.currentQuestionIndex],
+            answer: transcript,
+            jobRole: session.jobRole,
+          }),
+        })
+
+        const data = await response.json()
+        if (data.success && data.feedback) {
+          aiResponse = data.feedback
+          speakQuestion(data.feedback)
+        }
+      }
+
+      // Add AI response to conversation history
+      const finalConversationHistory = [
+        ...updatedConversationHistory,
+        { role: 'ai' as const, content: aiResponse }
+      ]
+
+      const updatedSession = {
+        ...session,
+        responses: [...session.responses, transcript],
+        aiResponses: [...session.aiResponses, aiResponse],
+        conversationHistory: finalConversationHistory,
+        currentQuestionIndex: session.currentQuestionIndex + 1,
+      }
+
+      setSession(updatedSession)
+
+      // Move to next question or end session
+      if (updatedSession.currentQuestionIndex < updatedSession.questions.length) {
+        setTimeout(() => {
+          speakQuestion(updatedSession.questions[updatedSession.currentQuestionIndex])
+        }, 3000)
+      } else {
+        // End session with AI-generated closing
+        setTimeout(async () => {
+          const closingMessage = "Great job! You have completed the interview. Thank you for your time and thoughtful responses."
+          if (useGeminiVoice) {
+            await geminiVoiceService.speakWithGemini(closingMessage, 'Interview closing')
+          } else {
+            speakQuestion(closingMessage)
+          }
+          setSession({ ...updatedSession, isActive: false })
+        }, 3000)
+      }
+    } catch (err) {
+      console.error('Error processing speech:', err)
+      setError('Failed to process your response')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const resetSession = () => {
+    setSession(null)
+    setSelectedRole('')
+    setError(null)
+    geminiVoiceService.stop()
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(question)
-      utterance.rate = 0.9
-      utterance.pitch = 1
-      utterance.volume = 1
+      window.speechSynthesis.cancel()
+    }
+  }
 
-      utterance.onstart = () => setIsSpeaking(true)
-      utterance.onend = () => setIsSpeaking(false)
+  const stopSpeaking = () => {
+    geminiVoiceService.stop()
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setIsSpeaking(false)
+  }
 
-      synthesisRef.current = utterance
-      window.speechSynthesis.speak(utterance)
+  const speakQuestion = async (question: string) => {
+    setIsSpeaking(true)
+    
+    try {
+      if (useGeminiVoice) {
+        // Use Gemini-powered voice with selected profile
+        geminiVoiceService.setVoiceProfile(selectedVoiceProfile)
+        await geminiVoiceService.speakWithGemini(question, 'Interview question')
+      } else {
+        // Fallback to browser TTS
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(question)
+          utterance.rate = selectedVoiceProfile.rate
+          utterance.pitch = selectedVoiceProfile.pitch
+          utterance.volume = selectedVoiceProfile.volume
+
+          utterance.onstart = () => setIsSpeaking(true)
+          utterance.onend = () => setIsSpeaking(false)
+
+          window.speechSynthesis.speak(utterance)
+        }
+      }
+    } catch (error) {
+      console.error('Error speaking:', error)
+      setIsSpeaking(false)
     }
   }
 
@@ -143,80 +295,6 @@ export default function InterviewProPage() {
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop()
       setIsListening(false)
-    }
-  }
-
-  const handleSpeechResult = async (transcript: string) => {
-    if (!session) return
-
-    setIsProcessing(true)
-
-    try {
-      // Analyze the response using AI
-      const response = await fetch('/api/ai/interview/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: session.questions[session.currentQuestionIndex],
-          answer: transcript,
-          jobRole: session.jobRole,
-        }),
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        const updatedSession = {
-          ...session,
-          responses: [...session.responses, transcript],
-          feedback: [...session.feedback, data.feedback],
-          currentQuestionIndex: session.currentQuestionIndex + 1,
-        }
-
-        setSession(updatedSession)
-
-        // Speak the feedback
-        if (data.feedback) {
-          speakQuestion(data.feedback)
-        }
-
-        // Move to next question or end session
-        if (updatedSession.currentQuestionIndex < updatedSession.questions.length) {
-          setTimeout(() => {
-            speakQuestion(updatedSession.questions[updatedSession.currentQuestionIndex])
-          }, 3000)
-        } else {
-          // End session
-          setTimeout(() => {
-            speakQuestion('Great job! You have completed the interview. Here is your overall feedback: ' + data.feedback)
-            setSession({ ...updatedSession, isActive: false })
-          }, 3000)
-        }
-      } else {
-        setError(data.error || 'Failed to analyze response')
-      }
-    } catch (err) {
-      setError('Failed to process your response')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const resetSession = () => {
-    setSession(null)
-    setSelectedRole('')
-    setError(null)
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
-  }
-
-  const stopSpeaking = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      setIsSpeaking(false)
     }
   }
 
@@ -236,10 +314,69 @@ export default function InterviewProPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                  <p className="text-sm text-red-800">{error}</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <p className="text-sm text-gray-800">{error}</p>
                 </div>
               )}
+
+              {/* Language Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Select Language
+                </label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => {
+                    setSelectedLanguage(e.target.value)
+                    geminiVoiceService.setLanguage(e.target.value)
+                  }}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name} ({lang.nativeName})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  The AI will speak in your selected language
+                </p>
+              </div>
+
+              {/* Voice Profile Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Select Voice Profile
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {VOICE_PROFILES.map((profile) => (
+                    <button
+                      key={profile.name}
+                      onClick={() => setSelectedVoiceProfile(profile)}
+                      className={`p-3 border rounded-lg text-left transition-colors ${
+                        selectedVoiceProfile.name === profile.name
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{profile.name}</div>
+                      <div className="text-xs text-gray-600 mt-1">{profile.description}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center">
+                  <input
+                    type="checkbox"
+                    id="useGeminiVoice"
+                    checked={useGeminiVoice}
+                    onChange={(e) => setUseGeminiVoice(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label htmlFor="useGeminiVoice" className="text-sm text-gray-700">
+                    Use Gemini AI for enhanced natural speech
+                  </label>
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">

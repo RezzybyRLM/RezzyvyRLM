@@ -12,16 +12,22 @@ export const metadata: Metadata = {
   description: 'Find your dream job and prepare with AI-powered career tools. Streamline your employment search with Indeed integration and personalized career coaching.',
   keywords: ['jobs', 'career', 'AI', 'resume', 'interview', 'Indeed', 'employment'],
   authors: [{ name: 'Rezzy Team' }],
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   openGraph: {
     title: 'Rezzy - AI-Powered Job Aggregator',
     description: 'Find your dream job and prepare with AI-powered career tools.',
     type: 'website',
     locale: 'en_US',
+    images: ['/logo.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Rezzy - AI-Powered Job Aggregator',
     description: 'Find your dream job and prepare with AI-powered career tools.',
+    images: ['/logo.png'],
   },
   robots: {
     index: true,

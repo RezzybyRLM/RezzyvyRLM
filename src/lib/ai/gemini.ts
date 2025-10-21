@@ -20,7 +20,11 @@ export interface JobAnalysis {
 }
 
 export class GeminiAI {
-  private model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+  private _model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+  
+  get model() {
+    return this._model
+  }
 
   async analyzeJobDescription(jobDescription: string): Promise<JobAnalysis> {
     const prompt = `
@@ -41,7 +45,7 @@ export class GeminiAI {
     `
 
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await this._model.generateContent(prompt)
       const response = await result.response
       const text = response.text()
       
@@ -87,7 +91,7 @@ export class GeminiAI {
     `
 
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await this._model.generateContent(prompt)
       const response = await result.response
       const text = response.text()
       
@@ -134,7 +138,7 @@ export class GeminiAI {
     `
 
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await this._model.generateContent(prompt)
       const response = await result.response
       const text = response.text()
       
@@ -192,7 +196,7 @@ export class GeminiAI {
     `
 
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await this._model.generateContent(prompt)
       const response = await result.response
       const text = response.text()
       

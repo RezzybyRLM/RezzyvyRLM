@@ -7,12 +7,20 @@ export async function middleware(request: NextRequest) {
   // Protected routes that require authentication
   const protectedRoutes = ['/cart', '/profile', '/dashboard']
   
+  // Admin routes that require admin role
+  const adminRoutes = ['/admin']
+  
   // Check if the current path is protected
   const isProtectedRoute = protectedRoutes.some(route => 
     pathname.startsWith(route)
   )
   
-  if (isProtectedRoute) {
+  // Check if the current path is an admin route
+  const isAdminRoute = adminRoutes.some(route => 
+    pathname.startsWith(route)
+  )
+  
+  if (isProtectedRoute || isAdminRoute) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -21,6 +29,20 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL('/auth/login', request.url)
       loginUrl.searchParams.set('redirectTo', pathname)
       return NextResponse.redirect(loginUrl)
+    }
+    
+    // For admin routes, check if user has admin role
+    if (isAdminRoute) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      
+      if (!userData || (userData as any).role !== 'admin') {
+        // Redirect non-admin users to home page
+        return NextResponse.redirect(new URL('/', request.url))
+      }
     }
   }
   

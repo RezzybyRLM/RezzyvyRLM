@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -74,8 +75,14 @@ export default function DashboardLayout({
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <Link href="/" className="text-xl font-bold text-primary">
-              Rezzy
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={100}
+                height={32}
+                className="object-contain"
+              />
             </Link>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
               <X className="h-6 w-6" />
@@ -119,8 +126,14 @@ export default function DashboardLayout({
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
           <div className="flex h-16 items-center px-4">
-            <Link href="/" className="text-xl font-bold text-primary">
-              Rezzy
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={100}
+                height={32}
+                className="object-contain"
+              />
             </Link>
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">
@@ -163,8 +176,14 @@ export default function DashboardLayout({
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-6 w-6" />
           </Button>
-          <Link href="/" className="text-xl font-bold text-primary">
-            Rezzy
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="Rezzy Logo"
+              width={80}
+              height={26}
+              className="object-contain"
+            />
           </Link>
           <div className="w-6" /> {/* Spacer */}
         </div>

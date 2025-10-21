@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Facebook, Twitter, Youtube, Instagram, Mail, Phone } from 'lucide-react'
 
 export function Footer() {
@@ -8,9 +9,15 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
-            <div className="text-2xl font-bold text-white mb-4">
-              Rezzy
-            </div>
+            <Link href="/" className="flex items-center mb-4">
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={120}
+                height={40}
+                className="object-contain"
+              />
+            </Link>
             <p className="text-gray-300 mb-4 max-w-md">
               The powerful tool to streamline your employment search. We support, empower, 
               and free your time so you can live your life while actively pursuing your next career move.

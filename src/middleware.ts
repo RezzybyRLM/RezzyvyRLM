@@ -5,7 +5,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   // Protected routes that require authentication
-  const protectedRoutes = ['/cart', '/profile', '/dashboard']
+  const protectedRoutes = [
+    '/cart', 
+    '/profile', 
+    '/resume-manager', 
+    '/bookmarks', 
+    '/job-alerts', 
+    '/interview-pro',
+    '/employer'
+  ]
   
   // Admin routes that require admin role
   const adminRoutes = ['/admin']

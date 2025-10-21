@@ -7,7 +7,22 @@ import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Helper function to safely create URL
+function getMetadataBase(): URL {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  try {
+    // Ensure URL has protocol
+    if (!siteUrl.startsWith('http://') && !siteUrl.startsWith('https://')) {
+      return new URL(`https://${siteUrl}`)
+    }
+    return new URL(siteUrl)
+  } catch {
+    return new URL('http://localhost:3000')
+  }
+}
+
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: 'Rezzy - AI-Powered Job Aggregator',
   description: 'Find your dream job and prepare with AI-powered career tools. Streamline your employment search with Indeed integration and personalized career coaching.',
   keywords: ['jobs', 'career', 'AI', 'resume', 'interview', 'Indeed', 'employment'],

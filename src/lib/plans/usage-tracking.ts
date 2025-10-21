@@ -9,6 +9,7 @@ export interface UserUsage {
   aiResumeMatchesUsed: number
   aiInterviewSessionsUsed: number
   jobAlertsCount: number
+  resumesUploaded: number
   quotaResetDate: Date
 }
 
@@ -34,6 +35,7 @@ export async function getUserUsage(userId: string): Promise<UserUsage | null> {
         aiResumeMatchesUsed: 0,
         aiInterviewSessionsUsed: 0,
         jobAlertsCount: 0,
+        resumesUploaded: 0,
         quotaResetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       }
     }
@@ -91,6 +93,12 @@ export async function getUserUsage(userId: string): Promise<UserUsage | null> {
       .eq('user_id', userId)
       .eq('is_active', true)
 
+    // Resume uploads (total, not per month)
+    const { count: resumesUploaded } = await (supabase as any)
+      .from('resumes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
     return {
       planType,
       jobSearchesUsed: jobSearchesUsed || 0,
@@ -99,6 +107,7 @@ export async function getUserUsage(userId: string): Promise<UserUsage | null> {
       aiResumeMatchesUsed: aiResumeMatchesUsed || 0,
       aiInterviewSessionsUsed: aiInterviewSessionsUsed || 0,
       jobAlertsCount: jobAlertsCount || 0,
+      resumesUploaded: resumesUploaded || 0,
       quotaResetDate: new Date(planData.quota_reset_date || Date.now() + 30 * 24 * 60 * 60 * 1000),
     }
   } catch (error) {
@@ -109,7 +118,7 @@ export async function getUserUsage(userId: string): Promise<UserUsage | null> {
 
 export async function canPerformAction(
   userId: string,
-  action: 'jobSearch' | 'application' | 'bookmark' | 'aiResumeMatch' | 'aiInterview' | 'jobAlert'
+  action: 'jobSearch' | 'application' | 'bookmark' | 'aiResumeMatch' | 'aiInterview' | 'jobAlert' | 'resumeUpload'
 ): Promise<{ allowed: boolean; reason?: string; usage?: UserUsage }> {
   const usage = await getUserUsage(userId)
   
@@ -174,6 +183,15 @@ export async function canPerformAction(
         }
       }
       break
+    case 'resumeUpload':
+      if (!hasQuotaRemaining(usage.resumesUploaded, limits.resumesUploadsTotal)) {
+        return {
+          allowed: false,
+          reason: `You've reached your resume upload limit (${limits.resumesUploadsTotal} total). Upgrade to upload more resumes.`,
+          usage,
+        }
+      }
+      break
   }
 
   return { allowed: true, usage }
@@ -181,7 +199,7 @@ export async function canPerformAction(
 
 export async function trackUsage(
   userId: string,
-  action: 'jobSearch' | 'application' | 'bookmark' | 'aiResumeMatch' | 'aiInterview' | 'jobAlert',
+  action: 'jobSearch' | 'application' | 'bookmark' | 'aiResumeMatch' | 'aiInterview' | 'jobAlert' | 'resumeUpload',
   metadata?: Record<string, any>
 ): Promise<void> {
   const supabase = createClient()

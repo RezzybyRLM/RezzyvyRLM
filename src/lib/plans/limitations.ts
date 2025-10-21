@@ -10,6 +10,7 @@ export interface PlanLimits {
   aiResumeMatches: number
   aiInterviewSessions: number
   jobAlerts: number
+  resumesUploadsTotal: number // Total resume uploads (not per month)
   canApplyDirectly: boolean
   canExportData: boolean
   apiQuotaRemaining: number
@@ -24,6 +25,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     aiResumeMatches: 2,
     aiInterviewSessions: 1,
     jobAlerts: 1,
+    resumesUploadsTotal: 5, // 5 resumes total for free plan
     canApplyDirectly: false,
     canExportData: false,
     apiQuotaRemaining: 10,
@@ -36,6 +38,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     aiResumeMatches: 10,
     aiInterviewSessions: 5,
     jobAlerts: 3,
+    resumesUploadsTotal: 25, // 25 resumes total for basic plan
     canApplyDirectly: true,
     canExportData: false,
     apiQuotaRemaining: 50,
@@ -48,6 +51,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     aiResumeMatches: 50,
     aiInterviewSessions: 25,
     jobAlerts: 10,
+    resumesUploadsTotal: 100, // 100 resumes total for pro plan
     canApplyDirectly: true,
     canExportData: true,
     apiQuotaRemaining: 200,
@@ -60,6 +64,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     aiResumeMatches: -1,
     aiInterviewSessions: -1,
     jobAlerts: -1,
+    resumesUploadsTotal: -1, // Unlimited resumes
     canApplyDirectly: true,
     canExportData: true,
     apiQuotaRemaining: -1,

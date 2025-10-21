@@ -37,6 +37,24 @@ export default function PlansPage() {
 
   const plans = [
     {
+      name: 'Free Plan',
+      price: '$0',
+      interval: '/month',
+      features: [
+        '1 AI Interview Session per month',
+        '5 Resume uploads total',
+        '10 Job Searches per month',
+        '5 Applications per month',
+        '20 Bookmarks per month',
+        '2 AI Resume Matches',
+        '1 Job Alert',
+        'Basic support',
+      ],
+      highlight: false,
+      popular: false,
+      isFree: true,
+    },
+    {
       name: 'Essential Package',
       price: '$200',
       interval: '',
@@ -95,8 +113,23 @@ export default function PlansPage() {
   ]
 
   const handleSelectPlan = async (plan: any) => {
-    // All plans are paid service packages - redirect to external product pages
-    if (plan.link) {
+    if (plan.isFree) {
+      // Set free plan and redirect
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await (supabase as any)
+          .from('user_plans')
+          .upsert({
+            user_id: user.id,
+            plan_type: 'free',
+            api_quota_remaining: 10,
+            quota_reset_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          })
+      }
+      router.push(redirectTo)
+    } else if (plan.link) {
+      // Redirect to external product pages
       window.location.href = plan.link
     } else {
       // Fallback: go to cart with package
@@ -164,18 +197,24 @@ export default function PlansPage() {
                 </ul>
                 <Button
                   className={`w-full ${
-                    plan.highlight
+                    plan.isFree
+                      ? 'bg-gray-600 hover:bg-gray-700'
+                      : plan.highlight
                       ? 'bg-blue-600 hover:bg-blue-700'
                       : ''
                   }`}
                   onClick={() => handleSelectPlan(plan)}
-                  disabled={loading}
+                  disabled={loading || currentPlan === plan.name.toLowerCase().replace(/\s+/g, '-')}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Processing...
                     </>
+                  ) : currentPlan === plan.name.toLowerCase().replace(/\s+/g, '-') ? (
+                    'Current Plan'
+                  ) : plan.isFree ? (
+                    'Start Free'
                   ) : (
                     'View Package'
                   )}

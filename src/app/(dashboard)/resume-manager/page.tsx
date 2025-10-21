@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
 import { Upload, FileText, Trash2, Download, Eye, Loader2, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { canPerformAction } from '@/lib/plans/usage-tracking'
 
 interface Resume {
   id: string
@@ -23,6 +25,9 @@ export default function ResumeManagerPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
+  const [upgradeMessage, setUpgradeMessage] = useState('')
+  const [currentPlan, setCurrentPlan] = useState('Free')
   const router = useRouter()
   const supabase = createClient()
 
@@ -32,6 +37,17 @@ export default function ResumeManagerPage() {
       if (!user) {
         router.push('/auth/login')
         return
+      }
+
+      // Load user plan
+      const { data: plan } = await (supabase as any)
+        .from('user_plans')
+        .select('plan_type')
+        .eq('user_id', user.id)
+        .single()
+
+      if (plan) {
+        setCurrentPlan(plan.plan_type || 'Free')
       }
 
       fetchResumes()
@@ -86,6 +102,16 @@ export default function ResumeManagerPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      // Check if user can upload resume
+      const { allowed, reason } = await canPerformAction(user.id, 'resumeUpload')
+      
+      if (!allowed) {
+        setUpgradeMessage(reason || '')
+        setShowUpgradePrompt(true)
+        setUploading(false)
+        return
+      }
 
       // Upload file to Supabase Storage
       const fileExt = file.name.split('.').pop()
@@ -326,6 +352,15 @@ export default function ResumeManagerPage() {
           </CardContent>
         </Card>
       </div>
+
+      <UpgradePrompt
+        isOpen={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        title="Upgrade Your Plan"
+        message={upgradeMessage}
+        feature="Resume Uploads"
+        currentPlan={currentPlan}
+      />
     </div>
   )
 }

@@ -4,8 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Mic, MicOff, Play, Pause, RotateCcw, Volume2, VolumeX, Loader2 } from 'lucide-react'
+import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
+import { Mic, MicOff, Play, Pause, RotateCcw, Volume2, VolumeX, Loader2, Save } from 'lucide-react'
 import { geminiVoiceService, VOICE_PROFILES, VoiceProfile, SUPPORTED_LANGUAGES } from '@/lib/voice/gemini-voice'
+import { createClient } from '@/lib/supabase/client'
+import { canPerformAction } from '@/lib/plans/usage-tracking'
 
 interface InterviewSession {
   id: string
@@ -30,8 +33,13 @@ export default function InterviewProPage() {
   const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<VoiceProfile>(VOICE_PROFILES[0])
   const [useGeminiVoice, setUseGeminiVoice] = useState(true)
   const [selectedLanguage, setSelectedLanguage] = useState('en-US')
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
+  const [upgradeMessage, setUpgradeMessage] = useState('')
+  const [currentPlan, setCurrentPlan] = useState('Free')
+  const [isSaving, setIsSaving] = useState(false)
   
   const recognitionRef = useRef<any>(null)
+  const supabase = createClient()
 
   const jobRoles = [
     'Software Engineer',
@@ -238,7 +246,66 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
     }
   }
 
-  const resetSession = () => {
+  const saveSession = async () => {
+    if (!session) return
+
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('You must be logged in to save sessions')
+        setIsSaving(false)
+        return
+      }
+
+      // Check if user can save interview session
+      const { allowed, reason } = await canPerformAction(user.id, 'aiInterview')
+      
+      if (!allowed) {
+        setUpgradeMessage(reason || '')
+        setShowUpgradePrompt(true)
+        setIsSaving(false)
+        return
+      }
+
+      // Calculate duration
+      const duration = session.startTime 
+        ? Math.floor((new Date().getTime() - session.startTime.getTime()) / 1000)
+        : 0
+
+      // Save to database
+      const { error: saveError } = await (supabase as any)
+        .from('interview_sessions')
+        .insert({
+          user_id: user.id,
+          job_role: session.jobRole,
+          duration: duration,
+          questions: session.questions,
+          feedback: session.aiResponses,
+          session_data: {
+            responses: session.responses,
+            conversationHistory: session.conversationHistory,
+          },
+        })
+
+      if (saveError) {
+        console.error('Error saving session:', saveError)
+        setError('Failed to save session')
+      } else {
+        alert('Interview session saved successfully!')
+        resetSession()
+      }
+    } catch (err) {
+      console.error('Error saving session:', err)
+      setError('Failed to save session')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const resetSession = async () => {
     setSession(null)
     setSelectedRole('')
     setError(null)
@@ -247,6 +314,25 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
       window.speechSynthesis.cancel()
     }
   }
+
+  // Load user plan on mount
+  useEffect(() => {
+    const loadPlan = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: plan } = await (supabase as any)
+          .from('user_plans')
+          .select('plan_type')
+          .eq('user_id', user.id)
+          .single()
+
+        if (plan) {
+          setCurrentPlan(plan.plan_type || 'Free')
+        }
+      }
+    }
+    loadPlan()
+  }, [supabase])
 
   const stopSpeaking = () => {
     geminiVoiceService.stop()
@@ -439,10 +525,29 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
                     </Badge>
                     Interview in Progress
                   </CardTitle>
-                  <Button variant="outline" onClick={resetSession}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    End Session
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="default" 
+                      onClick={saveSession}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Session
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" onClick={resetSession}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      End Session
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -551,6 +656,15 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
           </div>
         )}
       </div>
+
+      <UpgradePrompt
+        isOpen={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        title="Upgrade Your Plan"
+        message={upgradeMessage}
+        feature="AI Interview Sessions"
+        currentPlan={currentPlan}
+      />
     </div>
   )
 }

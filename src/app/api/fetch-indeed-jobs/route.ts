@@ -8,7 +8,7 @@ const searchSchema = z.object({
   position: z.string().min(1, 'Position is required'),
   location: z.string().optional(),
   country: z.string().default('us'),
-  maxItems: z.number().min(1).max(10).default(10),
+  maxItems: z.number().min(1).max(20).default(20),
   date: z.string().default('7'),
 })
 

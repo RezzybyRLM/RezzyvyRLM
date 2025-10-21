@@ -7,10 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { JobCard } from '@/components/ui/job-card'
+import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
 import { Search, MapPin, Settings, Loader2, AlertCircle } from 'lucide-react'
 import { TransformedJob } from '@/lib/types/indeed-job'
 import GeoJobManager from '@/components/ui/geo-job-manager'
 import { JobLocation } from '@/lib/location/service'
+import { createClient } from '@/lib/supabase/client'
+import { canPerformAction } from '@/lib/plans/usage-tracking'
 
 function JobsPageContent() {
   const searchParams = useSearchParams()
@@ -19,21 +22,82 @@ function JobsPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
   const [location, setLocation] = useState(searchParams.get('location') || '')
+  const [bookmarkedJobs, setBookmarkedJobs] = useState<Set<string>>(new Set())
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set())
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
+  const [upgradeMessage, setUpgradeMessage] = useState('')
+  const [currentPlan, setCurrentPlan] = useState('Free')
+  const supabase = createClient()
+  
   const [filters, setFilters] = useState({
     jobType: '',
     salary: '',
     datePosted: '',
   })
 
+  // Load user's bookmarks and applications
+  useEffect(() => {
+    const loadUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Get bookmarks
+      const { data: bookmarks } = await (supabase as any)
+        .from('bookmarks')
+        .select('job_id')
+        .eq('user_id', user.id)
+
+      if (bookmarks) {
+        setBookmarkedJobs(new Set(bookmarks.map((b: any) => b.job_id).filter(Boolean)))
+      }
+
+      // Get applications
+      const { data: applications } = await (supabase as any)
+        .from('job_applications')
+        .select('job_id')
+        .eq('user_id', user.id)
+
+      if (applications) {
+        setAppliedJobs(new Set(applications.map((a: any) => a.job_id).filter(Boolean)))
+      }
+
+      // Get user plan
+      const { data: plan } = await (supabase as any)
+        .from('user_plans')
+        .select('plan_type')
+        .eq('user_id', user.id)
+        .single()
+
+      if (plan) {
+        setCurrentPlan(plan.plan_type || 'Free')
+      }
+    }
+
+    loadUserData()
+  }, [supabase])
+
   const fetchJobs = async (position: string, location?: string) => {
     setLoading(true)
     setError(null)
 
     try {
+      // Check if user can search
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { allowed, reason } = await canPerformAction(user.id, 'jobSearch')
+        if (!allowed) {
+          setError(reason || 'Search limit reached')
+          setUpgradeMessage(reason || '')
+          setShowUpgradePrompt(true)
+          setLoading(false)
+          return
+        }
+      }
+
       const params = new URLSearchParams({
         position,
         country: 'us',
-        maxItems: '10',
+        maxItems: '20',
         date: '7',
       })
       
@@ -66,6 +130,70 @@ function JobsPageContent() {
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleBookmark = async (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId)
+    if (!job) return
+
+    try {
+      const response = await fetch('/api/jobs/bookmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          jobSnapshot: job,
+          source: job.source || 'indeed',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.requiresUpgrade) {
+        setUpgradeMessage(data.error)
+        setShowUpgradePrompt(true)
+        return
+      }
+
+      if (data.success) {
+        setBookmarkedJobs(prev => new Set(prev).add(jobId))
+      }
+    } catch (error) {
+      console.error('Error bookmarking job:', error)
+    }
+  }
+
+  const handleMarkApplied = async (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId)
+    if (!job) return
+
+    try {
+      const response = await fetch('/api/jobs/mark-applied', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          jobTitle: job.title,
+          companyName: job.company_name,
+          applicationUrl: job.apply_url,
+          jobSource: job.source || 'indeed',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.requiresUpgrade) {
+        setUpgradeMessage(data.error)
+        setShowUpgradePrompt(true)
+        return
+      }
+
+      if (data.success) {
+        setAppliedJobs(prev => new Set(prev).add(jobId))
+      }
+    } catch (error) {
+      console.error('Error marking job as applied:', error)
+    }
   }
 
   // Apply filters to jobs
@@ -292,6 +420,15 @@ function JobsPageContent() {
           )}
         </div>
       </div>
+
+      <UpgradePrompt
+        isOpen={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        title="Upgrade Your Plan"
+        message={upgradeMessage}
+        feature="Enhanced Job Search"
+        currentPlan={currentPlan}
+      />
     </div>
   )
 }

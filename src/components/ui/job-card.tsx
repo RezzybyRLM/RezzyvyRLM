@@ -1,20 +1,26 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, MapPin, Clock, DollarSign, Bookmark } from 'lucide-react'
+import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, CheckCircle } from 'lucide-react'
 import { formatRelativeTime, formatSalary, getJobTypeColor } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
 
 interface JobCardProps {
   job: TransformedJob
   onBookmark?: (jobId: string) => void
+  onMarkApplied?: (jobId: string) => void
   isBookmarked?: boolean
+  isApplied?: boolean
 }
 
-export function JobCard({ job, onBookmark, isBookmarked = false }: JobCardProps) {
+export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, isApplied = false }: JobCardProps) {
   const handleApply = () => {
     if (job.source === 'indeed') {
       window.open(job.apply_url, '_blank', 'noopener,noreferrer')
+      // Mark as applied if callback provided
+      if (onMarkApplied) {
+        onMarkApplied(job.id)
+      }
     } else {
       // For premium jobs, navigate to internal application
       window.location.href = `/jobs/${job.id}/apply`
@@ -89,21 +95,41 @@ export function JobCard({ job, onBookmark, isBookmarked = false }: JobCardProps)
           </p>
 
           {/* Apply Button */}
-          <div className="pt-2">
-            <Button 
-              onClick={handleApply}
-              className="w-full"
-              variant={job.source === 'indeed' ? 'default' : 'secondary'}
-            >
-              {job.source === 'indeed' ? (
-                <>
-                  Apply on Indeed
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                'Apply Now'
-              )}
-            </Button>
+          <div className="pt-2 space-y-2">
+            {isApplied ? (
+              <Button 
+                variant="outline"
+                className="w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                disabled
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Applied
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleApply}
+                className="w-full"
+                variant={job.source === 'indeed' ? 'default' : 'secondary'}
+              >
+                {job.source === 'indeed' ? (
+                  <>
+                    Apply on Indeed
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </>
+                ) : (
+                  'Apply Now'
+                )}
+              </Button>
+            )}
+            {onMarkApplied && !isApplied && (
+              <Button 
+                onClick={() => onMarkApplied(job.id)}
+                variant="outline"
+                className="w-full"
+              >
+                Mark as Applied
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

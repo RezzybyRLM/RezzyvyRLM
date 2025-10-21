@@ -240,7 +240,7 @@ export default function CompanyProfilePage() {
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   disabled={!isEditing}
                   placeholder="Describe your company, mission, and what makes it unique..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none bg-white text-gray-900"
                 />
               </div>
             </CardContent>
@@ -353,7 +353,7 @@ export default function CompanyProfilePage() {
                   onChange={(e) => handleInputChange('culture', e.target.value)}
                   disabled={!isEditing}
                   placeholder="Describe your company culture, values, and work environment..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none bg-white text-gray-900"
                 />
               </div>
 

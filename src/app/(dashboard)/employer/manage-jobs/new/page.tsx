@@ -238,7 +238,7 @@ export default function NewJobPage() {
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
                     required
                   />
                 </div>
@@ -250,7 +250,7 @@ export default function NewJobPage() {
                     value={formData.requirements}
                     onChange={(e) => handleInputChange('requirements', e.target.value)}
                     placeholder="List the required skills, experience, and qualifications..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
                   />
                 </div>
                 <div>
@@ -261,7 +261,7 @@ export default function NewJobPage() {
                     value={formData.benefits}
                     onChange={(e) => handleInputChange('benefits', e.target.value)}
                     placeholder="List the benefits, perks, and what makes your company a great place to work..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
                   />
                 </div>
               </CardContent>

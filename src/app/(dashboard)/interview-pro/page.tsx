@@ -315,21 +315,29 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
     }
   }
 
-  // Load user plan on mount
+  // Load user plan on mount and check access
   useEffect(() => {
     const loadPlan = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: plan } = await (supabase as any)
-          .from('user_plans')
-          .select('plan_type')
-          .eq('user_id', user.id)
-          .single()
-
-        if (plan) {
-          setCurrentPlan(plan.plan_type || 'Free')
-        }
+      if (!user) {
+        // Not logged in, redirect to login
+        window.location.href = '/auth/login?redirectTo=/interview-pro'
+        return
       }
+
+      const { data: plan } = await (supabase as any)
+        .from('user_plans')
+        .select('plan_type')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!plan) {
+        // No plan, redirect to plans page
+        window.location.href = '/plans?redirectTo=/interview-pro'
+        return
+      }
+
+      setCurrentPlan(plan.plan_type || 'Free')
     }
     loadPlan()
   }, [supabase])

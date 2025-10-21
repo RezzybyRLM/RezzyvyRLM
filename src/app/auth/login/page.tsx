@@ -32,8 +32,20 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message)
-      } else {
-        router.push('/dashboard')
+      } else if (data.user) {
+        // Check if user has a plan
+        const { data: plan } = await (supabase as any)
+          .from('user_plans')
+          .select('plan_type')
+          .eq('user_id', data.user.id)
+          .single()
+
+        if (!plan) {
+          // No plan, redirect to plans page
+          router.push('/plans?redirectTo=/dashboard')
+        } else {
+          router.push('/dashboard')
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -50,7 +62,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         },
       })
 

@@ -37,95 +37,70 @@ export default function PlansPage() {
 
   const plans = [
     {
-      name: 'Free',
-      price: '$0',
-      interval: '/month',
+      name: 'Essential Package',
+      price: '$200',
+      interval: '',
       features: [
-        '10 Job Searches per month',
-        '5 Applications per month',
-        '20 Bookmarks per month',
-        '2 AI Resume Matches',
-        '1 AI Interview Session',
-        '1 Job Alert',
-        'Basic support',
+        'One-on-One Consultation with Our Resume Writer (Email or zoom call 20 min)',
+        'One Page Resume (Career, Federal, and Curriculum Vitae)',
+        'One Page Bio',
+        'Cover Letter',
+        'Unlimited Revisions for 14 Days',
+        'Vcard plus QR code',
       ],
       highlight: false,
       popular: false,
+      link: 'https://rezzybyrlm.com/product/rezzyme/',
     },
     {
-      name: 'Basic',
-      price: '$9.99',
+      name: 'Definitive Package',
+      price: '$500',
       interval: '/month',
       features: [
-        '50 Job Searches per month',
-        '20 Applications per month',
-        '100 Bookmarks per month',
-        '10 AI Resume Matches',
-        '5 AI Interview Sessions',
-        '3 Job Alerts',
-        'Email support',
-        'Apply directly to jobs',
+        'One-on-One Consultation with Our Resume Writer (Email or Zoom call 1hr)',
+        'One Page Resume (Career, Federal, and Curriculum Vitae)',
+        'One Page Bio',
+        'Cover Letter',
+        'Unlimited Revisions for 14 Days',
+        'Vcard plus QR code',
+        'Reference List',
+        'Thank You Letter (3 Options)',
+        'One Additional Resume',
+        'LinkedIn Optimization',
+        'Career Interview Coaching',
       ],
       highlight: true,
       popular: true,
+      link: 'https://rezzybyrlm.com/product/rezzy-definitive/',
     },
     {
-      name: 'Pro',
-      price: '$19.99',
+      name: 'Accelerated Package',
+      price: '$300',
       interval: '/month',
       features: [
-        '200 Job Searches per month',
-        '100 Applications per month',
-        '500 Bookmarks per month',
-        '50 AI Resume Matches',
-        '25 AI Interview Sessions',
-        '10 Job Alerts',
-        'Priority support',
-        'Apply directly to jobs',
-        'Export job data',
+        'One-on-One Consultation with Our Resume Writer (Email or Zoom call 30 minutes)',
+        'One Page Resume (Career, Federal, and Curriculum Vitae)',
+        'One Page Bio',
+        'Cover Letter',
+        'Unlimited Revisions for 14 Days',
+        'Vcard plus QR code',
+        'Reference List',
+        'Thank You Letter (3 Options)',
+        'One Additional Resume',
       ],
       highlight: false,
       popular: false,
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      interval: '',
-      features: [
-        'Unlimited Job Searches',
-        'Unlimited Applications',
-        'Unlimited Bookmarks',
-        'Unlimited AI Resume Matches',
-        'Unlimited AI Interview Sessions',
-        'Unlimited Job Alerts',
-        'Dedicated support',
-        'Custom integrations',
-        'Advanced analytics',
-      ],
-      highlight: false,
-      popular: false,
+      link: 'https://rezzybyrlm.com/product/rezzy-accelerated/',
     },
   ]
 
-  const handleSelectPlan = async (planName: string) => {
-    if (planName === 'Free') {
-      // Set free plan and redirect
-      setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await (supabase as any)
-          .from('user_plans')
-          .upsert({
-            user_id: user.id,
-            plan_type: 'free',
-            api_quota_remaining: 10,
-            quota_reset_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          })
-      }
-      router.push(redirectTo)
+  const handleSelectPlan = async (plan: any) => {
+    // All plans are paid service packages - redirect to external product pages
+    if (plan.link) {
+      window.location.href = plan.link
     } else {
-      // Redirect to Stripe checkout for paid plans
-      router.push(`/cart?plan=${planName.toLowerCase()}`)
+      // Fallback: go to cart with package
+      router.push(`/cart?package=${plan.name.toLowerCase().replace(/\s+/g, '-')}`)
     }
   }
 
@@ -139,20 +114,20 @@ export default function PlansPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Plan
+            Choose Your Resume Package
           </h1>
           <p className="text-xl text-gray-600">
-            Select the perfect plan for your job search journey
+            Professional resume writing services tailored to your needs
           </p>
           {redirectTo !== '/dashboard' && (
             <p className="text-sm text-gray-500 mt-2">
-              Access <span className="font-semibold">{redirectTo}</span> after selecting a plan
+              After purchasing, you'll have access to <span className="font-semibold">{redirectTo}</span>
             </p>
           )}
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {plans.map((plan) => (
             <Card
               key={plan.name}
@@ -179,7 +154,7 @@ export default function PlansPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-3 mb-6 min-h-[400px]">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start text-sm">
                       <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
@@ -189,26 +164,20 @@ export default function PlansPage() {
                 </ul>
                 <Button
                   className={`w-full ${
-                    plan.name === 'Free'
-                      ? 'bg-gray-600 hover:bg-gray-700'
-                      : plan.highlight
+                    plan.highlight
                       ? 'bg-blue-600 hover:bg-blue-700'
                       : ''
                   }`}
-                  onClick={() => handleSelectPlan(plan.name)}
-                  disabled={loading || currentPlan === plan.name.toLowerCase()}
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={loading}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Processing...
                     </>
-                  ) : currentPlan === plan.name.toLowerCase() ? (
-                    'Current Plan'
-                  ) : plan.name === 'Free' ? (
-                    'Start Free'
                   ) : (
-                    'Get Started'
+                    'View Package'
                   )}
                 </Button>
               </CardContent>
@@ -235,10 +204,10 @@ export default function PlansPage() {
               <Zap className="h-6 w-6 text-blue-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              AI-Powered Tools
+              Professional Writers
             </h3>
             <p className="text-gray-600">
-              Get AI-powered resume matching and interview coaching
+              Expert resume writers with years of experience in your industry
             </p>
           </div>
           <div className="text-center">
@@ -246,10 +215,10 @@ export default function PlansPage() {
               <TrendingUp className="h-6 w-6 text-green-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Job Search Made Easy
+              Comprehensive Packages
             </h3>
             <p className="text-gray-600">
-              Search from thousands of Indeed jobs with smart filters
+              Everything you need from resume to LinkedIn optimization
             </p>
           </div>
           <div className="text-center">
@@ -257,10 +226,10 @@ export default function PlansPage() {
               <Shield className="h-6 w-6 text-purple-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Secure & Private
+              Unlimited Revisions
             </h3>
             <p className="text-gray-600">
-              Your data is encrypted and securely stored
+              14 days of unlimited revisions to ensure perfection
             </p>
           </div>
         </div>

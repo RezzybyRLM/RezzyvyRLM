@@ -41,15 +41,40 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
+      try {
+        // Get session first to ensure cookies are synced
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user) {
+          setUser(session.user)
+        } else {
+          // Try to get user directly
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            setUser(user)
+          }
+          // Don't redirect here - middleware handles that
+        }
+      } catch (error) {
+        console.error('Error getting user:', error)
+        // Don't redirect - let middleware handle it
       }
-      setUser(user)
     }
 
     getUser()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/login')
+      } else if (session?.user) {
+        setUser(session.user)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [router, supabase])
 
   const handleSignOut = async () => {

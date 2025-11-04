@@ -29,11 +29,21 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   )
   
+  // Create response
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  // Always refresh session for protected routes
   if (isProtectedRoute || isAdminRoute) {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!user) {
+    // Refresh session - this updates cookies automatically
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
       // Redirect to login with return URL
       const loginUrl = new URL('/auth/login', request.url)
       loginUrl.searchParams.set('redirectTo', pathname)
@@ -55,7 +65,7 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  return NextResponse.next()
+  return response
 }
 
 export const config = {

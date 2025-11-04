@@ -14,6 +14,7 @@ export default function PlansPage() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
 
@@ -128,6 +129,38 @@ export default function PlansPage() {
           })
       }
       router.push(redirectTo)
+    } else if (plan.subscriptionType) {
+      // Subscription plan - use Stripe checkout
+      setLoading(true)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/auth/login?redirectTo=/plans')
+          return
+        }
+
+        const response = await fetch('/api/stripe/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            planType: plan.subscriptionType,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (data.success && data.sessionUrl) {
+          window.location.href = data.sessionUrl
+        } else {
+          setError(data.error || 'Failed to start checkout')
+          setLoading(false)
+        }
+      } catch (err) {
+        setError('Network error occurred')
+        setLoading(false)
+      }
     } else if (plan.link) {
       // Redirect to external product pages
       window.location.href = plan.link

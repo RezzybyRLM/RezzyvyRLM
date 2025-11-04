@@ -37,26 +37,44 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         
-        if (session.metadata?.type === 'donation') {
+        if (session.metadata?.type === 'subscription') {
+          // Handle subscription checkout completion
+          const userId = session.metadata.user_id
+          const planType = session.metadata.plan_type || 'basic'
+          
+          if (userId) {
+            // Get subscription details
+            const subscriptionId = session.subscription as string
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+            
+            // Update user's plan
+            await (supabase as any)
+              .from('user_plans')
+              .upsert({
+                user_id: userId,
+                plan_type: planType,
+                stripe_subscription_id: subscriptionId,
+                api_quota_remaining: planType === 'basic' ? 50 : planType === 'pro' ? 200 : -1,
+                quota_reset_date: new Date(subscription.current_period_end * 1000).toISOString(),
+              })
+            
+            console.log(`Subscription activated for user ${userId}: ${planType}`)
+          }
+        } else if (session.metadata?.type === 'donation') {
           // Handle donation completion
           console.log('Donation completed:', session.id)
-          
-          // You could send a thank you email here
-          // or update user's donation history
         } else if (session.metadata?.type === 'job_posting') {
           // Handle premium job posting payment
           const jobId = session.metadata.jobId
-          const companyEmail = session.metadata.companyEmail
           
           if (jobId) {
-            // Mark job as paid/featured
-            // await supabase
-            //   .from('jobs')
-            //   .update({
-            //     is_featured: true,
-            //     featured_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-            //   })
-            //   .eq('id', jobId)
+            await (supabase as any)
+              .from('jobs')
+              .update({
+                is_featured: true,
+                featured_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              })
+              .eq('id', jobId)
           }
         }
         break
@@ -71,24 +89,25 @@ export async function POST(request: NextRequest) {
         const customerEmail = customer.deleted ? null : customer.email
         
         if (customerEmail) {
-          // Update user's subscription status
-          // const { data: user } = await supabase
-          //   .from('users')
-          //   .select('id')
-          //   .eq('email', customerEmail)
-          //   .single()
+          const planType = subscription.metadata?.plan_type || 'basic'
+          
+          const { data: user } = await (supabase as any)
+            .from('users')
+            .select('id')
+            .eq('email', customerEmail)
+            .single()
 
-          // if (user) {
-          //   await supabase
-          //     .from('user_plans')
-          //     .upsert({
-          //       user_id: user.id,
-          //       stripe_subscription_id: subscription.id,
-          //       plan_type: subscription.metadata?.plan_type || 'basic',
-          //       api_quota_remaining: subscription.metadata?.quota || 100,
-          //       quota_reset_date: new Date(subscription.current_period_end * 1000).toISOString(),
-          //     })
-          // }
+          if (user) {
+            await (supabase as any)
+              .from('user_plans')
+              .upsert({
+                user_id: user.id,
+                stripe_subscription_id: subscription.id,
+                plan_type: planType,
+                api_quota_remaining: planType === 'basic' ? 50 : planType === 'pro' ? 200 : -1,
+                quota_reset_date: new Date(subscription.current_period_end * 1000).toISOString(),
+              })
+          }
         }
         break
       }
@@ -97,14 +116,16 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         
         // Downgrade user to free plan
-        // await supabase
-        //   .from('user_plans')
-        //   .update({
-        //     plan_type: 'free',
-        //     stripe_subscription_id: null,
-        //     api_quota_remaining: 10, // Free tier limit
-        //   })
-        //   .eq('stripe_subscription_id', subscription.id)
+        await (supabase as any)
+          .from('user_plans')
+          .update({
+            plan_type: 'free',
+            stripe_subscription_id: null,
+            api_quota_remaining: 10, // Free tier limit
+          })
+          .eq('stripe_subscription_id', subscription.id)
+        
+        console.log(`Subscription cancelled: ${subscription.id}`)
         break
       }
 

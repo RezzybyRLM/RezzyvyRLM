@@ -213,22 +213,32 @@ export class GeminiVoiceService {
    */
   private async generateConversationalResponse(userInput: string, conversationContext: string): Promise<string> {
     const prompt = `
-You are an AI interview coach conducting a professional interview. You need to respond naturally to what the candidate just said.
+You are a friendly, professional interview coach conducting a real interview. Your goal is to sound completely natural and human-like in your responses.
 
 Conversation Context: ${conversationContext}
 
 What the candidate just said: "${userInput}"
 
-Your task:
-1. Analyze what the candidate said
-2. Provide appropriate feedback or ask a follow-up question
-3. Keep responses concise (2-3 sentences max)
-4. Be professional but encouraging
-5. If the answer is good, acknowledge it and move to the next question
-6. If the answer needs improvement, provide constructive feedback
-7. Speak naturally as if you're having a real conversation
+IMPORTANT GUIDELINES:
+- Respond EXACTLY as a real human interviewer would speak
+- Use natural speech patterns, contractions, and casual transitions
+- Vary your sentence length (mix short and medium sentences)
+- Sound warm, encouraging, and genuinely interested
+- Avoid robotic phrases like "That's a great answer" or "Thank you for sharing"
+- Use phrases like "Right, that makes sense" or "I see what you mean" or "That's interesting"
+- If the answer is good: acknowledge naturally and smoothly transition
+- If it needs work: give gentle, constructive feedback like a real person would
+- Keep it conversational (2-3 sentences, max 150 words)
+- Use natural pauses and flow
+- Don't sound like an AI - sound like a friendly colleague
 
-Generate your response as if you're speaking aloud (natural, conversational tone):
+Example of GOOD natural response:
+"Right, that's a really solid example. I like how you handled that situation. Let's move on to the next question - tell me about a time when you had to work under pressure."
+
+Example of BAD robotic response:
+"That is an excellent answer. Thank you for providing that information. Now I will ask you the next question."
+
+Now generate your response as if you're speaking naturally to a friend:
 `
 
     try {
@@ -261,20 +271,28 @@ Generate your response as if you're speaking aloud (natural, conversational tone
    */
   private async enhanceTextForSpeech(text: string, context?: string): Promise<string> {
     const prompt = `
-You are a natural speech assistant. Convert this text into a more conversational, natural-sounding speech format.
+Transform this text into natural, human-like speech that sounds like a real person talking, not a robot.
 
 Original text: "${text}"
 ${context ? `Context: ${context}` : ''}
 
-Guidelines:
-- Make it sound natural when spoken aloud
-- Add appropriate pauses (use ... for short pauses, ... ... for longer pauses)
-- Use conversational language
-- Keep the meaning exactly the same
-- Don't add extra information
-- Return only the enhanced text, nothing else
+Your task:
+- Convert formal text into natural conversational speech
+- Use contractions (don't, can't, it's, that's)
+- Add natural flow and rhythm
+- Insert natural pauses where a human would pause (use ... for brief pauses)
+- Remove robotic phrases and make it sound authentic
+- Keep the core meaning exactly the same
+- Make it sound like someone is genuinely speaking to you
+- Use filler words naturally if appropriate (like "um", "you know", "so")
+- Keep it concise and easy to follow when spoken
 
-Enhanced text:`
+Example transformation:
+Formal: "Please describe your experience with project management."
+Natural: "So, tell me about your experience with project management. What kind of projects have you worked on?"
+
+Now transform this text to sound like natural human speech:
+`
 
     try {
       const response = await fetch('/api/ai/gemini-chat', {
@@ -306,6 +324,7 @@ Enhanced text:`
    * Uses browser's built-in SpeechSynthesis API (FREE, no API key needed)
    * Works in: Chrome, Edge, Safari, Firefox, Opera
    * Supports ALL languages with automatic voice selection
+   * Enhanced with natural pauses and rhythm
    */
   speak(text: string, language?: string): void {
     if (!this.speechSynthesis) {
@@ -324,11 +343,15 @@ Enhanced text:`
     // Use provided language or current language
     const targetLanguage = language || this.currentLanguage
 
+    // Process text for natural pauses
+    const processedText = this.addNaturalPauses(text)
+
     // Create new utterance
-    const utterance = new SpeechSynthesisUtterance(text)
+    const utterance = new SpeechSynthesisUtterance(processedText)
     
     // Apply voice profile settings (rate, pitch, volume)
-    utterance.rate = this.currentProfile.rate
+    // Slightly slower rate for more natural speech
+    utterance.rate = Math.max(0.75, this.currentProfile.rate)
     utterance.pitch = this.currentProfile.pitch
     utterance.volume = this.currentProfile.volume
 
@@ -346,7 +369,7 @@ Enhanced text:`
 
     // Event handlers
     utterance.onstart = () => {
-      console.log('Started speaking:', text.substring(0, 50))
+      console.log('Started speaking:', processedText.substring(0, 50))
     }
 
     utterance.onend = () => {
@@ -368,6 +391,29 @@ Enhanced text:`
     } catch (error) {
       console.error('Error calling speechSynthesis.speak:', error)
     }
+  }
+
+  /**
+   * Add natural pauses to text for more human-like speech
+   */
+  private addNaturalPauses(text: string): string {
+    // Replace ... with pauses (browser will handle these naturally)
+    let processed = text.replace(/\.\.\./g, ', ')
+    
+    // Add pauses after commas and semicolons
+    processed = processed.replace(/,/g, ', ')
+    processed = processed.replace(/;/g, '. ')
+    
+    // Add pause after question marks before continuing
+    processed = processed.replace(/\?/g, '? ')
+    
+    // Add natural pause after periods if followed by capital letter
+    processed = processed.replace(/\.([A-Z])/g, '. $1')
+    
+    // Remove excessive spaces
+    processed = processed.replace(/\s+/g, ' ').trim()
+    
+    return processed
   }
 
   /**

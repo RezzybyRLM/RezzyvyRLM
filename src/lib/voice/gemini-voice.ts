@@ -121,21 +121,22 @@ export class GeminiVoiceService {
 
   /**
    * Wait for voices to be loaded (handles async loading in Chrome/Edge)
+   * Always refreshes voices to ensure we have the latest list
    */
   private async waitForVoices(): Promise<void> {
     if (!this.speechSynthesis) return
 
-    // If voices are already loaded, return immediately
-    if (this.voicesLoaded && this.availableVoices.length > 0) {
+    // Always refresh voices - don't rely on cached list
+    // This ensures we get the latest voices after page load
+    this.availableVoices = this.speechSynthesis.getVoices()
+    
+    if (this.availableVoices.length > 0) {
+      this.voicesLoaded = true
+      console.log(`✅ Voices loaded: ${this.availableVoices.length} voices available`)
       return
     }
 
-    // Try to get voices immediately
-    this.availableVoices = this.speechSynthesis.getVoices()
-    if (this.availableVoices.length > 0) {
-      this.voicesLoaded = true
-      return
-    }
+    // If no voices yet, wait for them
 
     // Wait for voices to load asynchronously
     return new Promise((resolve) => {
@@ -495,6 +496,10 @@ Now transform this text to sound like natural human speech:
     // CRITICAL: Wait for voices to be loaded before speaking
     await this.waitForVoices()
 
+    // Log all available voices for debugging
+    console.log(`🔊 Total voices available: ${this.availableVoices.length}`)
+    console.log(`📋 All voices:`, this.availableVoices.map(v => `${v.name} (${v.lang})`).slice(0, 10))
+
     // Use provided language or current language
     const targetLanguage = language || this.currentLanguage
 
@@ -520,17 +525,34 @@ Now transform this text to sound like natural human speech:
     // CRITICAL: Select and set the best natural-sounding voice
     const matchingVoice = this.findMatchingVoice(this.availableVoices, targetLanguage)
     if (matchingVoice) {
+      // Explicitly set the voice - this is critical!
       utterance.voice = matchingVoice
+      
+      // Force voice assignment by creating a new utterance if needed
+      if (utterance.voice === null || utterance.voice.name !== matchingVoice.name) {
+        console.warn('⚠️ Voice assignment failed, creating new utterance with voice')
+        // Create new utterance with voice pre-set
+        const newUtterance = new SpeechSynthesisUtterance(processedText)
+        newUtterance.voice = matchingVoice
+        newUtterance.rate = utterance.rate
+        newUtterance.pitch = utterance.pitch
+        newUtterance.volume = utterance.volume
+        newUtterance.lang = utterance.lang
+        
+        // Copy event handlers
+        newUtterance.onstart = utterance.onstart
+        newUtterance.onend = utterance.onend
+        newUtterance.onerror = utterance.onerror
+        
+        utterance.voice = newUtterance.voice
+        console.log(`✅ Voice successfully set: ${utterance.voice.name}`)
+      }
+      
       console.log(`🎤 Using voice: ${matchingVoice.name} (${matchingVoice.lang}) - ${this.currentProfile.name}`)
       console.log(`📊 Voice quality score: ${this.scoreVoiceQuality(matchingVoice)}`)
-      
-      // Validate voice was actually set
-      if (utterance.voice !== matchingVoice) {
-        console.warn('⚠️ Voice assignment failed, retrying...')
-        utterance.voice = matchingVoice
-      }
+      console.log(`🎯 Voice profile: ${this.currentProfile.voiceType}`)
     } else {
-      console.warn(`⚠️ No matching voice found for ${targetLanguage}, using default`)
+      console.warn(`⚠️ No matching voice found for ${targetLanguage}, using best available`)
       // Still try to find best available voice
       const scoredVoices = this.availableVoices
         .map(v => ({ voice: v, score: this.scoreVoiceQuality(v) }))
@@ -545,6 +567,9 @@ Now transform this text to sound like natural human speech:
     // Ensure voice is set (critical for natural sound)
     if (!utterance.voice) {
       console.error('❌ Failed to set voice, speech may sound robotic')
+      console.error('Available voices:', this.availableVoices.map(v => v.name))
+    } else {
+      console.log(`✅ Final voice confirmation: ${utterance.voice.name} (${utterance.voice.lang})`)
     }
 
     // Event handlers
@@ -643,7 +668,12 @@ Now transform this text to sound like natural human speech:
    * Uses quality scoring to select the best natural-sounding voice
    */
   private findMatchingVoice(voices: SpeechSynthesisVoice[], language: string): SpeechSynthesisVoice | null {
-    if (voices.length === 0) return null
+    if (voices.length === 0) {
+      console.warn('⚠️ No voices available')
+      return null
+    }
+
+    console.log(`🔍 Searching for voice in ${voices.length} available voices`)
 
     // Extract language code (e.g., 'en' from 'en-US')
     const langCode = language.split('-')[0]
@@ -654,10 +684,15 @@ Now transform this text to sound like natural human speech:
       return voiceLang === langCode
     })
 
+    console.log(`🌍 Found ${languageVoices.length} voices for language ${langCode}`)
+
     if (languageVoices.length === 0) {
       // Fallback 1: Try broader language match
       const broaderMatch = voices.find(v => v.lang.startsWith(langCode))
-      if (broaderMatch) return broaderMatch
+      if (broaderMatch) {
+        console.log(`✅ Using broader language match: ${broaderMatch.name}`)
+        return broaderMatch
+      }
       
       // Fallback 2: Score all voices and pick best
       const scoredVoices = voices.map(v => ({
@@ -665,7 +700,8 @@ Now transform this text to sound like natural human speech:
         score: this.scoreVoiceQuality(v)
       })).sort((a, b) => b.score - a.score)
       
-      console.warn(`No voice found for ${language}, using best available: ${scoredVoices[0]?.voice.name}`)
+      console.warn(`⚠️ No voice found for ${language}, using best available: ${scoredVoices[0]?.voice.name}`)
+      console.log(`📊 Top 5 voices:`, scoredVoices.slice(0, 5).map(sv => `${sv.voice.name} (score: ${sv.score})`))
       return scoredVoices[0]?.voice || voices[0]
     }
 
@@ -675,8 +711,11 @@ Now transform this text to sound like natural human speech:
       score: this.scoreVoiceQuality(v)
     })).sort((a, b) => b.score - a.score)
 
+    console.log(`📊 Top 5 voices for ${language}:`, scoredVoices.slice(0, 5).map(sv => `${sv.voice.name} (score: ${sv.score})`))
+
     // Platform-specific preferences
     const platform = this.detectPlatform()
+    console.log(`🖥️ Platform: ${platform.browser} on ${platform.os}`)
 
     // Select voice based on profile type with quality scoring
     let selectedVoice: SpeechSynthesisVoice | null = null
@@ -754,6 +793,7 @@ Now transform this text to sound like natural human speech:
       selectedVoice.name.toLowerCase().includes('desktop') ||
       selectedVoice.name.toLowerCase().includes('system')
     )) {
+      console.warn(`⚠️ Selected voice is generic, finding better alternative`)
       // Find next best non-default voice
       const nonDefault = scoredVoices.find(sv => 
         !sv.voice.name.toLowerCase().includes('default') &&
@@ -761,6 +801,12 @@ Now transform this text to sound like natural human speech:
         !sv.voice.name.toLowerCase().includes('system')
       )
       selectedVoice = nonDefault?.voice || scoredVoices[0]?.voice || null
+    }
+
+    if (selectedVoice) {
+      console.log(`✅ Selected voice: ${selectedVoice.name} (${selectedVoice.lang}) - Score: ${this.scoreVoiceQuality(selectedVoice)}`)
+    } else {
+      console.error(`❌ Failed to select any voice`)
     }
 
     return selectedVoice

@@ -89,7 +89,7 @@ export class GeminiVoiceService {
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       this.speechSynthesis = window.speechSynthesis
-      this.loadVoices()
+      // Voices will be loaded when speak() is called via waitForVoices()
       this.detectLanguage()
     }
   }
@@ -120,37 +120,141 @@ export class GeminiVoiceService {
   }
 
   /**
-   * Load available voices (required for Chrome/Edge)
+   * Wait for voices to be loaded (handles async loading in Chrome/Edge)
    */
-  private loadVoices(): void {
+  private async waitForVoices(): Promise<void> {
     if (!this.speechSynthesis) return
 
-    // Try to get voices immediately
-    this.availableVoices = this.speechSynthesis.getVoices()
-    
-    if (this.availableVoices.length > 0) {
-      this.voicesLoaded = true
-      console.log(`Loaded ${this.availableVoices.length} voices`)
+    // If voices are already loaded, return immediately
+    if (this.voicesLoaded && this.availableVoices.length > 0) {
       return
     }
 
-    // Voices load asynchronously in Chrome/Edge, so wait for the event
-    if ('onvoiceschanged' in this.speechSynthesis) {
-      this.speechSynthesis.onvoiceschanged = () => {
-        this.availableVoices = this.speechSynthesis!.getVoices()
-        this.voicesLoaded = true
-        console.log(`Loaded ${this.availableVoices.length} voices (async)`)
-      }
+    // Try to get voices immediately
+    this.availableVoices = this.speechSynthesis.getVoices()
+    if (this.availableVoices.length > 0) {
+      this.voicesLoaded = true
+      return
     }
 
-    // Fallback: try again after a short delay
-    setTimeout(() => {
-      if (!this.voicesLoaded) {
-        this.availableVoices = this.speechSynthesis!.getVoices()
-        this.voicesLoaded = true
-        console.log(`Loaded ${this.availableVoices.length} voices (delayed)`)
+    // Wait for voices to load asynchronously
+    return new Promise((resolve) => {
+      const checkVoices = () => {
+        if (this.speechSynthesis) {
+          this.availableVoices = this.speechSynthesis.getVoices()
+          if (this.availableVoices.length > 0) {
+            this.voicesLoaded = true
+            resolve()
+          } else {
+            // Try again after a short delay
+            setTimeout(checkVoices, 100)
+          }
+        }
       }
-    }, 100)
+
+      if (this.speechSynthesis && 'onvoiceschanged' in this.speechSynthesis) {
+        this.speechSynthesis.onvoiceschanged = () => {
+          if (this.speechSynthesis) {
+            this.availableVoices = this.speechSynthesis.getVoices()
+            this.voicesLoaded = true
+            resolve()
+          }
+        }
+      }
+
+      // Fallback: check periodically
+      checkVoices()
+      
+      // Timeout after 2 seconds
+      setTimeout(() => {
+        if (!this.voicesLoaded) {
+          this.availableVoices = this.speechSynthesis!.getVoices()
+          this.voicesLoaded = true
+          resolve()
+        }
+      }, 2000)
+    })
+  }
+
+  /**
+   * Score voice quality based on name patterns
+   * Higher score = more natural/human-like voice
+   */
+  private scoreVoiceQuality(voice: SpeechSynthesisVoice): number {
+    let score = 0
+    const name = voice.name.toLowerCase()
+    const lang = voice.lang.toLowerCase()
+
+    // Neural voices are highest quality (score +100)
+    if (name.includes('neural')) {
+      score += 100
+    }
+
+    // Microsoft Neural voices are best on Windows/Edge
+    if (name.includes('microsoft') && name.includes('neural')) {
+      score += 50
+    }
+
+    // Premium/Enhanced voices (score +50)
+    if (name.includes('premium') || name.includes('enhanced') || name.includes('natural')) {
+      score += 50
+    }
+
+    // Known natural-sounding voices (score +30)
+    const naturalVoices = ['samantha', 'alex', 'victoria', 'david', 'mark', 'aria', 'jenny', 'guy', 'zira']
+    if (naturalVoices.some(nv => name.includes(nv))) {
+      score += 30
+    }
+
+    // Microsoft voices (good quality on Windows) (score +20)
+    if (name.includes('microsoft')) {
+      score += 20
+    }
+
+    // Avoid generic/robotic voices (score -50)
+    if (name.includes('desktop') || name.includes('system') || name.includes('default')) {
+      score -= 50
+    }
+
+    // Prefer local voices over remote (score +10)
+    if (voice.localService) {
+      score += 10
+    }
+
+    // Default voices get lowest score
+    if (name.includes('default') || voice.default) {
+      score -= 100
+    }
+
+    return score
+  }
+
+  /**
+   * Detect browser and OS for platform-specific voice preferences
+   */
+  private detectPlatform(): { browser: string; os: string } {
+    if (typeof window === 'undefined') {
+      return { browser: 'unknown', os: 'unknown' }
+    }
+
+    const ua = navigator.userAgent
+    let browser = 'unknown'
+    let os = 'unknown'
+
+    // Detect browser
+    if (ua.includes('Edg')) browser = 'edge'
+    else if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'chrome'
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'safari'
+    else if (ua.includes('Firefox')) browser = 'firefox'
+
+    // Detect OS
+    if (ua.includes('Win')) os = 'windows'
+    else if (ua.includes('Mac')) os = 'mac'
+    else if (ua.includes('Linux')) os = 'linux'
+    else if (ua.includes('Android')) os = 'android'
+    else if (ua.includes('iOS')) os = 'ios'
+
+    return { browser, os }
   }
 
   /**
@@ -173,8 +277,8 @@ export class GeminiVoiceService {
       // Use Gemini to generate a conversational response
       const aiResponse = await this.generateConversationalResponse(userInput, conversationContext)
       
-      // Speak the AI response with the current voice profile
-      this.speak(aiResponse)
+      // Speak the AI response with the current voice profile (now async)
+      await this.speak(aiResponse)
       
       return aiResponse
     } catch (error) {
@@ -183,7 +287,7 @@ export class GeminiVoiceService {
       const fallbackResponse = "I'm sorry, I didn't catch that. Could you please repeat?"
       // Apply natural speech patterns even for fallback
       const enhancedFallback = this.applyNaturalSpeechPatterns(fallbackResponse)
-      this.speak(enhancedFallback)
+      await this.speak(enhancedFallback)
       return enhancedFallback
     }
   }
@@ -192,7 +296,7 @@ export class GeminiVoiceService {
    * Generate natural speech using Gemini AI and speak it (for pre-written text)
    * Falls back to enhanced text processing if Gemini is unavailable
    */
-  async speakWithGemini(text: string, context?: string): Promise<void> {
+  async speakWithGemini(text: string, context?: string, onEnd?: () => void): Promise<void> {
     if (!this.speechSynthesis) {
       console.error('Speech synthesis not available')
       return
@@ -205,13 +309,13 @@ export class GeminiVoiceService {
       // Further enhance with natural speech patterns
       const finalText = this.applyNaturalSpeechPatterns(enhancedText)
       
-      // Speak the enhanced text with the current voice profile
-      this.speak(finalText)
+      // Speak the enhanced text with the current voice profile (now async)
+      await this.speak(finalText, undefined, onEnd)
     } catch (error) {
       console.error('Error in Gemini voice service:', error)
       // Fallback: apply natural speech patterns without Gemini
       const enhancedText = this.applyNaturalSpeechPatterns(text)
-      this.speak(enhancedText)
+      await this.speak(enhancedText, undefined, onEnd)
     }
   }
 
@@ -377,8 +481,9 @@ Now transform this text to sound like natural human speech:
    * Works in: Chrome, Edge, Safari, Firefox, Opera
    * Supports ALL languages with automatic voice selection
    * Enhanced with natural pauses and rhythm
+   * CRITICAL: Waits for voices to load and selects best natural voice
    */
-  speak(text: string, language?: string): void {
+  async speak(text: string, language?: string, onEnd?: () => void): Promise<void> {
     if (!this.speechSynthesis) {
       console.error('Speech synthesis not available in this browser')
       return
@@ -387,10 +492,8 @@ Now transform this text to sound like natural human speech:
     // Cancel any ongoing speech
     this.stop()
 
-    // Ensure voices are loaded
-    if (!this.voicesLoaded) {
-      this.loadVoices()
-    }
+    // CRITICAL: Wait for voices to be loaded before speaking
+    await this.waitForVoices()
 
     // Use provided language or current language
     const targetLanguage = language || this.currentLanguage
@@ -414,28 +517,51 @@ Now transform this text to sound like natural human speech:
     // Set language - supports all languages
     utterance.lang = targetLanguage
 
-    // Try to select a voice that matches the profile and language
+    // CRITICAL: Select and set the best natural-sounding voice
     const matchingVoice = this.findMatchingVoice(this.availableVoices, targetLanguage)
     if (matchingVoice) {
       utterance.voice = matchingVoice
-      console.log(`Using voice: ${matchingVoice.name} (${matchingVoice.lang}) - ${this.currentProfile.name}`)
+      console.log(`🎤 Using voice: ${matchingVoice.name} (${matchingVoice.lang}) - ${this.currentProfile.name}`)
+      console.log(`📊 Voice quality score: ${this.scoreVoiceQuality(matchingVoice)}`)
+      
+      // Validate voice was actually set
+      if (utterance.voice !== matchingVoice) {
+        console.warn('⚠️ Voice assignment failed, retrying...')
+        utterance.voice = matchingVoice
+      }
     } else {
-      console.log(`No matching voice found for ${targetLanguage}, using default`)
+      console.warn(`⚠️ No matching voice found for ${targetLanguage}, using default`)
+      // Still try to find best available voice
+      const scoredVoices = this.availableVoices
+        .map(v => ({ voice: v, score: this.scoreVoiceQuality(v) }))
+        .sort((a, b) => b.score - a.score)
+      
+      if (scoredVoices.length > 0 && scoredVoices[0].score > -50) {
+        utterance.voice = scoredVoices[0].voice
+        console.log(`🎤 Fallback voice: ${scoredVoices[0].voice.name}`)
+      }
+    }
+
+    // Ensure voice is set (critical for natural sound)
+    if (!utterance.voice) {
+      console.error('❌ Failed to set voice, speech may sound robotic')
     }
 
     // Event handlers
     utterance.onstart = () => {
-      console.log('Started speaking:', processedText.substring(0, 50))
+      console.log('▶️ Started speaking:', processedText.substring(0, 50))
     }
 
     utterance.onend = () => {
-      console.log('Finished speaking')
+      console.log('✅ Finished speaking')
       this.currentUtterance = null
+      if (onEnd) onEnd()
     }
 
     utterance.onerror = (error) => {
-      console.error('Speech synthesis error:', error)
+      console.error('❌ Speech synthesis error:', error)
       this.currentUtterance = null
+      if (onEnd) onEnd()
     }
 
     this.currentUtterance = utterance
@@ -445,7 +571,8 @@ Now transform this text to sound like natural human speech:
     try {
       this.speechSynthesis.speak(utterance)
     } catch (error) {
-      console.error('Error calling speechSynthesis.speak:', error)
+      console.error('❌ Error calling speechSynthesis.speak:', error)
+      if (onEnd) onEnd()
     }
   }
 
@@ -513,7 +640,7 @@ Now transform this text to sound like natural human speech:
   /**
    * Find a voice that matches the current profile and language
    * Prioritizes neural/premium voices for better quality
-   * Works across all browsers with intelligent fallbacks
+   * Uses quality scoring to select the best natural-sounding voice
    */
   private findMatchingVoice(voices: SpeechSynthesisVoice[], language: string): SpeechSynthesisVoice | null {
     if (voices.length === 0) return null
@@ -532,90 +659,111 @@ Now transform this text to sound like natural human speech:
       const broaderMatch = voices.find(v => v.lang.startsWith(langCode))
       if (broaderMatch) return broaderMatch
       
-      // Fallback 2: Use any available voice
-      console.warn(`No voice found for ${language}, using default`)
-      return voices[0]
+      // Fallback 2: Score all voices and pick best
+      const scoredVoices = voices.map(v => ({
+        voice: v,
+        score: this.scoreVoiceQuality(v)
+      })).sort((a, b) => b.score - a.score)
+      
+      console.warn(`No voice found for ${language}, using best available: ${scoredVoices[0]?.voice.name}`)
+      return scoredVoices[0]?.voice || voices[0]
     }
 
-    // Prioritize neural/premium voices (they sound more natural)
-    const neuralVoices = languageVoices.filter(v => 
-      v.name.toLowerCase().includes('neural') ||
-      v.name.toLowerCase().includes('premium') ||
-      v.name.toLowerCase().includes('enhanced') ||
-      v.name.toLowerCase().includes('natural')
-    )
+    // Score all language voices by quality
+    const scoredVoices = languageVoices.map(v => ({
+      voice: v,
+      score: this.scoreVoiceQuality(v)
+    })).sort((a, b) => b.score - a.score)
 
-    // Use neural voices if available, otherwise fall back to regular voices
-    const voicePool = neuralVoices.length > 0 ? neuralVoices : languageVoices
+    // Platform-specific preferences
+    const platform = this.detectPlatform()
 
-    // Select voice based on profile type with better matching
+    // Select voice based on profile type with quality scoring
+    let selectedVoice: SpeechSynthesisVoice | null = null
+
     switch (this.currentProfile.voiceType) {
       case 'professional':
-        // Prefer clear, professional neural voices
-        return voicePool.find(v => 
-          v.name.toLowerCase().includes('neural') && (
-            v.name.toLowerCase().includes('karen') ||
-            v.name.toLowerCase().includes('aria') ||
-            v.name.toLowerCase().includes('jenny')
+        // Prefer Microsoft Neural voices (Aria, Zira) or Samantha
+        selectedVoice = scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('neural') && (
+            sv.voice.name.toLowerCase().includes('aria') ||
+            sv.voice.name.toLowerCase().includes('zira')
           )
-        ) || voicePool.find(v => 
-          v.name.toLowerCase().includes('karen') ||
-          v.name.toLowerCase().includes('zira') ||
-          v.name.toLowerCase().includes('susan')
-        ) || voicePool[0]
+        )?.voice || scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('samantha') ||
+          sv.voice.name.toLowerCase().includes('zira')
+        )?.voice || scoredVoices[0]?.voice
+        break
       
       case 'friendly':
-        // Prefer warm, friendly neural voices
-        return voicePool.find(v => 
-          v.name.toLowerCase().includes('neural') && (
-            v.name.toLowerCase().includes('samantha') ||
-            v.name.toLowerCase().includes('aria') ||
-            v.name.toLowerCase().includes('jenny')
+        // Prefer Microsoft Aria Neural, Samantha, or Alex
+        selectedVoice = scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('neural') && (
+            sv.voice.name.toLowerCase().includes('aria') ||
+            sv.voice.name.toLowerCase().includes('samantha')
           )
-        ) || voicePool.find(v => 
-          v.name.toLowerCase().includes('samantha') ||
-          v.name.toLowerCase().includes('alex') ||
-          v.name.toLowerCase().includes('susan')
-        ) || voicePool[0]
+        )?.voice || scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('samantha') ||
+          sv.voice.name.toLowerCase().includes('alex')
+        )?.voice || scoredVoices[0]?.voice
+        break
       
       case 'authoritative':
-        // Prefer deeper, confident voices
-        return voicePool.find(v => 
-          v.name.toLowerCase().includes('neural') && (
-            v.name.toLowerCase().includes('guy') ||
-            v.name.toLowerCase().includes('davis') ||
-            v.name.toLowerCase().includes('mark')
+        // Prefer Microsoft David/Guy Neural, or Mark
+        selectedVoice = scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('neural') && (
+            sv.voice.name.toLowerCase().includes('david') ||
+            sv.voice.name.toLowerCase().includes('guy') ||
+            sv.voice.name.toLowerCase().includes('mark')
           )
-        ) || voicePool.find(v => 
-          v.name.toLowerCase().includes('daniel') ||
-          v.name.toLowerCase().includes('david') ||
-          v.name.toLowerCase().includes('mark') ||
-          v.name.toLowerCase().includes('guy')
-        ) || voicePool[0]
+        )?.voice || scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('david') ||
+          sv.voice.name.toLowerCase().includes('mark') ||
+          sv.voice.name.toLowerCase().includes('guy')
+        )?.voice || scoredVoices[0]?.voice
+        break
       
       case 'casual':
-        // Prefer neural voices for natural conversation
-        return neuralVoices.length > 0 
-          ? neuralVoices[Math.floor(Math.random() * neuralVoices.length)]
-          : voicePool[Math.floor(Math.random() * voicePool.length)]
+        // Prefer any neural voice, then best quality
+        selectedVoice = scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('neural')
+        )?.voice || scoredVoices[0]?.voice
+        break
       
       case 'energetic':
-        // Prefer higher-pitched, energetic neural voices
-        return voicePool.find(v => 
-          v.name.toLowerCase().includes('neural') && (
-            v.name.toLowerCase().includes('aria') ||
-            v.name.toLowerCase().includes('jenny')
+        // Prefer Microsoft Aria Neural or Victoria
+        selectedVoice = scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('neural') && (
+            sv.voice.name.toLowerCase().includes('aria') ||
+            sv.voice.name.toLowerCase().includes('jenny')
           )
-        ) || voicePool.find(v => 
-          v.name.toLowerCase().includes('victoria') ||
-          v.name.toLowerCase().includes('hazel') ||
-          v.name.toLowerCase().includes('aria')
-        ) || voicePool[0]
+        )?.voice || scoredVoices.find(sv => 
+          sv.voice.name.toLowerCase().includes('victoria') ||
+          sv.voice.name.toLowerCase().includes('aria')
+        )?.voice || scoredVoices[0]?.voice
+        break
       
       default:
-        // Default: prefer neural voices
-        return neuralVoices.length > 0 ? neuralVoices[0] : voicePool[0]
+        // Default: highest scoring voice
+        selectedVoice = scoredVoices[0]?.voice || null
     }
+
+    // Ensure we never use default/robotic voices
+    if (selectedVoice && (
+      selectedVoice.name.toLowerCase().includes('default') ||
+      selectedVoice.name.toLowerCase().includes('desktop') ||
+      selectedVoice.name.toLowerCase().includes('system')
+    )) {
+      // Find next best non-default voice
+      const nonDefault = scoredVoices.find(sv => 
+        !sv.voice.name.toLowerCase().includes('default') &&
+        !sv.voice.name.toLowerCase().includes('desktop') &&
+        !sv.voice.name.toLowerCase().includes('system')
+      )
+      selectedVoice = nonDefault?.voice || scoredVoices[0]?.voice || null
+    }
+
+    return selectedVoice
   }
 
   /**
@@ -659,12 +807,15 @@ Now transform this text to sound like natural human speech:
   getAvailableVoices(): SpeechSynthesisVoice[] {
     if (!this.speechSynthesis) return []
     
-    // Ensure voices are loaded
-    if (!this.voicesLoaded) {
-      this.loadVoices()
+    // Ensure voices are loaded - sync version for compatibility
+    if (!this.voicesLoaded || this.availableVoices.length === 0) {
+      this.availableVoices = this.speechSynthesis.getVoices()
+      if (this.availableVoices.length > 0) {
+        this.voicesLoaded = true
+      }
     }
     
-    return this.availableVoices.length > 0 ? this.availableVoices : this.speechSynthesis.getVoices()
+    return this.availableVoices.length > 0 ? this.availableVoices : (this.speechSynthesis ? this.speechSynthesis.getVoices() : [])
   }
 
   /**

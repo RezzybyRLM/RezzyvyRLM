@@ -354,23 +354,21 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
     setIsSpeaking(true)
     
     try {
+      // Always use enhanced voice service with proper voice selection
+      // This ensures best natural-sounding voice is used
+      geminiVoiceService.setVoiceProfile(selectedVoiceProfile)
+      geminiVoiceService.setLanguage(selectedLanguage)
+      
       if (useGeminiVoice) {
         // Use Gemini-powered voice with selected profile
-        geminiVoiceService.setVoiceProfile(selectedVoiceProfile)
-        await geminiVoiceService.speakWithGemini(question, 'Interview question')
+        await geminiVoiceService.speakWithGemini(question, 'Interview question', () => {
+          setIsSpeaking(false)
+        })
       } else {
-        // Fallback to browser TTS
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(question)
-          utterance.rate = selectedVoiceProfile.rate
-          utterance.pitch = selectedVoiceProfile.pitch
-          utterance.volume = selectedVoiceProfile.volume
-
-          utterance.onstart = () => setIsSpeaking(true)
-          utterance.onend = () => setIsSpeaking(false)
-
-          window.speechSynthesis.speak(utterance)
-        }
+        // Still use enhanced service for voice selection, just without Gemini text enhancement
+        await geminiVoiceService.speak(question, selectedLanguage, () => {
+          setIsSpeaking(false)
+        })
       }
     } catch (error) {
       console.error('Error speaking:', error)

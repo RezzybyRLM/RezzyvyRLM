@@ -186,6 +186,15 @@ export class GeminiVoiceService {
     const name = voice.name.toLowerCase()
     const lang = voice.lang.toLowerCase()
 
+    // Known natural-sounding voices - these should NEVER be penalized
+    // Even if they're default, they're still good quality
+    const naturalVoices = ['samantha', 'alex', 'victoria', 'david', 'mark', 'aria', 'jenny', 'guy', 'zira', 'daniel', 'susan', 'karen']
+    const isNaturalVoice = naturalVoices.some(nv => name.includes(nv))
+    
+    if (isNaturalVoice) {
+      score += 50 // Natural voices get high score regardless
+    }
+
     // Neural voices are highest quality (score +100)
     if (name.includes('neural')) {
       score += 100
@@ -201,20 +210,9 @@ export class GeminiVoiceService {
       score += 50
     }
 
-    // Known natural-sounding voices (score +30)
-    const naturalVoices = ['samantha', 'alex', 'victoria', 'david', 'mark', 'aria', 'jenny', 'guy', 'zira']
-    if (naturalVoices.some(nv => name.includes(nv))) {
-      score += 30
-    }
-
     // Microsoft voices (good quality on Windows) (score +20)
     if (name.includes('microsoft')) {
       score += 20
-    }
-
-    // Avoid generic/robotic voices (score -50)
-    if (name.includes('desktop') || name.includes('system') || name.includes('default')) {
-      score -= 50
     }
 
     // Prefer local voices over remote (score +10)
@@ -222,9 +220,17 @@ export class GeminiVoiceService {
       score += 10
     }
 
-    // Default voices get lowest score
-    if (name.includes('default') || voice.default) {
-      score -= 100
+    // Only penalize truly generic/robotic voices - NOT natural voices even if default
+    if (!isNaturalVoice) {
+      // Avoid generic/robotic voices (score -50)
+      if (name.includes('desktop') || name.includes('system')) {
+        score -= 50
+      }
+
+      // Default voices get lowest score ONLY if they're not natural voices
+      if (name.includes('default') || (voice.default && !isNaturalVoice)) {
+        score -= 100
+      }
     }
 
     return score

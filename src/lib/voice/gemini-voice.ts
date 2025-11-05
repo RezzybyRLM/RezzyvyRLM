@@ -793,21 +793,9 @@ Now transform this text to sound like natural human speech:
         selectedVoice = scoredVoices[0]?.voice || null
     }
 
-    // Ensure we never use default/robotic voices
-    if (selectedVoice && (
-      selectedVoice.name.toLowerCase().includes('default') ||
-      selectedVoice.name.toLowerCase().includes('desktop') ||
-      selectedVoice.name.toLowerCase().includes('system')
-    )) {
-      console.warn(`⚠️ Selected voice is generic, finding better alternative`)
-      // Find next best non-default voice
-      const nonDefault = scoredVoices.find(sv => 
-        !sv.voice.name.toLowerCase().includes('default') &&
-        !sv.voice.name.toLowerCase().includes('desktop') &&
-        !sv.voice.name.toLowerCase().includes('system')
-      )
-      selectedVoice = nonDefault?.voice || scoredVoices[0]?.voice || null
-    }
+    // Ensure we never use default/robotic voices (except natural voices like Samantha)
+    const naturalVoiceNames = ['samantha', 'alex', 'victoria', 'david', 'mark', 'aria', 'jenny', 'guy', 'zira', 'daniel', 'susan', 'karen']
+    const isNaturalVoice = selectedVoice ? naturalVoiceNames.some(nv => selectedVoice.name.toLowerCase().includes(nv)) : false
 
     if (selectedVoice) {
       console.log(`✅ Selected voice: ${selectedVoice.name} (${selectedVoice.lang}) - Score: ${this.scoreVoiceQuality(selectedVoice)}`)

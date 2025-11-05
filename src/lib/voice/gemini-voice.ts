@@ -39,41 +39,41 @@ export const VOICE_PROFILES: VoiceProfile[] = [
   {
     name: 'Professional Interviewer',
     description: 'Calm, professional voice for formal interviews',
-    rate: 0.85,
-    pitch: 0.9,
-    volume: 0.9,
+    rate: 0.88, // Optimal for natural speech (0.85-0.95 range)
+    pitch: 1.0, // Neutral pitch for professional tone
+    volume: 0.92, // Clear but not too loud
     voiceType: 'professional'
   },
   {
     name: 'Friendly Coach',
     description: 'Warm, encouraging voice for supportive feedback',
-    rate: 0.9,
-    pitch: 1.1,
-    volume: 0.85,
+    rate: 0.9, // Slightly faster for friendly tone
+    pitch: 1.05, // Slightly higher for warmth
+    volume: 0.88, // Comfortable volume
     voiceType: 'friendly'
   },
   {
     name: 'Executive',
     description: 'Authoritative, confident voice',
-    rate: 0.75,
-    pitch: 0.85,
-    volume: 0.95,
+    rate: 0.82, // Slower for authority
+    pitch: 0.95, // Slightly lower for depth
+    volume: 0.95, // Strong presence
     voiceType: 'authoritative'
   },
   {
     name: 'Casual Mentor',
     description: 'Relaxed, conversational voice',
-    rate: 1.0,
-    pitch: 1.0,
-    volume: 0.8,
+    rate: 0.93, // Natural conversation pace
+    pitch: 1.02, // Slightly elevated for friendliness
+    volume: 0.85, // Relaxed volume
     voiceType: 'casual'
   },
   {
     name: 'Energetic Motivator',
     description: 'Enthusiastic, upbeat voice',
-    rate: 1.1,
-    pitch: 1.15,
-    volume: 0.9,
+    rate: 0.96, // Faster but still natural
+    pitch: 1.08, // Higher for energy
+    volume: 0.92, // Energetic but clear
     voiceType: 'energetic'
   }
 ]
@@ -181,13 +181,16 @@ export class GeminiVoiceService {
       console.error('Error in Gemini voice service:', error)
       // Fallback to a generic response
       const fallbackResponse = "I'm sorry, I didn't catch that. Could you please repeat?"
-      this.speak(fallbackResponse)
-      return fallbackResponse
+      // Apply natural speech patterns even for fallback
+      const enhancedFallback = this.applyNaturalSpeechPatterns(fallbackResponse)
+      this.speak(enhancedFallback)
+      return enhancedFallback
     }
   }
 
   /**
    * Generate natural speech using Gemini AI and speak it (for pre-written text)
+   * Falls back to enhanced text processing if Gemini is unavailable
    */
   async speakWithGemini(text: string, context?: string): Promise<void> {
     if (!this.speechSynthesis) {
@@ -199,13 +202,62 @@ export class GeminiVoiceService {
       // Use Gemini to enhance the text for natural speech
       const enhancedText = await this.enhanceTextForSpeech(text, context)
       
+      // Further enhance with natural speech patterns
+      const finalText = this.applyNaturalSpeechPatterns(enhancedText)
+      
       // Speak the enhanced text with the current voice profile
-      this.speak(enhancedText)
+      this.speak(finalText)
     } catch (error) {
       console.error('Error in Gemini voice service:', error)
-      // Fallback to regular speech
-      this.speak(text)
+      // Fallback: apply natural speech patterns without Gemini
+      const enhancedText = this.applyNaturalSpeechPatterns(text)
+      this.speak(enhancedText)
     }
+  }
+
+  /**
+   * Apply natural speech patterns to text to make it sound more human
+   * Works even without Gemini API
+   */
+  private applyNaturalSpeechPatterns(text: string): string {
+    let processed = text
+    
+    // Convert formal language to conversational
+    processed = processed.replace(/\bPlease\s+describe\b/gi, "Tell me about")
+    processed = processed.replace(/\bPlease\s+explain\b/gi, "Can you explain")
+    processed = processed.replace(/\bI would like to\b/gi, "I'd like to")
+    processed = processed.replace(/\bI will\b/gi, "I'll")
+    processed = processed.replace(/\bIt is\b/gi, "It's")
+    processed = processed.replace(/\bThat is\b/gi, "That's")
+    processed = processed.replace(/\bYou are\b/gi, "You're")
+    processed = processed.replace(/\bWe are\b/gi, "We're")
+    processed = processed.replace(/\bCannot\b/gi, "Can't")
+    processed = processed.replace(/\bDo not\b/gi, "Don't")
+    processed = processed.replace(/\bWill not\b/gi, "Won't")
+    
+    // Add natural filler words for conversational flow
+    // But only occasionally to avoid overdoing it
+    const sentences = processed.match(/[^.!?]+[.!?]+/g) || []
+    if (sentences.length > 1) {
+      // Add "Well" or "So" to some sentences randomly (but not all)
+      const modifiedSentences = sentences.map((sentence, index) => {
+        if (index === 0 && Math.random() > 0.7) {
+          return sentence.trim().replace(/^/, 'Well, ')
+        }
+        if (index > 0 && Math.random() > 0.8) {
+          return sentence.trim().replace(/^/, 'So, ')
+        }
+        return sentence.trim()
+      })
+      processed = modifiedSentences.join(' ')
+    }
+    
+    // Remove overly formal phrases
+    processed = processed.replace(/\bThank you for\b/gi, "Thanks for")
+    processed = processed.replace(/\bIn order to\b/gi, "To")
+    processed = processed.replace(/\bDue to the fact that\b/gi, "Because")
+    
+    return processed.trim()
   }
 
   /**
@@ -349,11 +401,15 @@ Now transform this text to sound like natural human speech:
     // Create new utterance
     const utterance = new SpeechSynthesisUtterance(processedText)
     
-    // Apply voice profile settings (rate, pitch, volume)
-    // Slightly slower rate for more natural speech
-    utterance.rate = Math.max(0.75, this.currentProfile.rate)
-    utterance.pitch = this.currentProfile.pitch
-    utterance.volume = this.currentProfile.volume
+    // Apply voice profile settings with optimal ranges for natural speech
+    // Rate: 0.8-1.0 is optimal (0.85-0.95 sounds most natural)
+    utterance.rate = Math.max(0.8, Math.min(1.0, this.currentProfile.rate))
+    
+    // Pitch: 0.9-1.1 sounds most natural (1.0 is neutral)
+    utterance.pitch = Math.max(0.9, Math.min(1.1, this.currentProfile.pitch))
+    
+    // Volume: 0.85-0.95 is optimal for clarity without being too loud
+    utterance.volume = Math.max(0.85, Math.min(0.95, this.currentProfile.volume))
 
     // Set language - supports all languages
     utterance.lang = targetLanguage
@@ -395,31 +451,69 @@ Now transform this text to sound like natural human speech:
 
   /**
    * Add natural pauses to text for more human-like speech
+   * Uses advanced text processing to mimic natural human speech patterns
    */
   private addNaturalPauses(text: string): string {
-    // Replace ... with pauses (browser will handle these naturally)
-    let processed = text.replace(/\.\.\./g, ', ')
+    let processed = text
     
-    // Add pauses after commas and semicolons
-    processed = processed.replace(/,/g, ', ')
-    processed = processed.replace(/;/g, '. ')
+    // Replace ellipsis with natural pause markers
+    processed = processed.replace(/\.\.\./g, '. ')
     
-    // Add pause after question marks before continuing
-    processed = processed.replace(/\?/g, '? ')
+    // Add natural pauses after commas (but not too many)
+    processed = processed.replace(/,\s*/g, ', ')
     
-    // Add natural pause after periods if followed by capital letter
-    processed = processed.replace(/\.([A-Z])/g, '. $1')
+    // Add pause after semicolons
+    processed = processed.replace(/;\s*/g, '. ')
     
-    // Remove excessive spaces
+    // Add pause after question marks
+    processed = processed.replace(/\?\s*/g, '? ')
+    
+    // Add pause after exclamation marks
+    processed = processed.replace(/!\s*/g, '! ')
+    
+    // Add natural pause after periods (sentence breaks)
+    processed = processed.replace(/\.\s*([A-Z])/g, '. $1')
+    
+    // Add subtle pauses around conjunctions for natural flow
+    processed = processed.replace(/\s+(and|but|or|so|then)\s+/gi, ' $1 ')
+    
+    // Add pauses after introductory phrases
+    processed = processed.replace(/(^|\.)\s*(Well|So|Now|Right|Okay|Alright|Listen|See|Look)\s+/gi, '$1 $2, ')
+    
+    // Add pauses around numbers for clarity
+    processed = processed.replace(/(\d+)\s+/g, '$1 ')
+    
+    // Clean up excessive spaces but preserve intentional pauses
     processed = processed.replace(/\s+/g, ' ').trim()
+    
+    // Split very long sentences into chunks for better intonation
+    processed = this.splitLongSentences(processed)
     
     return processed
   }
 
   /**
+   * Split very long sentences into smaller chunks for better speech intonation
+   */
+  private splitLongSentences(text: string): string {
+    // If sentence is too long (> 150 chars), split at natural points
+    if (text.length > 150) {
+      // Split at commas, conjunctions, or relative clauses
+      const chunks = text.match(/.{1,120}(?:\s+and\s+|\s+but\s+|\s+or\s+|,\s+|;\s+|$)/gi) || [text]
+      
+      if (chunks.length > 1) {
+        // Add slight pause between chunks
+        return chunks.join('. ')
+      }
+    }
+    
+    return text
+  }
+
+  /**
    * Find a voice that matches the current profile and language
+   * Prioritizes neural/premium voices for better quality
    * Works across all browsers with intelligent fallbacks
-   * Supports ALL languages automatically
    */
   private findMatchingVoice(voices: SpeechSynthesisVoice[], language: string): SpeechSynthesisVoice | null {
     if (voices.length === 0) return null
@@ -443,47 +537,84 @@ Now transform this text to sound like natural human speech:
       return voices[0]
     }
 
-    // Select voice based on profile type
+    // Prioritize neural/premium voices (they sound more natural)
+    const neuralVoices = languageVoices.filter(v => 
+      v.name.toLowerCase().includes('neural') ||
+      v.name.toLowerCase().includes('premium') ||
+      v.name.toLowerCase().includes('enhanced') ||
+      v.name.toLowerCase().includes('natural')
+    )
+
+    // Use neural voices if available, otherwise fall back to regular voices
+    const voicePool = neuralVoices.length > 0 ? neuralVoices : languageVoices
+
+    // Select voice based on profile type with better matching
     switch (this.currentProfile.voiceType) {
       case 'professional':
-        // Prefer lower-pitched, clear voices
-        return languageVoices.find(v => 
-          v.name.toLowerCase().includes('female') || 
+        // Prefer clear, professional neural voices
+        return voicePool.find(v => 
+          v.name.toLowerCase().includes('neural') && (
+            v.name.toLowerCase().includes('karen') ||
+            v.name.toLowerCase().includes('aria') ||
+            v.name.toLowerCase().includes('jenny')
+          )
+        ) || voicePool.find(v => 
           v.name.toLowerCase().includes('karen') ||
-          v.name.toLowerCase().includes('zira')
-        ) || languageVoices[0]
+          v.name.toLowerCase().includes('zira') ||
+          v.name.toLowerCase().includes('susan')
+        ) || voicePool[0]
       
       case 'friendly':
-        // Prefer warmer voices
-        return languageVoices.find(v => 
-          v.name.toLowerCase().includes('samantha') || 
+        // Prefer warm, friendly neural voices
+        return voicePool.find(v => 
+          v.name.toLowerCase().includes('neural') && (
+            v.name.toLowerCase().includes('samantha') ||
+            v.name.toLowerCase().includes('aria') ||
+            v.name.toLowerCase().includes('jenny')
+          )
+        ) || voicePool.find(v => 
+          v.name.toLowerCase().includes('samantha') ||
           v.name.toLowerCase().includes('alex') ||
           v.name.toLowerCase().includes('susan')
-        ) || languageVoices[0]
+        ) || voicePool[0]
       
       case 'authoritative':
-        // Prefer deeper, male voices
-        return languageVoices.find(v => 
-          v.name.toLowerCase().includes('male') || 
+        // Prefer deeper, confident voices
+        return voicePool.find(v => 
+          v.name.toLowerCase().includes('neural') && (
+            v.name.toLowerCase().includes('guy') ||
+            v.name.toLowerCase().includes('davis') ||
+            v.name.toLowerCase().includes('mark')
+          )
+        ) || voicePool.find(v => 
           v.name.toLowerCase().includes('daniel') ||
           v.name.toLowerCase().includes('david') ||
-          v.name.toLowerCase().includes('mark')
-        ) || languageVoices[0]
+          v.name.toLowerCase().includes('mark') ||
+          v.name.toLowerCase().includes('guy')
+        ) || voicePool[0]
       
       case 'casual':
-        // Any natural-sounding voice
-        return languageVoices[Math.floor(Math.random() * languageVoices.length)]
+        // Prefer neural voices for natural conversation
+        return neuralVoices.length > 0 
+          ? neuralVoices[Math.floor(Math.random() * neuralVoices.length)]
+          : voicePool[Math.floor(Math.random() * voicePool.length)]
       
       case 'energetic':
-        // Prefer higher-pitched, energetic voices
-        return languageVoices.find(v => 
-          v.name.toLowerCase().includes('female') || 
+        // Prefer higher-pitched, energetic neural voices
+        return voicePool.find(v => 
+          v.name.toLowerCase().includes('neural') && (
+            v.name.toLowerCase().includes('aria') ||
+            v.name.toLowerCase().includes('jenny')
+          )
+        ) || voicePool.find(v => 
           v.name.toLowerCase().includes('victoria') ||
-          v.name.toLowerCase().includes('hazel')
-        ) || languageVoices[0]
+          v.name.toLowerCase().includes('hazel') ||
+          v.name.toLowerCase().includes('aria')
+        ) || voicePool[0]
       
       default:
-        return languageVoices[0]
+        // Default: prefer neural voices
+        return neuralVoices.length > 0 ? neuralVoices[0] : voicePool[0]
     }
   }
 

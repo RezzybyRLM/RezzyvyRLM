@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -16,7 +16,7 @@ export async function DELETE(
       )
     }
 
-    const coverLetterId = params.id
+    const { id: coverLetterId } = await params
 
     // Verify ownership
     const { data: coverLetter } = await supabase

@@ -4,7 +4,7 @@ import { updateApplicationStatus, addApplicationNotes } from '@/lib/employer/app
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -17,7 +17,7 @@ export async function PATCH(
       )
     }
 
-    const applicationId = params.id
+    const { id: applicationId } = await params
     const body = await request.json()
     const { status, notes } = body
 

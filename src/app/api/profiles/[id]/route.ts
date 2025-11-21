@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -16,10 +16,11 @@ export async function GET(
       )
     }
 
+    const { id } = await params
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
@@ -42,7 +43,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -55,6 +56,7 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
     const body = await request.json()
     const {
       profile_name,
@@ -74,7 +76,7 @@ export async function PUT(
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingProfile || existingProfile.user_id !== user.id) {
@@ -100,7 +102,7 @@ export async function PUT(
         certifications: certifications || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -117,14 +119,14 @@ export async function PUT(
       await supabase
         .from('profile_resumes')
         .delete()
-        .eq('profile_id', params.id)
+        .eq('profile_id', id)
         .eq('is_primary', true)
 
       // Create new link
       await supabase
         .from('profile_resumes')
         .insert({
-          profile_id: params.id,
+          profile_id: id,
           resume_id,
           is_primary: true,
         })
@@ -142,7 +144,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -155,11 +157,12 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
     // Verify profile belongs to user and is not default
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('user_id, is_default')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingProfile || existingProfile.user_id !== user.id) {
@@ -180,7 +183,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('user_profiles')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (error) {

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -16,11 +16,12 @@ export async function PATCH(
       )
     }
 
+    const { id } = await params
     // Verify profile belongs to user
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingProfile || existingProfile.user_id !== user.id) {
@@ -40,7 +41,7 @@ export async function PATCH(
     const { error } = await supabase
       .from('user_profiles')
       .update({ is_default: true })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (error) {

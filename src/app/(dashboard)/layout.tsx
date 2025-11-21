@@ -16,7 +16,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -34,7 +35,9 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [user, setUser] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -47,11 +50,31 @@ export default function DashboardLayout({
         
         if (session?.user) {
           setUser(session.user)
+          // Fetch user profile data
+          const { data: profile } = await supabase
+            .from('users')
+            .select('full_name, avatar_url')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (profile) {
+            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+          }
         } else {
           // Try to get user directly
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
             setUser(user)
+            // Fetch user profile data
+            const { data: profile } = await supabase
+              .from('users')
+              .select('full_name, avatar_url')
+              .eq('id', user.id)
+              .single()
+            
+            if (profile) {
+              setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+            }
           }
           // Don't redirect here - middleware handles that
         }
@@ -64,11 +87,21 @@ export default function DashboardLayout({
     getUser()
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         router.push('/auth/login')
       } else if (session?.user) {
         setUser(session.user)
+        // Fetch user profile data
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name, avatar_url')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (profile) {
+          setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+        }
       }
     })
 
@@ -196,6 +229,66 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="lg:pl-64">
+        {/* Desktop header */}
+        <div className="hidden lg:flex h-16 items-center justify-between px-6 bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="flex-1" />
+          <div className="flex items-center gap-4">
+            {/* Profile dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {userProfile?.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt={userProfile.full_name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                )}
+                <span className="text-sm font-medium text-gray-700 hidden xl:block">
+                  {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-500 hidden xl:block" />
+              </button>
+              
+              {/* Dropdown menu */}
+              {profileMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setProfileMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleSignOut()
+                        setProfileMenuOpen(false)
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Mobile header */}
         <div className="lg:hidden flex h-16 items-center justify-between px-4 bg-white border-b border-gray-200">
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
@@ -210,7 +303,32 @@ export default function DashboardLayout({
               className="object-contain"
             />
           </Link>
-          <div className="w-6" /> {/* Spacer */}
+          <div className="flex items-center gap-2">
+            {/* Profile picture and sign out on mobile */}
+            {userProfile?.avatar_url ? (
+              <Link href="/profile">
+                <img
+                  src={userProfile.avatar_url}
+                  alt={userProfile.full_name || 'User'}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              </Link>
+            ) : (
+              <Link href="/profile">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+              </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              className="text-red-600 hover:text-red-700"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Page content */}

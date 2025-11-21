@@ -76,25 +76,26 @@ export default function EmployerDashboard() {
         // For MVP: Get first company or use a default
         // In production, link employers to companies properly
         if (companies && companies.length > 0) {
-          setCompanyId(companies[0].id)
+          const compId = companies[0].id
+          setCompanyId(compId)
+
+          // Fetch stats
+          const statsResponse = await fetch(`/api/employer/stats?companyId=${compId}`)
+          const statsData = await statsResponse.json()
+          if (statsData.success) {
+            setStats(statsData.stats)
+          }
+
+          // Fetch recent jobs
+          const jobsResponse = await fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`)
+          const jobsData = await jobsResponse.json()
+          if (jobsData.success) {
+            setRecentJobs(jobsData.jobs)
+          }
         } else {
           // No company found - user needs to create one
           setLoading(false)
           return
-        }
-
-        // Fetch stats
-        const statsResponse = await fetch(`/api/employer/stats?companyId=${company.id}`)
-        const statsData = await statsResponse.json()
-        if (statsData.success) {
-          setStats(statsData.stats)
-        }
-
-        // Fetch recent jobs
-        const jobsResponse = await fetch(`/api/employer/recent-jobs?companyId=${company.id}&limit=5`)
-        const jobsData = await jobsResponse.json()
-        if (jobsData.success) {
-          setRecentJobs(jobsData.jobs)
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)

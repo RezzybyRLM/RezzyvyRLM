@@ -33,6 +33,19 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else if (data.user) {
+        // Check onboarding status first
+        const { data: userData } = await supabase
+          .from('users')
+          .select('onboarding_completed, onboarding_step')
+          .eq('id', data.user.id)
+          .single()
+
+        // If onboarding not completed, redirect to onboarding
+        if (userData && !userData.onboarding_completed) {
+          router.push('/onboarding?redirectTo=/dashboard')
+          return
+        }
+
         // Check if user has a plan
         const { data: plan } = await (supabase as any)
           .from('user_plans')

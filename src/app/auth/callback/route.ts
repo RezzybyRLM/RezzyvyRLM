@@ -11,9 +11,28 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      // Check if user has a plan
+      // Check if user has a plan and onboarding status
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        // Check onboarding status first
+        const { data: userData } = await supabase
+          .from('users')
+          .select('onboarding_completed, onboarding_step')
+          .eq('id', user.id)
+          .single()
+
+        // If onboarding not completed, redirect to onboarding
+        if (userData && !userData.onboarding_completed && next !== '/onboarding') {
+          const forwardedHost = request.headers.get('x-forwarded-host')
+          const isLocalEnv = process.env.NODE_ENV === 'development'
+          const onboardingUrl = isLocalEnv 
+            ? `${origin}/onboarding?redirectTo=${encodeURIComponent(next)}`
+            : forwardedHost
+              ? `https://${forwardedHost}/onboarding?redirectTo=${encodeURIComponent(next)}`
+              : `${origin}/onboarding?redirectTo=${encodeURIComponent(next)}`
+          return NextResponse.redirect(onboardingUrl)
+        }
+
         const { data: plan } = await (supabase as any)
           .from('user_plans')
           .select('plan_type')
@@ -21,7 +40,7 @@ export async function GET(request: NextRequest) {
           .single()
 
         // If no plan exists, redirect to plans page
-        if (!plan && next !== '/plans') {
+        if (!plan && next !== '/plans' && next !== '/onboarding') {
           const forwardedHost = request.headers.get('x-forwarded-host')
           const isLocalEnv = process.env.NODE_ENV === 'development'
           

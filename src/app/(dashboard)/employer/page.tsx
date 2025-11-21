@@ -15,9 +15,11 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface JobStats {
   totalJobs: number
@@ -54,58 +56,55 @@ export default function EmployerDashboard() {
   
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const supabase = createClient()
 
   useEffect(() => {
-    // TODO: Fetch real data from Supabase
-    // For now, using mock data
-    setStats({
-      totalJobs: 12,
-      activeJobs: 8,
-      featuredJobs: 3,
-      totalViews: 1247,
-      totalClicks: 89,
-      totalApplications: 23,
-      monthlyRevenue: 297,
-    })
-    
-    setRecentJobs([
-      {
-        id: '1',
-        title: 'Senior Software Engineer',
-        company: 'TechCorp Inc.',
-        location: 'San Francisco, CA',
-        status: 'active',
-        views: 156,
-        applications: 8,
-        createdAt: '2024-01-15',
-        isFeatured: true,
-      },
-      {
-        id: '2',
-        title: 'Product Manager',
-        company: 'TechCorp Inc.',
-        location: 'Remote',
-        status: 'active',
-        views: 89,
-        applications: 5,
-        createdAt: '2024-01-12',
-        isFeatured: false,
-      },
-      {
-        id: '3',
-        title: 'UX Designer',
-        company: 'TechCorp Inc.',
-        location: 'New York, NY',
-        status: 'expired',
-        views: 234,
-        applications: 12,
-        createdAt: '2024-01-08',
-        isFeatured: true,
-      },
-    ])
-    
-    setLoading(false)
-  }, [])
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Get user's company - check if user has a company
+        // For now, we'll get the first company or create a placeholder
+        // In production, you'd have a proper employer_companies junction table
+        const { data: companies } = await supabase
+          .from('companies')
+          .select('id, name')
+          .limit(1)
+
+        // For MVP: Get first company or use a default
+        // In production, link employers to companies properly
+        if (companies && companies.length > 0) {
+          setCompanyId(companies[0].id)
+        } else {
+          // No company found - user needs to create one
+          setLoading(false)
+          return
+        }
+
+        // Fetch stats
+        const statsResponse = await fetch(`/api/employer/stats?companyId=${company.id}`)
+        const statsData = await statsResponse.json()
+        if (statsData.success) {
+          setStats(statsData.stats)
+        }
+
+        // Fetch recent jobs
+        const jobsResponse = await fetch(`/api/employer/recent-jobs?companyId=${company.id}&limit=5`)
+        const jobsData = await jobsResponse.json()
+        if (jobsData.success) {
+          setRecentJobs(jobsData.jobs)
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [supabase])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,7 +122,25 @@ export default function EmployerDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!companyId) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-yellow-900 mb-2">Company Profile Required</h3>
+          <p className="text-yellow-800 mb-4">
+            Please complete your company profile to access the employer dashboard.
+          </p>
+          <Button asChild>
+            <Link href="/employer/profile">
+              Complete Company Profile
+            </Link>
+          </Button>
+        </div>
       </div>
     )
   }

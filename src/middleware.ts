@@ -63,6 +63,22 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url))
       }
     }
+
+    // Check onboarding status for protected routes (except onboarding itself and employer routes)
+    if (isProtectedRoute && !pathname.startsWith('/onboarding') && !pathname.startsWith('/employer') && !pathname.startsWith('/auth')) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('onboarding_completed, onboarding_step')
+        .eq('id', user.id)
+        .single()
+      
+      // If onboarding not completed, redirect to onboarding
+      if (userData && !userData.onboarding_completed) {
+        const onboardingUrl = new URL('/onboarding', request.url)
+        onboardingUrl.searchParams.set('redirectTo', pathname)
+        return NextResponse.redirect(onboardingUrl)
+      }
+    }
   }
   
   return response

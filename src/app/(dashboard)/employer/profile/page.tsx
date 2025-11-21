@@ -18,8 +18,11 @@ import {
   Link as LinkIcon,
   Mail,
   Phone,
-  Briefcase
+  Briefcase,
+  Loader2,
+  X
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface CompanyProfile {
   id: string
@@ -47,31 +50,77 @@ interface CompanyProfile {
 
 export default function CompanyProfilePage() {
   const [profile, setProfile] = useState<CompanyProfile>({
-    id: '1',
-    name: 'TechCorp Inc.',
-    description: 'We are a leading technology company focused on innovation and growth.',
-    website: 'https://techcorp.com',
+    id: '',
+    name: '',
+    description: '',
+    website: '',
     logoUrl: '',
-    industry: 'Technology',
-    size: '51-200',
-    foundedYear: '2015',
-    location: 'San Francisco, CA',
-    contactEmail: 'careers@techcorp.com',
-    contactPhone: '+1 (555) 123-4567',
-    socialLinks: {
-      linkedin: 'https://linkedin.com/company/techcorp',
-      twitter: 'https://twitter.com/techcorp',
-    },
-    benefits: ['Health Insurance', '401k Matching', 'Remote Work', 'Professional Development'],
-    culture: 'We foster a collaborative and inclusive environment where innovation thrives.',
-    isVerified: true,
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-15',
+    industry: '',
+    size: '',
+    foundedYear: '',
+    location: '',
+    contactEmail: '',
+    contactPhone: '',
+    socialLinks: {},
+    benefits: [],
+    culture: '',
+    isVerified: false,
+    createdAt: '',
+    updatedAt: '',
   })
   
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Get company - for MVP, get first company or create one
+        const { data: companies } = await supabase
+          .from('companies')
+          .select('*')
+          .limit(1)
+
+        if (companies && companies.length > 0) {
+          const company = companies[0]
+          setProfile({
+            id: company.id,
+            name: company.name,
+            description: company.description || '',
+            website: company.website || '',
+            logoUrl: company.logo_url || '',
+            industry: company.industry || '',
+            size: company.size || '',
+            foundedYear: '',
+            location: company.location || '',
+            contactEmail: '',
+            contactPhone: '',
+            socialLinks: {},
+            benefits: [],
+            culture: '',
+            isVerified: false,
+            createdAt: company.created_at || '',
+            updatedAt: company.updated_at || '',
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching company profile:', error)
+        setError('Failed to load company profile')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [supabase])
 
   const handleInputChange = (field: keyof CompanyProfile, value: string | string[]) => {
     setProfile(prev => ({
@@ -92,28 +141,157 @@ export default function CompanyProfilePage() {
 
   const handleSave = async () => {
     setIsSaving(true)
+    setError(null)
+
     try {
-      // TODO: Implement save functionality
-      console.log('Saving profile:', profile)
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('You must be logged in to save profile')
+        return
+      }
+
+      if (!profile.name.trim()) {
+        setError('Company name is required')
+        return
+      }
+
+      // Update or create company
+      if (profile.id) {
+        // Update existing company
+        const { error: updateError } = await supabase
+          .from('companies')
+          .update({
+            name: profile.name,
+            description: profile.description,
+            website: profile.website,
+            logo_url: profile.logoUrl,
+            industry: profile.industry,
+            size: profile.size,
+            location: profile.location,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+
+        if (updateError) {
+          setError(updateError.message)
+          return
+        }
+      } else {
+        // Create new company
+        const { data: newCompany, error: createError } = await supabase
+          .from('companies')
+          .insert({
+            name: profile.name,
+            description: profile.description,
+            website: profile.website,
+            logo_url: profile.logoUrl,
+            industry: profile.industry,
+            size: profile.size,
+            location: profile.location,
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          setError(createError.message)
+          return
+        }
+
+        if (newCompany) {
+          setProfile({ ...profile, id: newCompany.id })
+        }
+      }
+
       setIsEditing(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving profile:', error)
+      setError(error.message || 'Failed to save profile')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      // TODO: Implement logo upload to Supabase Storage
-      console.log('Uploading logo:', file)
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
     }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo size must be less than 2MB')
+      return
+    }
+
+    setUploadingLogo(true)
+    setError(null)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('You must be logged in to upload logo')
+        return
+      }
+
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop()
+      const fileName = `logos/${user.id}/${Date.now()}.${fileExt}`
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('company-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        setError(uploadError.message)
+        return
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-assets')
+        .getPublicUrl(fileName)
+
+      // Update profile with logo URL
+      setProfile({ ...profile, logoUrl: publicUrl })
+
+      // If company exists, update logo in database
+      if (profile.id) {
+        await supabase
+          .from('companies')
+          .update({ logo_url: publicUrl })
+          .eq('id', profile.id)
+      }
+    } catch (error: any) {
+      console.error('Error uploading logo:', error)
+      setError(error.message || 'Failed to upload logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -430,13 +608,40 @@ export default function CompanyProfilePage() {
                       onChange={handleLogoUpload}
                       className="hidden"
                       id="logo-upload"
+                      disabled={uploadingLogo}
                     />
-                    <Button variant="outline" asChild>
+                    <Button 
+                      variant="outline" 
+                      asChild
+                      disabled={uploadingLogo}
+                    >
                       <label htmlFor="logo-upload" className="cursor-pointer">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Logo
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Logo
+                          </>
+                        )}
                       </label>
                     </Button>
+                    {profile.logoUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setProfile({ ...profile, logoUrl: '' })
+                        }}
+                        className="mt-2 text-red-600"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Remove Logo
+                      </Button>
+                    )}
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-2">

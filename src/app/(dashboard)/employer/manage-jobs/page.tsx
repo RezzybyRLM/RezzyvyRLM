@@ -19,9 +19,11 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface Job {
   id: string
@@ -45,77 +47,107 @@ export default function ManageJobsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const supabase = createClient()
 
   useEffect(() => {
-    // TODO: Fetch real data from Supabase
-    // Mock data for now
-    const mockJobs: Job[] = [
-      {
-        id: '1',
-        title: 'Senior Software Engineer',
-        company: 'TechCorp Inc.',
-        location: 'San Francisco, CA',
-        salaryRange: '$120,000 - $180,000',
-        jobType: 'Full-time',
-        status: 'active',
-        isFeatured: true,
-        views: 156,
-        applications: 8,
-        createdAt: '2024-01-15',
-        expiresAt: '2024-02-15',
-        description: 'We are looking for a senior software engineer...',
-      },
-      {
-        id: '2',
-        title: 'Product Manager',
-        company: 'TechCorp Inc.',
-        location: 'Remote',
-        salaryRange: '$100,000 - $140,000',
-        jobType: 'Full-time',
-        status: 'active',
-        isFeatured: false,
-        views: 89,
-        applications: 5,
-        createdAt: '2024-01-12',
-        expiresAt: '2024-02-12',
-        description: 'Join our product team to drive innovation...',
-      },
-      {
-        id: '3',
-        title: 'UX Designer',
-        company: 'TechCorp Inc.',
-        location: 'New York, NY',
-        salaryRange: '$80,000 - $120,000',
-        jobType: 'Full-time',
-        status: 'expired',
-        isFeatured: true,
-        views: 234,
-        applications: 12,
-        createdAt: '2024-01-08',
-        expiresAt: '2024-02-08',
-        description: 'Create beautiful user experiences...',
-      },
-      {
-        id: '4',
-        title: 'Marketing Manager',
-        company: 'TechCorp Inc.',
-        location: 'Austin, TX',
-        salaryRange: '$70,000 - $100,000',
-        jobType: 'Full-time',
-        status: 'draft',
-        isFeatured: false,
-        views: 0,
-        applications: 0,
-        createdAt: '2024-01-20',
-        expiresAt: '2024-02-20',
-        description: 'Lead our marketing initiatives...',
-      },
-    ]
-    
-    setJobs(mockJobs)
-    setFilteredJobs(mockJobs)
-    setLoading(false)
-  }, [])
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Get company - for MVP, get first company or create one
+        const { data: companies } = await supabase
+          .from('companies')
+          .select('id, name')
+          .limit(1)
+
+        if (companies && companies.length > 0) {
+          setCompanyId(companies[0].id)
+          await fetchJobs(companies[0].id, companies[0].name)
+        } else {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error fetching jobs:', error)
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [supabase])
+
+  const fetchJobs = async (compId: string, companyName: string) => {
+    try {
+      // Fetch jobs from database
+      const { data: jobsData, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('company_id', compId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching jobs:', error)
+        setLoading(false)
+        return
+      }
+
+      // Get views and applications for each job
+      const jobIds = jobsData?.map(j => j.id) || []
+      
+      const { data: viewsData } = await supabase
+        .from('job_views')
+        .select('job_id')
+        .in('job_id', jobIds)
+
+      const { data: applicationsData } = await supabase
+        .from('job_applications_received')
+        .select('job_id')
+        .in('job_id', jobIds)
+
+      // Count views and applications per job
+      const viewsCount: Record<string, number> = {}
+      const applicationsCount: Record<string, number> = {}
+
+      viewsData?.forEach(view => {
+        viewsCount[view.job_id] = (viewsCount[view.job_id] || 0) + 1
+      })
+
+      applicationsData?.forEach(app => {
+        applicationsCount[app.job_id] = (applicationsCount[app.job_id] || 0) + 1
+      })
+
+      // Map to Job format
+      const mappedJobs: Job[] = (jobsData || []).map(job => {
+        const isExpired = job.expires_at ? new Date(job.expires_at) < new Date() : false
+        const status: 'active' | 'expired' | 'draft' | 'paused' = 
+          isExpired ? 'expired' : 'active' // Simplified - you'd have a status field
+
+        return {
+          id: job.id,
+          title: job.title,
+          company: companyName,
+          location: job.location,
+          salaryRange: job.salary_range || 'Not specified',
+          jobType: job.job_type || 'Full-time',
+          status,
+          isFeatured: job.is_featured || false,
+          views: viewsCount[job.id] || 0,
+          applications: applicationsCount[job.id] || 0,
+          createdAt: job.created_at || new Date().toISOString(),
+          expiresAt: job.expires_at || '',
+          description: job.description || '',
+        }
+      })
+
+      setJobs(mappedJobs)
+      setFilteredJobs(mappedJobs)
+    } catch (error) {
+      console.error('Error mapping jobs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     let filtered = jobs
@@ -168,16 +200,44 @@ export default function ManageJobsPage() {
   }
 
   const handleDeleteJob = async (jobId: string) => {
-    if (confirm('Are you sure you want to delete this job posting?')) {
-      // TODO: Implement delete functionality
-      console.log('Delete job:', jobId)
+    if (!confirm('Are you sure you want to delete this job posting?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/employer/jobs/${jobId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to delete job')
+        return
+      }
+
+      // Refresh jobs list
+      if (companyId) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('id, name')
+          .eq('id', companyId)
+          .single()
+
+        if (company) {
+          await fetchJobs(company.id, company.name)
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error)
+      alert('Failed to delete job')
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }

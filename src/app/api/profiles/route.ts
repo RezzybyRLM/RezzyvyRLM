@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create profile
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await (supabase as any)
       .from('user_profiles')
       .insert({
         user_id: user.id,
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     // Link resume to profile
     if (resume_id) {
-      const { error: linkError } = await supabase
+      const { error: linkError } = await (supabase as any)
         .from('profile_resumes')
         .insert({
           profile_id: profile.id,

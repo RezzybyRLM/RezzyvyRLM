@@ -41,18 +41,24 @@ export async function deleteCoverLetter(coverLetterId: string, userId: string): 
   const supabase = await createClient()
   
   // Verify ownership
-  const { data: coverLetter } = await supabase
+  const { data: coverLetter, error: fetchError } = await supabase
     .from('cover_letters')
     .select('user_id, file_url')
     .eq('id', coverLetterId)
     .single()
 
-  if (!coverLetter || coverLetter.user_id !== userId) {
+  if (fetchError || !coverLetter) {
+    throw new Error('Cover letter not found or access denied')
+  }
+
+  const coverLetterData = coverLetter as { user_id: string; file_url: string }
+
+  if (coverLetterData.user_id !== userId) {
     throw new Error('Cover letter not found or access denied')
   }
 
   // Delete from storage (extract path from URL)
-  const urlParts = coverLetter.file_url.split('/cover-letters/')
+  const urlParts = coverLetterData.file_url.split('/cover-letters/')
   if (urlParts.length > 1) {
     const filePath = urlParts[1]
     await supabase.storage
@@ -76,13 +82,13 @@ export async function setActiveCoverLetter(coverLetterId: string, userId: string
   const supabase = await createClient()
   
   // Set all cover letters to inactive
-  await supabase
+  await (supabase as any)
     .from('cover_letters')
     .update({ is_active: false })
     .eq('user_id', userId)
 
   // Set selected cover letter to active
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('cover_letters')
     .update({ is_active: true })
     .eq('id', coverLetterId)

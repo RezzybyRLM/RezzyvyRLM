@@ -39,7 +39,8 @@ export async function getApplicationsForEmployer(
     return []
   }
 
-  const jobIds = jobs.map(j => j.id)
+  const jobsTyped = jobs as Array<{ id: string; title: string }>
+  const jobIds = jobsTyped.map(j => j.id)
 
   // Build query
   let query = supabase
@@ -70,22 +71,36 @@ export async function getApplicationsForEmployer(
     return []
   }
 
+  const applicationsTyped = applications as Array<{
+    id: string
+    job_id: string
+    applicant_user_id: string
+    resume_id: string | null
+    cover_letter_id: string | null
+    status: string | null
+    notes: string | null
+    applied_at: string | null
+    created_at: string | null
+  }>
+
   // Get applicant details and job titles
-  const applicantIds = [...new Set(applications.map(a => a.applicant_user_id))]
+  const applicantIds = [...new Set(applicationsTyped.map(a => a.applicant_user_id))]
   const { data: applicants } = await supabase
     .from('users')
     .select('id, full_name, email')
     .in('id', applicantIds)
 
+  const applicantsTyped = applicants as Array<{ id: string; full_name: string | null; email: string }> | null
+
   const applicantMap = new Map(
-    applicants?.map(a => [a.id, { name: a.full_name || 'Unknown', email: a.email }]) || []
+    applicantsTyped?.map(a => [a.id, { name: a.full_name || 'Unknown', email: a.email }]) || []
   )
 
-  const jobMap = new Map(jobs.map(j => [j.id, j.title]))
+  const jobMap = new Map(jobsTyped.map(j => [j.id, j.title]))
 
   // Get resume and cover letter URLs
-  const resumeIds = applications.map(a => a.resume_id).filter(Boolean) as string[]
-  const coverLetterIds = applications.map(a => a.cover_letter_id).filter(Boolean) as string[]
+  const resumeIds = applicationsTyped.map(a => a.resume_id).filter(Boolean) as string[]
+  const coverLetterIds = applicationsTyped.map(a => a.cover_letter_id).filter(Boolean) as string[]
 
   const { data: resumes } = await supabase
     .from('resumes')
@@ -97,11 +112,14 @@ export async function getApplicationsForEmployer(
     .select('id, file_url')
     .in('id', coverLetterIds)
 
-  const resumeMap = new Map(resumes?.map(r => [r.id, r.file_url]) || [])
-  const coverLetterMap = new Map(coverLetters?.map(c => [c.id, c.file_url]) || [])
+  const resumesTyped = resumes as Array<{ id: string; file_url: string }> | null
+  const coverLettersTyped = coverLetters as Array<{ id: string; file_url: string }> | null
+
+  const resumeMap = new Map(resumesTyped?.map(r => [r.id, r.file_url]) || [])
+  const coverLetterMap = new Map(coverLettersTyped?.map(c => [c.id, c.file_url]) || [])
 
   // Map to ApplicationReceived format
-  return applications.map(app => {
+  return applicationsTyped.map(app => {
     const applicant = applicantMap.get(app.applicant_user_id) || { name: 'Unknown', email: '' }
     
     return {
@@ -130,7 +148,7 @@ export async function updateApplicationStatus(
 ): Promise<void> {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('job_applications_received')
     .update({
       status,
@@ -150,7 +168,7 @@ export async function addApplicationNotes(
 ): Promise<void> {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('job_applications_received')
     .update({
       notes,

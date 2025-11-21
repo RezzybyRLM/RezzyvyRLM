@@ -73,13 +73,22 @@ export async function PUT(
     } = body
 
     // Verify profile belongs to user
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('user_id')
       .eq('id', id)
       .single()
 
-    if (!existingProfile || existingProfile.user_id !== user.id) {
+    if (fetchError || !existingProfile) {
+      return NextResponse.json(
+        { error: 'Profile not found' },
+        { status: 404 }
+      )
+    }
+
+    const profileData = existingProfile as { user_id: string }
+
+    if (profileData.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -87,7 +96,7 @@ export async function PUT(
     }
 
     // Update profile
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await (supabase as any)
       .from('user_profiles')
       .update({
         profile_name,
@@ -123,7 +132,7 @@ export async function PUT(
         .eq('is_primary', true)
 
       // Create new link
-      await supabase
+      await (supabase as any)
         .from('profile_resumes')
         .insert({
           profile_id: id,
@@ -159,20 +168,29 @@ export async function DELETE(
 
     const { id } = await params
     // Verify profile belongs to user and is not default
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('user_id, is_default')
       .eq('id', id)
       .single()
 
-    if (!existingProfile || existingProfile.user_id !== user.id) {
+    if (fetchError || !existingProfile) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
       )
     }
 
-    if (existingProfile.is_default) {
+    const profileData = existingProfile as { user_id: string; is_default: boolean | null }
+
+    if (profileData.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Profile not found' },
+        { status: 404 }
+      )
+    }
+
+    if (profileData.is_default) {
       return NextResponse.json(
         { error: 'Cannot delete default profile' },
         { status: 400 }

@@ -18,13 +18,22 @@ export async function PATCH(
 
     const { id } = await params
     // Verify profile belongs to user
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('user_id')
       .eq('id', id)
       .single()
 
-    if (!existingProfile || existingProfile.user_id !== user.id) {
+    if (fetchError || !existingProfile) {
+      return NextResponse.json(
+        { error: 'Profile not found' },
+        { status: 404 }
+      )
+    }
+
+    const profileData = existingProfile as { user_id: string }
+
+    if (profileData.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -32,13 +41,13 @@ export async function PATCH(
     }
 
     // Set all profiles to not default
-    await supabase
+    await (supabase as any)
       .from('user_profiles')
       .update({ is_default: false })
       .eq('user_id', user.id)
 
     // Set selected profile as default
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('user_profiles')
       .update({ is_default: true })
       .eq('id', id)

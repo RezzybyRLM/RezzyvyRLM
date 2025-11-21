@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(fileName)
 
     // Save cover letter record to database
-    const { data: coverLetter, error: dbError } = await supabase
+    const { data: coverLetter, error: dbError } = await (supabase as any)
       .from('cover_letters')
       .insert({
         user_id: user.id,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     // If profile_id is provided, link cover letter to profile
     if (profileId) {
-      await supabase
+      await (supabase as any)
         .from('profile_cover_letters')
         .insert({
           profile_id: profileId,

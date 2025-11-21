@@ -22,7 +22,8 @@ export async function checkOnboardingStatus(userId: string): Promise<boolean> {
     return false
   }
 
-  return data.onboarding_completed ?? false
+  const dataTyped = data as { onboarding_completed: boolean | null }
+  return dataTyped.onboarding_completed ?? false
 }
 
 /**
@@ -41,7 +42,8 @@ export async function getOnboardingStep(userId: string): Promise<number> {
     return 0
   }
 
-  return data.onboarding_step ?? 0
+  const dataTyped = data as { onboarding_step: number | null }
+  return dataTyped.onboarding_step ?? 0
 }
 
 /**
@@ -50,7 +52,7 @@ export async function getOnboardingStep(userId: string): Promise<number> {
 export async function updateOnboardingStep(userId: string, step: number): Promise<void> {
   const supabase = await createClient()
   
-  await supabase
+  await (supabase as any)
     .from('users')
     .update({ onboarding_step: step })
     .eq('id', userId)
@@ -62,7 +64,7 @@ export async function updateOnboardingStep(userId: string, step: number): Promis
 export async function markOnboardingComplete(userId: string): Promise<void> {
   const supabase = await createClient()
   
-  await supabase
+  await (supabase as any)
     .from('users')
     .update({
       onboarding_completed: true,
@@ -92,10 +94,16 @@ export async function getOnboardingStatus(userId: string): Promise<OnboardingSta
     }
   }
 
+  const dataTyped = data as {
+    onboarding_completed: boolean | null
+    onboarding_step: number | null
+    onboarding_completed_at: string | null
+  }
+
   return {
-    completed: data.onboarding_completed ?? false,
-    step: data.onboarding_step ?? 0,
-    completedAt: data.onboarding_completed_at ?? null
+    completed: dataTyped.onboarding_completed ?? false,
+    step: dataTyped.onboarding_step ?? 0,
+    completedAt: dataTyped.onboarding_completed_at ?? null
   }
 }
 

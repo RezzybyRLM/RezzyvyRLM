@@ -19,13 +19,23 @@ export async function DELETE(
     const { id: coverLetterId } = await params
 
     // Verify ownership
-    const { data: coverLetter } = await supabase
+    const { data: coverLetter, error: fetchError } = await supabase
       .from('cover_letters')
       .select('user_id, file_url')
       .eq('id', coverLetterId)
       .single()
 
-    if (!coverLetter || coverLetter.user_id !== user.id) {
+    if (fetchError || !coverLetter) {
+      return NextResponse.json(
+        { error: 'Cover letter not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    // Type assertion for TypeScript inference
+    const coverLetterData = coverLetter as { user_id: string; file_url: string }
+
+    if (coverLetterData.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Cover letter not found or access denied' },
         { status: 404 }
@@ -33,7 +43,7 @@ export async function DELETE(
     }
 
     // Delete from storage (extract path from URL)
-    const urlParts = coverLetter.file_url.split('/cover-letters/')
+    const urlParts = coverLetterData.file_url.split('/cover-letters/')
     if (urlParts.length > 1) {
       const filePath = urlParts[1]
       await supabase.storage

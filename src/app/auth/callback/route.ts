@@ -15,14 +15,16 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // Check onboarding status first
-        const { data: userData } = await supabase
+        const { data: userData, error: userDataError } = await supabase
           .from('users')
           .select('onboarding_completed, onboarding_step')
           .eq('id', user.id)
           .single()
 
         // If onboarding not completed, redirect to onboarding
-        if (userData && !userData.onboarding_completed && next !== '/onboarding') {
+        if (userData && !userDataError) {
+          const userDataTyped = userData as { onboarding_completed: boolean | null; onboarding_step: number | null }
+          if (!userDataTyped.onboarding_completed && next !== '/onboarding') {
           const forwardedHost = request.headers.get('x-forwarded-host')
           const isLocalEnv = process.env.NODE_ENV === 'development'
           const onboardingUrl = isLocalEnv 
@@ -30,7 +32,8 @@ export async function GET(request: NextRequest) {
             : forwardedHost
               ? `https://${forwardedHost}/onboarding?redirectTo=${encodeURIComponent(next)}`
               : `${origin}/onboarding?redirectTo=${encodeURIComponent(next)}`
-          return NextResponse.redirect(onboardingUrl)
+            return NextResponse.redirect(onboardingUrl)
+          }
         }
 
         const { data: plan } = await (supabase as any)

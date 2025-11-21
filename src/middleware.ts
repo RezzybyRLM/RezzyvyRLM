@@ -66,17 +66,20 @@ export async function middleware(request: NextRequest) {
 
     // Check onboarding status for protected routes (except onboarding itself and employer routes)
     if (isProtectedRoute && !pathname.startsWith('/onboarding') && !pathname.startsWith('/employer') && !pathname.startsWith('/auth')) {
-      const { data: userData } = await supabase
+      const { data: userData, error: userDataError } = await supabase
         .from('users')
         .select('onboarding_completed, onboarding_step')
         .eq('id', user.id)
         .single()
       
       // If onboarding not completed, redirect to onboarding
-      if (userData && !userData.onboarding_completed) {
-        const onboardingUrl = new URL('/onboarding', request.url)
-        onboardingUrl.searchParams.set('redirectTo', pathname)
-        return NextResponse.redirect(onboardingUrl)
+      if (userData && !userDataError) {
+        const userDataTyped = userData as { onboarding_completed: boolean | null; onboarding_step: number | null }
+        if (!userDataTyped.onboarding_completed) {
+          const onboardingUrl = new URL('/onboarding', request.url)
+          onboardingUrl.searchParams.set('redirectTo', pathname)
+          return NextResponse.redirect(onboardingUrl)
+        }
       }
     }
   }

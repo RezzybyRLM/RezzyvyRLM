@@ -44,18 +44,20 @@ export async function getEmployerStats(userId: string, companyId: string): Promi
     .select('id, is_featured, expires_at')
     .eq('company_id', companyId)
 
-  const totalJobs = allJobs?.length || 0
-  const activeJobs = allJobs?.filter(job => {
+  const allJobsTyped = (allJobs || []) as Array<{ id: string; is_featured: boolean | null; expires_at: string | null }>
+
+  const totalJobs = allJobsTyped.length
+  const activeJobs = allJobsTyped.filter(job => {
     if (!job.expires_at) return true
     return new Date(job.expires_at) > new Date()
-  }).length || 0
-  const featuredJobs = allJobs?.filter(job => job.is_featured).length || 0
+  }).length
+  const featuredJobs = allJobsTyped.filter(job => job.is_featured).length
 
   // Get views count (from job_views table)
   const { data: viewsData } = await supabase
     .from('job_views')
     .select('id', { count: 'exact' })
-    .in('job_id', allJobs?.map(j => j.id) || [])
+    .in('job_id', allJobsTyped.map(j => j.id))
 
   const totalViews = viewsData?.length || 0
 
@@ -63,7 +65,7 @@ export async function getEmployerStats(userId: string, companyId: string): Promi
   const { data: applicationsData } = await supabase
     .from('job_applications_received')
     .select('id', { count: 'exact' })
-    .in('job_id', allJobs?.map(j => j.id) || [])
+    .in('job_id', allJobsTyped.map(j => j.id))
 
   const totalApplications = applicationsData?.length || 0
 
@@ -103,6 +105,16 @@ export async function getRecentJobs(userId: string, companyId: string, limit: nu
     return []
   }
 
+  const jobsTyped = jobs as Array<{
+    id: string
+    title: string
+    location: string
+    is_featured: boolean | null
+    expires_at: string | null
+    created_at: string | null
+    company_id: string | null
+  }>
+
   // Get company name
   const { data: company } = await supabase
     .from('companies')
@@ -110,10 +122,11 @@ export async function getRecentJobs(userId: string, companyId: string, limit: nu
     .eq('id', companyId)
     .single()
 
-  const companyName = company?.name || 'Your Company'
+  const companyTyped = company as { name: string } | null
+  const companyName = companyTyped?.name || 'Your Company'
 
   // Get views and applications for each job
-  const jobIds = jobs.map(j => j.id)
+  const jobIds = jobsTyped.map(j => j.id)
   
   const { data: viewsData } = await supabase
     .from('job_views')
@@ -125,20 +138,23 @@ export async function getRecentJobs(userId: string, companyId: string, limit: nu
     .select('job_id')
     .in('job_id', jobIds)
 
+  const viewsDataTyped = viewsData as Array<{ job_id: string }> | null
+  const applicationsDataTyped = applicationsData as Array<{ job_id: string }> | null
+
   // Count views and applications per job
   const viewsCount: Record<string, number> = {}
   const applicationsCount: Record<string, number> = {}
 
-  viewsData?.forEach(view => {
+  viewsDataTyped?.forEach(view => {
     viewsCount[view.job_id] = (viewsCount[view.job_id] || 0) + 1
   })
 
-  applicationsData?.forEach(app => {
+  applicationsDataTyped?.forEach(app => {
     applicationsCount[app.job_id] = (applicationsCount[app.job_id] || 0) + 1
   })
 
   // Map to RecentJob format
-  return jobs.map(job => {
+  return jobsTyped.map(job => {
     const isExpired = job.expires_at ? new Date(job.expires_at) < new Date() : false
     const status: 'active' | 'expired' | 'draft' = isExpired ? 'expired' : 'active'
 

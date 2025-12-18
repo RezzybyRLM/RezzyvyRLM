@@ -61,45 +61,26 @@ export function ResumeUploadStep({ onContinue, uploadedResumes }: ResumeUploadSt
         return
       }
 
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('resumes')
-        .upload(fileName, file)
+      // Upload file via API route
+      const formData = new FormData()
+      formData.append('file', file)
 
-      if (uploadError) {
-        setError(uploadError.message)
-        return
-      }
+      const response = await fetch('/api/resumes/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('resumes')
-        .getPublicUrl(fileName)
+      const result = await response.json()
 
-      // Save resume record to database
-      const { data: resumeData, error: dbError } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: user.id,
-          file_name: file.name,
-          file_url: publicUrl,
-          file_size: file.size,
-          file_type: file.type,
-          is_active: true,
-        })
-        .select()
-        .single()
-
-      if (dbError) {
-        setError(dbError.message)
+      if (!response.ok) {
+        setError(result.error || 'Failed to upload resume')
         return
       }
 
       // Add to local state
-      setResumes([...resumes, resumeData])
+      if (result.resume) {
+        setResumes([...resumes, result.resume])
+      }
     } catch (err) {
       setError('Failed to upload resume. Please try again.')
     } finally {

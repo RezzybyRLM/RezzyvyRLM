@@ -45,25 +45,55 @@ export default function ResumeManagerPage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/auth/login')
+          return
+        }
+
+        // Fetch user plan, resumes, and cover letters in parallel
+        const [planResult, resumesResult, coverLettersResult] = await Promise.all([
+          (supabase as any)
+            .from('user_plans')
+            .select('plan_type')
+            .eq('user_id', user.id)
+            .single(),
+          supabase
+            .from('resumes')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('cover_letters')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+        ])
+
+        if (planResult.data) {
+          setCurrentPlan(planResult.data.plan_type || 'Free')
+        }
+
+        if (resumesResult.data) {
+          setResumes(resumesResult.data)
+        }
+        if (resumesResult.error) {
+          setError(resumesResult.error.message)
+        }
+
+        if (coverLettersResult.data) {
+          setCoverLetters(coverLettersResult.data)
+        }
+        if (coverLettersResult.error) {
+          console.error('Error fetching cover letters:', coverLettersResult.error)
+        }
+      } catch (err) {
+        setError('Failed to load data')
+        console.error('Error loading resume manager:', err)
+      } finally {
+        setLoading(false)
       }
-
-      // Load user plan
-      const { data: plan } = await (supabase as any)
-        .from('user_plans')
-        .select('plan_type')
-        .eq('user_id', user.id)
-        .single()
-
-      if (plan) {
-        setCurrentPlan(plan.plan_type || 'Free')
-      }
-
-      fetchResumes()
-      fetchCoverLetters()
     }
 
     getUser()
@@ -87,8 +117,6 @@ export default function ResumeManagerPage() {
       }
     } catch (err) {
       setError('Failed to fetch resumes')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -111,6 +139,14 @@ export default function ResumeManagerPage() {
     } catch (err) {
       console.error('Failed to fetch cover letters:', err)
     }
+  }
+
+  const fetchAll = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    
+    // Fetch both in parallel
+    await Promise.all([fetchResumes(), fetchCoverLetters()])
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

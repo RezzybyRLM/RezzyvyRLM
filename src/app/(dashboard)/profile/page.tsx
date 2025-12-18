@@ -67,48 +67,62 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      setUser(user)
-
-      // Fetch user profile
-      const { data: profileData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profileData) {
-        setProfile({
-          full_name: profileData.full_name || '',
-          email: profileData.email || user.email || '',
-          location: profileData.location || '',
-          preferences: profileData.preferences || {},
-        })
-      } else {
-        // Create profile if it doesn't exist
-        const { error } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || '',
-          })
-
-        if (error) {
-          console.error('Error creating profile:', error)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/auth/login')
+          return
         }
-      }
 
-      setLoading(false)
+        setUser(user)
+
+        // Fetch user profile and user profiles in parallel
+        const [profileResult, profilesResult] = await Promise.all([
+          supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single(),
+          supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+        ])
+
+        if (profileResult.data) {
+          setProfile({
+            full_name: profileResult.data.full_name || '',
+            email: profileResult.data.email || user.email || '',
+            location: profileResult.data.location || '',
+            preferences: profileResult.data.preferences || {},
+          })
+        } else {
+          // Create profile if it doesn't exist
+          const { error } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.full_name || '',
+            })
+
+          if (error) {
+            console.error('Error creating profile:', error)
+          }
+        }
+
+        if (profilesResult.data) {
+          setUserProfiles(profilesResult.data)
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getUser()
-    fetchUserProfiles()
   }, [router, supabase])
 
   const handleSetDefaultProfile = async (profileId: string) => {

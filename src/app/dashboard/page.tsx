@@ -37,26 +37,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/auth/login')
+          return
+        }
 
-      setUser(user)
-      
-      // Fetch user profile data
-      const { data: profile } = await supabase
-        .from('users')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .single()
-      
-      if (profile) {
-        setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+        setUser(user)
+        
+        // Fetch user profile and stats in parallel
+        const [profileResult, _] = await Promise.all([
+          supabase
+            .from('users')
+            .select('full_name, avatar_url')
+            .eq('id', user.id)
+            .single(),
+          fetchStats(user.id) // Start stats fetch immediately
+        ])
+        
+        if (profileResult.data) {
+          setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
+        }
+      } catch (error) {
+        console.error('Error loading dashboard:', error)
+        setLoading(false)
       }
-      
-      await fetchStats(user.id)
     }
 
     getUser()
@@ -69,36 +75,32 @@ export default function DashboardPage() {
 
   const fetchStats = async (userId: string) => {
     try {
-      // Fetch resume count
-      const { count: resumeCount } = await supabase
-        .from('resumes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      // Fetch bookmark count
-      const { count: bookmarkCount } = await supabase
-        .from('bookmarks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      // Fetch job alert count
-      const { count: alertCount } = await supabase
-        .from('job_alerts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_active', true)
-
-      // Fetch interview session count
-      const { count: interviewCount } = await supabase
-        .from('interview_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
+      // Fetch all stats in parallel for better performance
+      const [resumeResult, bookmarkResult, alertResult, interviewResult] = await Promise.all([
+        supabase
+          .from('resumes')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        supabase
+          .from('bookmarks')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        supabase
+          .from('job_alerts')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('is_active', true),
+        supabase
+          .from('interview_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+      ])
 
       setStats({
-        resumes: resumeCount || 0,
-        bookmarks: bookmarkCount || 0,
-        jobAlerts: alertCount || 0,
-        interviews: interviewCount || 0,
+        resumes: resumeResult.count || 0,
+        bookmarks: bookmarkResult.count || 0,
+        jobAlerts: alertResult.count || 0,
+        interviews: interviewResult.count || 0,
       })
     } catch (error) {
       console.error('Error fetching stats:', error)

@@ -43,27 +43,20 @@ export default function DashboardLayout({
   const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+    
     const getUser = async () => {
       try {
         // Get session first to ensure cookies are synced
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (session?.user) {
-          setUser(session.user)
-          // Fetch user profile data
-          const { data: profile } = await supabase
-            .from('users')
-            .select('full_name, avatar_url')
-            .eq('id', session.user.id)
-            .single()
-          
-          if (profile) {
-            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-          }
-        } else {
-          // Try to get user directly
+        if (!mounted) return
+        
+        const currentUser = session?.user
+        if (!currentUser) {
+          // Try to get user directly as fallback
           const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
+          if (user && mounted) {
             setUser(user)
             // Fetch user profile data
             const { data: profile } = await supabase
@@ -72,15 +65,28 @@ export default function DashboardLayout({
               .eq('id', user.id)
               .single()
             
-            if (profile) {
+            if (profile && mounted) {
               setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
             }
           }
-          // Don't redirect here - middleware handles that
+          return
+        }
+
+        if (mounted) {
+          setUser(currentUser)
+          // Fetch user profile data
+          const { data: profile } = await supabase
+            .from('users')
+            .select('full_name, avatar_url')
+            .eq('id', currentUser.id)
+            .single()
+          
+          if (profile && mounted) {
+            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+          }
         }
       } catch (error) {
         console.error('Error getting user:', error)
-        // Don't redirect - let middleware handle it
       }
     }
 
@@ -88,9 +94,11 @@ export default function DashboardLayout({
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+      
       if (event === 'SIGNED_OUT') {
         router.push('/auth/login')
-      } else if (session?.user) {
+      } else if (session?.user && mounted) {
         setUser(session.user)
         // Fetch user profile data
         const { data: profile } = await supabase
@@ -99,13 +107,14 @@ export default function DashboardLayout({
           .eq('id', session.user.id)
           .single()
         
-        if (profile) {
+        if (profile && mounted) {
           setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
         }
       }
     })
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [router, supabase])

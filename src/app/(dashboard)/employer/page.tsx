@@ -79,16 +79,21 @@ export default function EmployerDashboard() {
           const compId = companies[0].id
           setCompanyId(compId)
 
-          // Fetch stats
-          const statsResponse = await fetch(`/api/employer/stats?companyId=${compId}`)
-          const statsData = await statsResponse.json()
+          // Fetch stats and recent jobs in parallel
+          const [statsResponse, jobsResponse] = await Promise.all([
+            fetch(`/api/employer/stats?companyId=${compId}`),
+            fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`)
+          ])
+
+          const [statsData, jobsData] = await Promise.all([
+            statsResponse.json(),
+            jobsResponse.json()
+          ])
+
           if (statsData.success) {
             setStats(statsData.stats)
           }
 
-          // Fetch recent jobs
-          const jobsResponse = await fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`)
-          const jobsData = await jobsResponse.json()
           if (jobsData.success) {
             setRecentJobs(jobsData.jobs)
           }

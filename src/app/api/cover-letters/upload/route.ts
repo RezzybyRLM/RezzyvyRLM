@@ -66,8 +66,21 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
+      // Provide helpful error messages
+      if (uploadError.message.includes('Bucket not found') || uploadError.message.includes('not found')) {
+        return NextResponse.json(
+          { error: 'Storage bucket not configured. The "cover-letters" bucket should be created automatically. Please try again or contact support if the issue persists.' },
+          { status: 500 }
+        )
+      }
+      if (uploadError.message.includes('File size')) {
+        return NextResponse.json(
+          { error: 'File size exceeds the 5MB limit. Please upload a smaller file.' },
+          { status: 400 }
+        )
+      }
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: uploadError.message || 'Failed to upload cover letter. Please try again.' },
         { status: 500 }
       )
     }

@@ -24,16 +24,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
+    // Validate file type - support more document types
     const allowedTypes = [
       'application/pdf',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word',
+      'text/plain',
+      'application/rtf',
+      'application/vnd.oasis.opendocument.text'
     ]
     
-    if (!allowedTypes.includes(file.type)) {
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
+    
+    // Check both MIME type and file extension for better compatibility
+    if (!allowedTypes.includes(file.type) && (!fileExt || !allowedExtensions.includes(`.${fileExt}`))) {
       return NextResponse.json(
-        { error: 'Invalid file type. Please upload a PDF or Word document.' },
+        { error: 'Invalid file type. Please upload a PDF, Word document (.doc, .docx), text file (.txt), RTF (.rtf), or OpenDocument (.odt).' },
         { status: 400 }
       )
     }
@@ -47,12 +55,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload file to Supabase Storage
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`
+    const fileName = `${user.id}/${Date.now()}.${fileExt || 'pdf'}`
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('cover-letters')
-      .upload(fileName, file)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('cover-letters')
-      .getPublicUrl(fileName)
+      .getPublicUrl(uploadData.path)
 
     // Save cover letter record to database
     const { data: coverLetter, error: dbError } = await (supabase as any)
@@ -84,8 +94,13 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('Database error:', dbError)
+      // Try to clean up uploaded file if database insert fails
+      await supabase.storage
+        .from('cover-letters')
+        .remove([uploadData.path])
+      
       return NextResponse.json(
-        { error: 'Failed to save cover letter' },
+        { error: 'Failed to save cover letter record' },
         { status: 500 }
       )
     }

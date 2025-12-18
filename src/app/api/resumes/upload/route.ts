@@ -23,16 +23,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
+    // Validate file type - support more document types
     const allowedTypes = [
       'application/pdf',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word',
+      'text/plain',
+      'application/rtf',
+      'application/vnd.oasis.opendocument.text'
     ]
     
-    if (!allowedTypes.includes(file.type)) {
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
+    
+    // Check both MIME type and file extension for better compatibility
+    if (!allowedTypes.includes(file.type) && (!fileExt || !allowedExtensions.includes(`.${fileExt}`))) {
       return NextResponse.json(
-        { error: 'Invalid file type. Please upload a PDF or Word document.' },
+        { error: 'Invalid file type. Please upload a PDF, Word document (.doc, .docx), text file (.txt), RTF (.rtf), or OpenDocument (.odt).' },
         { status: 400 }
       )
     }
@@ -46,8 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload file to Supabase Storage
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`
+    const fileName = `${user.id}/${Date.now()}.${fileExt || 'pdf'}`
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('resumes')

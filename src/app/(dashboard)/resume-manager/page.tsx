@@ -153,10 +153,21 @@ export default function ResumeManagerPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    if (!allowedTypes.includes(file.type)) {
-      setError('Please upload a PDF or Word document')
+    // Validate file type - support more document types
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word',
+      'text/plain',
+      'application/rtf',
+      'application/vnd.oasis.opendocument.text'
+    ]
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
+    
+    if (!allowedTypes.includes(file.type) && (!fileExt || !allowedExtensions.includes(`.${fileExt}`))) {
+      setError('Please upload a PDF, Word document (.doc, .docx), text file (.txt), RTF (.rtf), or OpenDocument (.odt)')
       return
     }
 
@@ -258,10 +269,21 @@ export default function ResumeManagerPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    if (!allowedTypes.includes(file.type)) {
-      setError('Please upload a PDF or Word document')
+    // Validate file type - support more document types
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word',
+      'text/plain',
+      'application/rtf',
+      'application/vnd.oasis.opendocument.text'
+    ]
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
+    
+    if (!allowedTypes.includes(file.type) && (!fileExt || !allowedExtensions.includes(`.${fileExt}`))) {
+      setError('Please upload a PDF, Word document (.doc, .docx), text file (.txt), RTF (.rtf), or OpenDocument (.odt)')
       return
     }
 

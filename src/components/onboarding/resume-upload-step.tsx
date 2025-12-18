@@ -30,11 +30,17 @@ export function ResumeUploadStep({ onContinue, uploadedResumes }: ResumeUploadSt
     const allowedTypes = [
       'application/pdf',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word',
+      'text/plain',
+      'application/rtf',
+      'application/vnd.oasis.opendocument.text'
     ]
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
     
-    if (!allowedTypes.includes(file.type)) {
-      return 'Please upload a PDF or Word document (.pdf, .doc, .docx)'
+    if (!allowedTypes.includes(file.type) && (!fileExt || !allowedExtensions.includes(`.${fileExt}`))) {
+      return 'Please upload a PDF, Word document (.doc, .docx), text file (.txt), RTF (.rtf), or OpenDocument (.odt)'
     }
 
     if (file.size > 5 * 1024 * 1024) {

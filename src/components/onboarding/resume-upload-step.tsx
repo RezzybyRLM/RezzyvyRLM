@@ -16,9 +16,10 @@ interface Resume {
 interface ResumeUploadStepProps {
   onContinue: (resumeIds: string[]) => void
   uploadedResumes: Resume[]
+  onResumeUploaded?: (resume: Resume) => void
 }
 
-export function ResumeUploadStep({ onContinue, uploadedResumes }: ResumeUploadStepProps) {
+export function ResumeUploadStep({ onContinue, uploadedResumes, onResumeUploaded }: ResumeUploadStepProps) {
   const [resumes, setResumes] = useState<Resume[]>(uploadedResumes)
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
@@ -83,9 +84,14 @@ export function ResumeUploadStep({ onContinue, uploadedResumes }: ResumeUploadSt
         return
       }
 
-      // Add to local state
+      // Add to local state and notify parent
       if (result.resume) {
-        setResumes([...resumes, result.resume])
+        const newResume = result.resume
+        setResumes([...resumes, newResume])
+        // Notify parent component about the new resume
+        if (onResumeUploaded) {
+          onResumeUploaded(newResume)
+        }
       }
     } catch (err) {
       setError('Failed to upload resume. Please try again.')

@@ -210,8 +210,11 @@ export default function ResumeManagerPage() {
         return
       }
 
-      // Refresh resumes list
+      // Refresh resumes list and clear file input
       await fetchResumes()
+      if (event.target) {
+        event.target.value = '' // Clear file input
+      }
     } catch (err) {
       setError('Failed to upload resume')
     } finally {

@@ -105,6 +105,28 @@ export default function OnboardingPage() {
     updateStep(2)
   }
 
+  const handleResumeUploaded = async (resume: Resume) => {
+    // Refresh resumes list when a new one is uploaded
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: resumesData } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (resumesData) {
+        setResumes(resumesData)
+        setUploadedResumeIds(resumesData.map(r => r.id))
+      }
+    } catch (error) {
+      console.error('Error refreshing resumes:', error)
+    }
+  }
+
   const handleProfileCreate = async (profileData: any) => {
     try {
       const response = await fetch('/api/onboarding/profiles', {
@@ -224,6 +246,7 @@ export default function OnboardingPage() {
             <ResumeUploadStep
               onContinue={handleResumeUploadContinue}
               uploadedResumes={resumes}
+              onResumeUploaded={handleResumeUploaded}
             />
           )}
 

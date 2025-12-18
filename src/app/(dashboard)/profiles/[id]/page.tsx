@@ -146,6 +146,7 @@ export default function EditProfilePage() {
           .select('id, file_name')
           .eq('user_id', user.id)
           .eq('is_active', true)
+          .order('created_at', { ascending: false })
 
         if (resumes) {
           setAvailableResumes(resumes)
@@ -161,6 +162,35 @@ export default function EditProfilePage() {
     if (profileId) {
       fetchProfile()
     }
+    
+    // Refresh resumes when page becomes visible (user might have uploaded a resume in another tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const refreshResumes = async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: resumes } = await supabase
+              .from('resumes')
+              .select('id, file_name')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .order('created_at', { ascending: false })
+
+            if (resumes) {
+              setAvailableResumes(resumes)
+            }
+          } catch (error) {
+            console.error('Error refreshing resumes:', error)
+          }
+        }
+        refreshResumes()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [profileId, router, supabase])
 
   const handleAddSkill = () => {

@@ -81,27 +81,38 @@ export default function NewProfilePage() {
     expiry_date: ''
   })
 
+  const fetchResumes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data } = await supabase
+        .from('resumes')
+        .select('id, file_name')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (data) {
+        setAvailableResumes(data)
+      }
+    } catch (error) {
+      console.error('Error fetching resumes:', error)
+    }
+  }
+
   useEffect(() => {
-    const fetchResumes = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data } = await supabase
-          .from('resumes')
-          .select('id, file_name')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-
-        if (data) {
-          setAvailableResumes(data)
-        }
-      } catch (error) {
-        console.error('Error fetching resumes:', error)
+    fetchResumes()
+    
+    // Refresh resumes when page becomes visible (user might have uploaded a resume in another tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchResumes()
       }
     }
-
-    fetchResumes()
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [supabase])
 
   const handleAddSkill = () => {

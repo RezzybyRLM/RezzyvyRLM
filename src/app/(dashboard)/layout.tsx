@@ -47,87 +47,220 @@ export default function DashboardLayout({
     let timeoutId: NodeJS.Timeout | null = null
     let userLoaded = false
     
-    const getUser = async () => {
+    // Helper to check if Supabase auth cookies exist
+    // Supabase SSR uses cookies like: sb-<project-ref>-auth-token
+    const hasAuthCookies = () => {
+      if (typeof document === 'undefined') return false
+      const cookies = document.cookie
+      if (!cookies) return false
+      
+      // Check for Supabase auth cookies
+      // Pattern: sb-<project>-auth-token or similar
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      if (supabaseUrl) {
+        try {
+          const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
+          if (projectRef) {
+            // Look for cookies with the project ref
+            return cookies.includes(`sb-${projectRef}`) || 
+                   cookies.includes('sb-') ||
+                   cookies.includes('supabase')
+          }
+        } catch (e) {
+          // Fallback to simple check
+        }
+      }
+      
+      // Fallback: check for any sb- cookie
+      return cookies.includes('sb-')
+    }
+    
+    // Wait for cookies to be available (middleware sets them on refresh)
+    const waitForCookies = async (maxWait = 2000) => {
+      const start = Date.now()
+      while (!hasAuthCookies() && (Date.now() - start) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+    
+    const getUser = async (retryCount = 0) => {
       try {
+        // Wait for cookies to sync after page load (middleware sets them)
+        // Shorter wait since getSession() is fast and reads from cookies
+        if (retryCount === 0) {
+          await waitForCookies(1000) // Wait up to 1 second for cookies
+        } else {
+          // On retry, wait a bit longer
+          await new Promise(resolve => setTimeout(resolve, 300 + (retryCount * 200)))
+        }
+        
         // Set a timeout to prevent infinite loading
+        // Start timeout after cookie wait
         timeoutId = setTimeout(() => {
           if (mounted && !userLoaded) {
             console.error('User fetch timeout - redirecting to login')
+            console.error('Debug info:', {
+              hasCookies: hasAuthCookies(),
+              cookies: typeof document !== 'undefined' ? document.cookie.substring(0, 200) : 'N/A',
+              retryCount,
+              timestamp: new Date().toISOString()
+            })
             router.push('/auth/login')
           }
-        }, 10000) // 10 second timeout
+        }, 6000) // 6 seconds should be enough for getSession/getUser
 
-        // Get session first to ensure cookies are synced
+        // Try getSession first (faster, reads from cookies directly)
+        // This is more reliable on page refresh when middleware just set cookies
+        const sessionStart = Date.now()
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        const sessionTime = Date.now() - sessionStart
         
         if (!mounted) {
           if (timeoutId) clearTimeout(timeoutId)
           return
         }
         
+        // If we have a session, use it immediately
+        if (session?.user && !sessionError) {
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+          userLoaded = true
+          if (mounted) {
+            console.log('User loaded from session:', { 
+              userId: session.user.id, 
+              sessionTime: `${sessionTime}ms`,
+              hasCookies: hasAuthCookies()
+            })
+            setUser(session.user)
+            // Fetch user profile data (don't await, load in background)
+            supabase
+              .from('users')
+              .select('full_name, avatar_url')
+              .eq('id', session.user.id)
+              .single()
+              .then(({ data: profile }) => {
+                if (profile && mounted) {
+                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                }
+              })
+              .catch(err => {
+                console.warn('Failed to fetch user profile:', err)
+                // Non-critical, continue without profile
+              })
+          }
+          return
+        }
+        
+        // Log if session failed
         if (sessionError) {
-          console.error('Session error:', sessionError)
+          console.warn('getSession failed:', {
+            error: sessionError.message,
+            hasCookies: hasAuthCookies(),
+            retryCount
+          })
+        }
+        
+        // If no session, try getUser as fallback (validates JWT)
+        const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
+        
+        if (!mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          return
+        }
+        
+        if (userError) {
+          // If it's a JWT/token error and we haven't retried much, try again
+          const isTokenError = userError.message.includes('JWT') || 
+                              userError.message.includes('token') ||
+                              userError.message.includes('expired') ||
+                              userError.status === 401
+          
+          if (isTokenError && retryCount < 2) {
+            console.warn(`Token error (attempt ${retryCount + 1}/3):`, userError.message)
+            if (timeoutId) clearTimeout(timeoutId)
+            return getUser(retryCount + 1)
+          }
+          
+          console.error('Auth error after retries:', {
+            message: userError.message,
+            status: userError.status,
+            name: userError.name,
+            hasCookies: hasAuthCookies(),
+            retryCount
+          })
+          
+          // Final attempt: check if cookies exist but auth failed
+          if (hasAuthCookies() && retryCount < 1) {
+            console.warn('Cookies exist but auth failed, retrying once more...')
+            if (timeoutId) clearTimeout(timeoutId)
+            await new Promise(resolve => setTimeout(resolve, 500))
+            return getUser(retryCount + 1)
+          }
+          
           if (mounted) {
             if (timeoutId) clearTimeout(timeoutId)
             router.push('/auth/login')
           }
           return
         }
-        
-        const currentUser = session?.user
-        if (!currentUser) {
-          // Try to get user directly as fallback
-          const { data: { user }, error: userError } = await supabase.auth.getUser()
-          
-          if (!mounted) {
+
+        if (!userData) {
+          // Retry once if no user found
+          if (retryCount < 1) {
+            console.warn('No user found, retrying...')
             if (timeoutId) clearTimeout(timeoutId)
-            return
+            return getUser(retryCount + 1)
           }
-
-          if (userError || !user) {
-            console.error('User not found:', userError)
-            if (mounted) {
-              if (timeoutId) clearTimeout(timeoutId)
-              router.push('/auth/login')
-            }
-            return
-          }
-
+          
+          console.error('No user found after retries')
           if (mounted) {
             if (timeoutId) clearTimeout(timeoutId)
-            userLoaded = true
-            setUser(user)
-            // Fetch user profile data
-            const { data: profile } = await supabase
-              .from('users')
-              .select('full_name, avatar_url')
-              .eq('id', user.id)
-              .single()
-            
-            if (profile && mounted) {
-              setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-            }
+            router.push('/auth/login')
           }
           return
         }
 
         if (mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
           userLoaded = true
-          setUser(currentUser)
-          // Fetch user profile data
-          const { data: profile } = await supabase
+          console.log('User loaded from getUser:', { 
+            userId: userData.id,
+            retryCount
+          })
+          setUser(userData)
+          // Fetch user profile data (don't await, load in background)
+          supabase
             .from('users')
             .select('full_name, avatar_url')
-            .eq('id', currentUser.id)
+            .eq('id', userData.id)
             .single()
-          
-          if (profile && mounted) {
-            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-          }
+            .then(({ data: profile }) => {
+              if (profile && mounted) {
+                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+              }
+            })
+            .catch(err => {
+              console.warn('Failed to fetch user profile:', err)
+              // Non-critical, continue without profile
+            })
         }
       } catch (error) {
         console.error('Error getting user:', error)
+        // Retry on network errors
+        if (retryCount < 2 && error instanceof Error && (
+          error.message.includes('fetch') || 
+          error.message.includes('network') ||
+          error.message.includes('Failed to fetch')
+        )) {
+          console.warn(`Network error, retrying (attempt ${retryCount + 1}/3)...`)
+          if (timeoutId) clearTimeout(timeoutId)
+          return getUser(retryCount + 1)
+        }
         if (mounted) {
           if (timeoutId) clearTimeout(timeoutId)
           router.push('/auth/login')
@@ -137,13 +270,24 @@ export default function DashboardLayout({
 
     getUser()
 
-    // Listen for auth state changes
+    // Listen for auth state changes - this fires when cookies sync
+    // This is crucial for handling page refreshes where middleware sets cookies
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
       
+      // Clear any existing timeout since we got an auth event
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+      
       if (event === 'SIGNED_OUT') {
+        userLoaded = false
         router.push('/auth/login')
-      } else if (session?.user && mounted) {
+      } else if (session?.user && mounted && !userLoaded) {
+        // Only update if we haven't loaded the user yet
+        // This prevents unnecessary updates after initial load
+        userLoaded = true
         setUser(session.user)
         // Fetch user profile data
         const { data: profile } = await supabase
@@ -155,6 +299,9 @@ export default function DashboardLayout({
         if (profile && mounted) {
           setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
         }
+      } else if (event === 'TOKEN_REFRESHED' && session?.user && mounted) {
+        // Update user on token refresh
+        setUser(session.user)
       }
     })
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -38,12 +38,38 @@ export async function middleware(request: NextRequest) {
 
   // Always refresh session for protected routes
   if (isProtectedRoute || isAdminRoute) {
-    const supabase = await createClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co'
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key'
+    
+    // Use createServerClient for middleware to properly handle cookies
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    })
     
     // Refresh session - this updates cookies automatically
+    // Use getSession first to refresh, then getUser to verify
+    await supabase.auth.getSession()
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user) {
+      // Log the error for debugging
+      if (error) {
+        console.error('Middleware auth error:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        })
+      }
       // Redirect to login with return URL
       const loginUrl = new URL('/auth/login', request.url)
       loginUrl.searchParams.set('redirectTo', pathname)

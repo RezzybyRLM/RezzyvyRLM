@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 5 days in seconds
+// 5 days in seconds (432000) - matches Supabase session timeout
 const SESSION_DURATION = 5 * 24 * 60 * 60
 
 export async function middleware(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
           })
           
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Set cookie expiration to 5 days
+            // Set cookie expiration to 5 days to match Supabase session timeout
             response.cookies.set(name, value, {
               ...options,
               maxAge: SESSION_DURATION,
@@ -46,7 +46,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired - this ensures session persists across page reloads
+  // Refresh session to ensure it persists across page reloads
+  // This ensures the session is valid and cookies are properly set
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -93,3 +94,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+

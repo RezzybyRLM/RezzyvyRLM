@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// 5 days in seconds
+// 5 days in seconds (432000)
 const SESSION_DURATION = 5 * 24 * 60 * 60
 
 export async function createClient() {
@@ -18,7 +18,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              // Set cookie expiration to 5 days
+              // Set cookie expiration to 5 days to match Supabase session timeout
               cookieStore.set(name, value, {
                 ...options,
                 maxAge: SESSION_DURATION,
@@ -38,3 +38,4 @@ export async function createClient() {
     }
   )
 }
+

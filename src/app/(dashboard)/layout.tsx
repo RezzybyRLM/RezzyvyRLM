@@ -43,6 +43,15 @@ export default function DashboardLayout({
   const router = useRouter()
   const supabase = createClient()
 
+  // Timeout to show page after initial load period (even if user state not loaded)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setInitialLoad(false)
+    }, 3000) // Show page after 3 seconds max, even if user state not loaded
+    
+    return () => clearTimeout(timeout)
+  }, [])
+
   useEffect(() => {
     let mounted = true
     let timeoutId: NodeJS.Timeout | null = null
@@ -443,18 +452,6 @@ export default function DashboardLayout({
       </div>
     )
   }
-  
-  // After a reasonable time, show the page anyway (middleware verified auth)
-  // Add a timeout to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (initialLoad) {
-        setInitialLoad(false)
-      }
-    }, 3000) // Show page after 3 seconds max, even if user state not loaded
-    
-    return () => clearTimeout(timeout)
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">

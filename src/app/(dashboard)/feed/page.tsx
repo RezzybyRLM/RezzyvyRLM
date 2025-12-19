@@ -68,49 +68,64 @@ export default function FeedPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUserId(user?.id || null)
-    }
-    getCurrentUser()
-    fetchPosts()
+    let mounted = true
+    let channel: any = null
 
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('social_posts_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'social_posts'
-      }, () => {
-        fetchPosts()
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'post_likes'
-      }, () => {
-        fetchPosts()
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'post_comments'
-      }, () => {
-        fetchPosts()
-      })
-      .subscribe()
+    const initialize = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
+      if (!mounted) return
+      
+      setCurrentUserId(user.id)
+      await fetchPosts()
+
+      // Set up realtime subscription
+      if (mounted) {
+        channel = supabase
+          .channel('social_posts_changes')
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'social_posts'
+          }, () => {
+            fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'post_likes'
+          }, () => {
+            fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'post_comments'
+          }, () => {
+            fetchPosts()
+          })
+          .subscribe()
+      }
+    }
+
+    initialize()
 
     return () => {
-      supabase.removeChannel(channel)
+      mounted = false
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
-  }, [supabase])
+  }, [router, supabase])
 
   const fetchPosts = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push('/auth/login')
+        setLoading(false)
         return
       }
 

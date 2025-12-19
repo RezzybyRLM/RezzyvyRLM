@@ -54,6 +54,9 @@ export async function middleware(request: NextRequest) {
     '/cart',
     '/applications',
     '/profiles',
+    '/messages',
+    '/feed',
+    '/jobs',
   ]
 
   // Auth routes (redirect to dashboard if logged in)

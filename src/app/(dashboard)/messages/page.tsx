@@ -97,13 +97,26 @@ export default function MessagesPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const getCurrentUser = async () => {
+    let mounted = true
+
+    const initialize = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUserId(user?.id || null)
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
+      if (!mounted) return
+      
+      setCurrentUserId(user.id)
+      await fetchConversations()
     }
-    getCurrentUser()
-    fetchConversations()
-  }, [])
+
+    initialize()
+
+    return () => {
+      mounted = false
+    }
+  }, [router, supabase])
 
   useEffect(() => {
     const conversationId = searchParams.get('conversation')
@@ -165,7 +178,7 @@ export default function MessagesPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push('/auth/login')
+        setLoading(false)
         return
       }
 

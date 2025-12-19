@@ -6,7 +6,29 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { User, Mail, MapPin, Calendar, Save, Loader2, Plus, Edit, Briefcase, Award, GraduationCap, CheckCircle, Trash2 } from 'lucide-react'
+import { 
+  User, 
+  Mail, 
+  MapPin, 
+  Calendar, 
+  Save, 
+  Loader2, 
+  Plus, 
+  Edit, 
+  Briefcase, 
+  Award, 
+  GraduationCap, 
+  CheckCircle, 
+  Trash2,
+  Settings,
+  Shield,
+  Clock,
+  LogOut,
+  FileText,
+  Bell,
+  Sparkles,
+  TrendingUp
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -39,7 +61,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [deletingProfile, setDeletingProfile] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -73,13 +97,12 @@ export default function ProfilePage() {
       try {
         setLoading(true)
         
-        // Set a timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
           if (mounted) {
             console.error('Profile load timeout')
             setLoading(false)
           }
-        }, 10000) // 10 second timeout
+        }, 10000)
 
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         
@@ -101,7 +124,6 @@ export default function ProfilePage() {
         if (timeoutId) clearTimeout(timeoutId)
         setUser(user)
 
-        // Fetch user profile and user profiles in parallel
         const [profileResult, profilesResult] = await Promise.all([
           supabase
             .from('users')
@@ -129,7 +151,6 @@ export default function ProfilePage() {
               preferences: profileResult.data.preferences || {},
             })
           } else {
-            // Create profile if it doesn't exist
             const { error } = await supabase
               .from('users')
               .insert({
@@ -170,13 +191,11 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Set all profiles to not default
       await supabase
         .from('user_profiles')
         .update({ is_default: false })
         .eq('user_id', user.id)
 
-      // Set selected profile as default
       const { error } = await supabase
         .from('user_profiles')
         .update({ is_default: true })
@@ -206,7 +225,6 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Check if it's the default profile
       const profile = userProfiles.find(p => p.id === profileId)
       if (profile?.is_default) {
         setError('Cannot delete the default profile. Please set another profile as default first.')
@@ -237,6 +255,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true)
     setError(null)
+    setSuccess(false)
 
     try {
       const { error } = await supabase
@@ -253,8 +272,9 @@ export default function ProfilePage() {
       if (error) {
         setError(error.message)
       } else {
-        // Show success message
-        setError(null)
+        setSuccess(true)
+        setIsEditing(false)
+        setTimeout(() => setSuccess(false), 3000)
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -270,128 +290,208 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-gray-600">Loading profile...</p>
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          </div>
+          <p className="text-gray-600 font-medium">Loading your profile...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto container-padding section-padding">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-responsive-xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-responsive-md text-gray-600">Manage your account information and preferences</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg">
+                  <User className="h-8 w-8 text-white" />
+                </div>
+                Profile Settings
+              </h1>
+              <p className="text-lg text-gray-600">Manage your account information and professional profiles</p>
+            </div>
+            {!isEditing && (
+              <Button 
+                onClick={() => setIsEditing(true)}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Form */}
-          <div className="lg:col-span-2">
-            <Card className="card-professional">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="mr-2 h-5 w-5" />
+        {/* Alert Messages */}
+        {error && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4 animate-fadeIn">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Shield className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-6 bg-green-50 border-l-4 border-green-500 rounded-lg p-4 animate-fadeIn">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">Profile updated successfully!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Main Profile Card */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Personal Information Card */}
+            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                <CardTitle className="text-white text-xl font-bold flex items-center gap-2">
+                  <User className="h-5 w-5" />
                   Personal Information
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                    <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <Input
+                        type="text"
+                        value={profile.full_name}
+                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                        placeholder="Enter your full name"
+                        disabled={!isEditing}
+                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <Input
+                        type="email"
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        placeholder="Enter your email"
+                        disabled={!isEditing}
+                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Location
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <Input
+                        type="text"
+                        value={profile.location}
+                        onChange={(e) => setProfile({ ...profile, location: e.target.value })}
+                        placeholder="City, State or Remote"
+                        disabled={!isEditing}
+                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsEditing(false)
+                        setError(null)
+                      }}
+                      className="px-6"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={saving}
+                      className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <Input
-                    type="text"
-                    value={profile.full_name}
-                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                    placeholder="Enter your full name"
-                    className="input-professional"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
-                    <Input
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="input-professional pl-12 pr-3"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
-                    <Input
-                      type="text"
-                      value={profile.location}
-                      onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                      className="input-professional pl-12 pr-3"
-                      placeholder="City, State or Remote"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-4">
-                  <Button variant="outline" onClick={handleSignOut} className="btn-secondary">
-                    Sign Out
-                  </Button>
-                  <Button onClick={handleSave} disabled={saving} className="btn-primary">
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Account Info */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            <Card className="card-professional">
-              <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-              </CardHeader>
-              <CardContent>
+            {/* Account Info Card */}
+            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+                <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Account Status
+                </CardTitle>
+              </div>
+              <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Member since</span>
-                    <span className="text-sm font-medium">
-                      {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Member since</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Account type</span>
-                    <Badge variant="outline">Free</Badge>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Account type</span>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-700 border-0">Free</Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Email verified</span>
-                    <Badge variant={user?.email_confirmed_at ? 'default' : 'destructive'}>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Email verified</span>
+                    </div>
+                    <Badge 
+                      variant={user?.email_confirmed_at ? 'default' : 'destructive'}
+                      className={user?.email_confirmed_at ? 'bg-green-100 text-green-700 border-0' : 'bg-red-100 text-red-700 border-0'}
+                    >
                       {user?.email_confirmed_at ? 'Verified' : 'Pending'}
                     </Badge>
                   </div>
@@ -399,42 +499,72 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            <Card className="card-professional">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start btn-secondary" asChild>
+            {/* Quick Actions Card */}
+            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+                <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+              </div>
+              <CardContent className="p-6 space-y-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
+                  asChild
+                >
                   <Link href="/interview-pro">
                     <Calendar className="mr-2 h-4 w-4" />
-                    View Interview Sessions
+                    Interview Sessions
                   </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start btn-secondary" asChild>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
+                  asChild
+                >
                   <Link href="/job-alerts">
-                    <MapPin className="mr-2 h-4 w-4" />
-                    Manage Job Alerts
+                    <Bell className="mr-2 h-4 w-4" />
+                    Job Alerts
                   </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start btn-secondary" asChild>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
+                  asChild
+                >
                   <Link href="/resume-manager">
-                    <User className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4" />
                     Resume Manager
                   </Link>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all" 
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Multiple Profiles Section */}
+        {/* Professional Profiles Section */}
         <div className="mt-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-responsive-xl font-bold text-gray-900">My Professional Profiles</h2>
-              <p className="text-responsive-md text-gray-600">Create and manage different profiles for different job roles</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <Briefcase className="h-7 w-7 text-blue-600" />
+                Professional Profiles
+              </h2>
+              <p className="text-gray-600">Create and manage different profiles for different job roles</p>
             </div>
-            <Button asChild className="btn-primary">
+            <Button 
+              asChild 
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
               <Link href="/profiles/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Profile
@@ -443,14 +573,19 @@ export default function ProfilePage() {
           </div>
 
           {userProfiles.length === 0 ? (
-            <Card className="card-professional">
+            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
               <CardContent className="p-12 text-center">
-                <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No profiles yet</h3>
-                <p className="text-gray-600 mb-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full mb-6">
+                  <Briefcase className="h-10 w-10 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">No profiles yet</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
                   Create your first professional profile to start applying to jobs tailored to your skills and experience.
                 </p>
-                <Button asChild className="btn-primary">
+                <Button 
+                  asChild 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
                   <Link href="/profiles/new">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Your First Profile
@@ -461,56 +596,70 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {userProfiles.map((userProfile) => (
-                <Card key={userProfile.id} className="card-professional hover:shadow-lg transition-shadow">
-                  <CardHeader>
+                <Card 
+                  key={userProfile.id} 
+                  className="bg-white border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden group"
+                >
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg mb-1">{userProfile.profile_name}</CardTitle>
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <CardTitle className="text-white text-lg font-bold mb-2">
+                          {userProfile.profile_name}
+                        </CardTitle>
+                        <div className="flex items-center gap-2 flex-wrap">
                           {userProfile.is_default && (
-                            <Badge className="bg-primary text-white">Default</Badge>
+                            <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm">
+                              Default
+                            </Badge>
                           )}
                           {userProfile.is_active && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <Badge className="bg-green-500/20 text-white border-0 backdrop-blur-sm">
                               Active
                             </Badge>
                           )}
                         </div>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
+                  </div>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{userProfile.job_title}</p>
+                        <p className="text-base font-semibold text-gray-900 mb-1">{userProfile.job_title}</p>
                         {userProfile.industry && (
-                          <p className="text-xs text-gray-600">{userProfile.industry}</p>
+                          <p className="text-sm text-gray-600">{userProfile.industry}</p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 text-xs text-gray-600">
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
                         {userProfile.experience_level && (
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="h-3 w-3" />
+                          <span className="flex items-center gap-1.5">
+                            <Briefcase className="h-4 w-4" />
                             {userProfile.experience_level}
                           </span>
                         )}
                         {userProfile.years_of_experience !== null && (
-                          <span>{userProfile.years_of_experience} years</span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="h-4 w-4" />
+                            {userProfile.years_of_experience} years
+                          </span>
                         )}
                       </div>
 
                       {userProfile.skills && userProfile.skills.length > 0 && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Skills</p>
-                          <div className="flex flex-wrap gap-1">
+                          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Skills</p>
+                          <div className="flex flex-wrap gap-1.5">
                             {userProfile.skills.slice(0, 3).map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
+                              <Badge 
+                                key={index} 
+                                variant="outline" 
+                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                              >
                                 {skill}
                               </Badge>
                             ))}
                             {userProfile.skills.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
                                 +{userProfile.skills.length - 3}
                               </Badge>
                             )}
@@ -518,26 +667,26 @@ export default function ProfilePage() {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 text-xs text-gray-500 pt-2 border-t">
                         {userProfile.education && Array.isArray(userProfile.education) && userProfile.education.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <GraduationCap className="h-3 w-3" />
+                          <span className="flex items-center gap-1.5">
+                            <GraduationCap className="h-3.5 w-3.5" />
                             {userProfile.education.length} education
                           </span>
                         )}
                         {userProfile.certifications && Array.isArray(userProfile.certifications) && userProfile.certifications.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Award className="h-3 w-3" />
+                          <span className="flex items-center gap-1.5">
+                            <Award className="h-3.5 w-3.5" />
                             {userProfile.certifications.length} certifications
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 pt-3 border-t">
+                      <div className="flex items-center gap-2 pt-4 border-t">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-all"
                           asChild
                         >
                           <Link href={`/profiles/${userProfile.id}`}>
@@ -551,6 +700,7 @@ export default function ProfilePage() {
                             size="sm"
                             onClick={() => handleSetDefaultProfile(userProfile.id)}
                             title="Set as default"
+                            className="hover:bg-green-50 hover:border-green-300 transition-all"
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
@@ -561,7 +711,7 @@ export default function ProfilePage() {
                             size="sm"
                             onClick={() => handleDeleteProfile(userProfile.id)}
                             disabled={deletingProfile === userProfile.id}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all"
                             title="Delete profile"
                           >
                             {deletingProfile === userProfile.id ? (
@@ -583,3 +733,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

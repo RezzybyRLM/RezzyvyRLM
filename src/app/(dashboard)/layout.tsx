@@ -135,20 +135,22 @@ export default function DashboardLayout({
             })
             setUser(session.user)
             // Fetch user profile data (don't await, load in background)
-            supabase
-              .from('users')
-              .select('full_name, avatar_url')
-              .eq('id', session.user.id)
-              .single()
-              .then(({ data: profile }) => {
+            ;(async () => {
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('full_name, avatar_url')
+                  .eq('id', session.user.id)
+                  .single()
+                
                 if (profile && mounted) {
                   setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
                 }
-              })
-              .catch(err => {
+              } catch (err) {
                 console.warn('Failed to fetch user profile:', err)
                 // Non-critical, continue without profile
-              })
+              }
+            })()
           }
           return
         }
@@ -234,20 +236,22 @@ export default function DashboardLayout({
           })
           setUser(userData)
           // Fetch user profile data (don't await, load in background)
-          supabase
-            .from('users')
-            .select('full_name, avatar_url')
-            .eq('id', userData.id)
-            .single()
-            .then(({ data: profile }) => {
+          ;(async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('full_name, avatar_url')
+                .eq('id', userData.id)
+                .single()
+              
               if (profile && mounted) {
                 setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
               }
-            })
-            .catch(err => {
+            } catch (err) {
               console.warn('Failed to fetch user profile:', err)
               // Non-critical, continue without profile
-            })
+            }
+          })()
         }
       } catch (error) {
         console.error('Error getting user:', error)

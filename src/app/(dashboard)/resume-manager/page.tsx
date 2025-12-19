@@ -51,37 +51,48 @@ export default function ResumeManagerPage() {
       try {
         setLoading(true)
         
-        // Set a timeout to prevent infinite loading
+        // Set a shorter timeout - should load much faster now
         timeoutId = setTimeout(() => {
           if (mounted) {
             console.error('Resume manager load timeout')
             setLoading(false)
           }
-        }, 10000) // 10 second timeout
+        }, 5000) // Reduced to 5 seconds
 
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-          if (mounted) {
-            if (timeoutId) clearTimeout(timeoutId)
-            router.push('/auth/login')
-            setLoading(false)
-          }
-          return
-        }
-
+        // Try getSession first (faster, reads from cookies)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
         if (!mounted) {
           if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
           return
         }
 
-        // Fetch user plan, resumes, and cover letters in parallel
-        const [planResult, resumesResult, coverLettersResult] = await Promise.all([
-          (supabase as any)
-            .from('user_plans')
-            .select('plan_type')
-            .eq('user_id', user.id)
-            .single(),
+        let user = session?.user
+
+        // If no session, try getUser as fallback
+        if (!user) {
+          const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
+          if (userError || !userData) {
+            if (mounted) {
+              if (timeoutId) clearTimeout(timeoutId)
+              router.push('/auth/login')
+              setLoading(false)
+            }
+            return
+          }
+          user = userData
+        }
+
+        if (!mounted || !user) {
+          if (timeoutId) clearTimeout(timeoutId)
+          setLoading(false)
+          return
+        }
+
+        // Fetch critical data first (resumes and cover letters)
+        // Don't wait for user_plans - load it in background
+        const [resumesResult, coverLettersResult] = await Promise.all([
           supabase
             .from('resumes')
             .select('*')
@@ -100,12 +111,14 @@ export default function ResumeManagerPage() {
           return
         }
 
-        if (timeoutId) clearTimeout(timeoutId)
-
-        if (planResult.data) {
-          setCurrentPlan(planResult.data.plan_type || 'Free')
+        // Clear timeout and show page immediately with resumes/cover letters
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
         }
+        setLoading(false) // Show page now!
 
+        // Set resumes and cover letters
         if (resumesResult.data) {
           setResumes(resumesResult.data)
         }
@@ -119,15 +132,33 @@ export default function ResumeManagerPage() {
         if (coverLettersResult.error) {
           console.error('Error fetching cover letters:', coverLettersResult.error)
         }
+
+        // Fetch user plan in background (non-blocking, optional)
+        ;(async () => {
+          try {
+            const { data: planData, error: planError } = await (supabase as any)
+              .from('user_plans')
+              .select('plan_type')
+              .eq('user_id', user.id)
+              .maybeSingle() // Use maybeSingle instead of single to avoid errors if no record exists
+            
+            if (mounted && planData && !planError) {
+              setCurrentPlan(planData.plan_type || 'Free')
+            }
+          } catch (planErr) {
+            // Non-critical, just log it
+            console.warn('Failed to fetch user plan:', planErr)
+          }
+        })()
       } catch (err) {
         if (mounted) {
           setError('Failed to load data')
+          setLoading(false)
         }
         console.error('Error loading resume manager:', err)
       } finally {
-        if (mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
-          setLoading(false)
+        if (mounted && timeoutId) {
+          clearTimeout(timeoutId)
         }
       }
     }

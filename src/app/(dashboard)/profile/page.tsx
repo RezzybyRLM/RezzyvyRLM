@@ -10,7 +10,6 @@ import {
   User, 
   Mail, 
   MapPin, 
-  Calendar, 
   Save, 
   Loader2, 
   Plus, 
@@ -20,13 +19,8 @@ import {
   GraduationCap, 
   CheckCircle, 
   Trash2,
-  Settings,
   Shield,
   Clock,
-  LogOut,
-  FileText,
-  Bell,
-  Sparkles,
   TrendingUp
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -283,61 +277,32 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          </div>
-          <p className="text-gray-600 font-medium">Loading your profile...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg">
-                  <User className="h-8 w-8 text-white" />
-                </div>
-                Profile Settings
-              </h1>
-              <p className="text-lg text-gray-600">Manage your account information and professional profiles</p>
-            </div>
-            {!isEditing && (
-              <Button 
-                onClick={() => setIsEditing(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
-            )}
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
+          <p className="text-gray-600">Manage your account information and professional profiles</p>
         </div>
 
         {/* Alert Messages */}
         {error && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4 animate-fadeIn">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Shield className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
+              <Shield className="h-5 w-5 text-red-500 mr-3" />
+              <p className="text-sm font-medium text-red-800">{error}</p>
             </div>
           </div>
         )}
@@ -345,27 +310,35 @@ export default function ProfilePage() {
         {success && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 rounded-lg p-4 animate-fadeIn">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">Profile updated successfully!</p>
-              </div>
+              <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+              <p className="text-sm font-medium text-green-800">Profile updated successfully!</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Main Profile Card */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Personal Information Card */}
-            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                <CardTitle className="text-white text-xl font-bold flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
-              </div>
+          <div className="lg:col-span-2">
+            <Card className="card-professional">
+              <CardHeader className="border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Personal Information
+                  </CardTitle>
+                  {!isEditing && (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="hover:bg-primary hover:text-white transition-colors"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
@@ -380,7 +353,7 @@ export default function ProfilePage() {
                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                         placeholder="Enter your full name"
                         disabled={!isEditing}
-                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="input-professional pl-12 pr-4"
                       />
                     </div>
                   </div>
@@ -397,7 +370,7 @@ export default function ProfilePage() {
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                         placeholder="Enter your email"
                         disabled={!isEditing}
-                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="input-professional pl-12 pr-4"
                       />
                     </div>
                   </div>
@@ -414,7 +387,7 @@ export default function ProfilePage() {
                         onChange={(e) => setProfile({ ...profile, location: e.target.value })}
                         placeholder="City, State or Remote"
                         disabled={!isEditing}
-                        className="pl-12 pr-4 py-3 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="input-professional pl-12 pr-4"
                       />
                     </div>
                   </div>
@@ -428,14 +401,13 @@ export default function ProfilePage() {
                         setIsEditing(false)
                         setError(null)
                       }}
-                      className="px-6"
                     >
                       Cancel
                     </Button>
                     <Button 
                       onClick={handleSave} 
                       disabled={saving}
-                      className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6"
+                      className="btn-primary"
                     >
                       {saving ? (
                         <>
@@ -458,13 +430,13 @@ export default function ProfilePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Account Info Card */}
-            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
-                <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+            <Card className="card-professional">
+              <CardHeader className="border-b border-gray-200">
+                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
                   Account Status
                 </CardTitle>
-              </div>
+              </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -489,63 +461,12 @@ export default function ProfilePage() {
                       <span className="text-sm text-gray-600">Email verified</span>
                     </div>
                     <Badge 
-                      variant={user?.email_confirmed_at ? 'default' : 'destructive'}
                       className={user?.email_confirmed_at ? 'bg-green-100 text-green-700 border-0' : 'bg-red-100 text-red-700 border-0'}
                     >
                       {user?.email_confirmed_at ? 'Verified' : 'Pending'}
                     </Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions Card */}
-            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
-                <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Quick Actions
-                </CardTitle>
-              </div>
-              <CardContent className="p-6 space-y-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
-                  asChild
-                >
-                  <Link href="/interview-pro">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Interview Sessions
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
-                  asChild
-                >
-                  <Link href="/job-alerts">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Job Alerts
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-all" 
-                  asChild
-                >
-                  <Link href="/resume-manager">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Resume Manager
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all" 
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -555,15 +476,15 @@ export default function ProfilePage() {
         <div className="mt-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <Briefcase className="h-7 w-7 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <Briefcase className="h-6 w-6 text-primary" />
                 Professional Profiles
               </h2>
               <p className="text-gray-600">Create and manage different profiles for different job roles</p>
             </div>
             <Button 
               asChild 
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="btn-primary"
             >
               <Link href="/profiles/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -573,18 +494,18 @@ export default function ProfilePage() {
           </div>
 
           {userProfiles.length === 0 ? (
-            <Card className="bg-white border-0 shadow-xl rounded-2xl overflow-hidden">
+            <Card className="card-professional">
               <CardContent className="p-12 text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full mb-6">
-                  <Briefcase className="h-10 w-10 text-blue-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
+                  <Briefcase className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">No profiles yet</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No profiles yet</h3>
                 <p className="text-gray-600 mb-6 max-w-md mx-auto">
                   Create your first professional profile to start applying to jobs tailored to your skills and experience.
                 </p>
                 <Button 
                   asChild 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="btn-primary"
                 >
                   <Link href="/profiles/new">
                     <Plus className="mr-2 h-4 w-4" />
@@ -598,29 +519,29 @@ export default function ProfilePage() {
               {userProfiles.map((userProfile) => (
                 <Card 
                   key={userProfile.id} 
-                  className="bg-white border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden group"
+                  className="card-professional hover:shadow-xl transition-shadow"
                 >
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                  <CardHeader className="bg-gray-50 border-b border-gray-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-white text-lg font-bold mb-2">
+                        <CardTitle className="text-lg font-bold text-gray-900 mb-2">
                           {userProfile.profile_name}
                         </CardTitle>
                         <div className="flex items-center gap-2 flex-wrap">
                           {userProfile.is_default && (
-                            <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm">
+                            <Badge className="bg-primary text-white border-0">
                               Default
                             </Badge>
                           )}
                           {userProfile.is_active && (
-                            <Badge className="bg-green-500/20 text-white border-0 backdrop-blur-sm">
+                            <Badge className="bg-green-100 text-green-700 border-0">
                               Active
                             </Badge>
                           )}
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       <div>
@@ -686,7 +607,7 @@ export default function ProfilePage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-all"
+                          className="flex-1 hover:bg-primary hover:text-white transition-colors"
                           asChild
                         >
                           <Link href={`/profiles/${userProfile.id}`}>
@@ -700,7 +621,7 @@ export default function ProfilePage() {
                             size="sm"
                             onClick={() => handleSetDefaultProfile(userProfile.id)}
                             title="Set as default"
-                            className="hover:bg-green-50 hover:border-green-300 transition-all"
+                            className="hover:bg-green-50 hover:border-green-300 transition-colors"
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
@@ -711,7 +632,7 @@ export default function ProfilePage() {
                             size="sm"
                             onClick={() => handleDeleteProfile(userProfile.id)}
                             disabled={deletingProfile === userProfile.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
                             title="Delete profile"
                           >
                             {deletingProfile === userProfile.id ? (
@@ -733,4 +654,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-

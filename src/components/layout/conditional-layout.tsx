@@ -17,6 +17,11 @@ export function ConditionalLayout({ children, user }: { children: React.ReactNod
     '/job-alerts',
     '/interview-pro',
     '/employer',
+    '/jobs',
+    '/feed',
+    '/messages',
+    '/applications',
+    '/profiles',
   ]
   
   const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route))

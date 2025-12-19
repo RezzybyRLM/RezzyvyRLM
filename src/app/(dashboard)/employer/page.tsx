@@ -60,10 +60,18 @@ export default function EmployerDashboard() {
   const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+
     const fetchData = async () => {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+          if (mounted) {
+            setLoading(false)
+          }
+          return
+        }
 
         // Get user's company - check if user has a company
         // For now, we'll get the first company or create a placeholder
@@ -72,6 +80,11 @@ export default function EmployerDashboard() {
           .from('companies')
           .select('id, name')
           .limit(1)
+
+        if (!mounted) {
+          setLoading(false)
+          return
+        }
 
         // For MVP: Get first company or use a default
         // In production, link employers to companies properly
@@ -85,31 +98,49 @@ export default function EmployerDashboard() {
             fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`)
           ])
 
+          if (!mounted) {
+            setLoading(false)
+            return
+          }
+
           const [statsData, jobsData] = await Promise.all([
             statsResponse.json(),
             jobsResponse.json()
           ])
 
-          if (statsData.success) {
-            setStats(statsData.stats)
-          }
+          if (mounted) {
+            if (statsData.success) {
+              setStats(statsData.stats)
+            }
 
-          if (jobsData.success) {
-            setRecentJobs(jobsData.jobs)
+            if (jobsData.success) {
+              setRecentJobs(jobsData.jobs)
+            }
           }
         } else {
           // No company found - user needs to create one
-          setLoading(false)
+          if (mounted) {
+            setLoading(false)
+          }
           return
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
+        if (mounted) {
+          setLoading(false)
+        }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchData()
+
+    return () => {
+      mounted = false
+    }
   }, [supabase])
 
   const getStatusBadge = (status: string) => {

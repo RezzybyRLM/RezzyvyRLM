@@ -67,19 +67,38 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true
+    let timeoutId: NodeJS.Timeout | null = null
 
     const getUser = async () => {
       try {
         setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
+        
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
           if (mounted) {
+            console.error('Profile load timeout')
+            setLoading(false)
+          }
+        }, 10000) // 10 second timeout
+
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (!mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          setLoading(false)
+          return
+        }
+
+        if (userError || !user) {
+          if (mounted) {
+            if (timeoutId) clearTimeout(timeoutId)
             router.push('/auth/login')
+            setLoading(false)
           }
           return
         }
 
-        if (!mounted) return
+        if (timeoutId) clearTimeout(timeoutId)
         setUser(user)
 
         // Fetch user profile and user profiles in parallel
@@ -96,7 +115,10 @@ export default function ProfilePage() {
             .order('created_at', { ascending: false })
         ])
 
-        if (!mounted) return
+        if (!mounted) {
+          setLoading(false)
+          return
+        }
 
         if (mounted) {
           if (profileResult.data) {
@@ -129,6 +151,7 @@ export default function ProfilePage() {
         console.error('Error loading profile:', error)
       } finally {
         if (mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
         }
       }
@@ -138,6 +161,7 @@ export default function ProfilePage() {
 
     return () => {
       mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [router, supabase])
 

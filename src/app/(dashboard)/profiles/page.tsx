@@ -48,10 +48,21 @@ export default function ProfilesPage() {
   }, [])
 
   const fetchProfiles = async () => {
+    let timeoutId: NodeJS.Timeout | null = null
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      setLoading(true)
+      
+      // Set a timeout to prevent infinite loading
+      timeoutId = setTimeout(() => {
+        console.error('Profiles fetch timeout')
+        setLoading(false)
+      }, 10000) // 10 second timeout
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        if (timeoutId) clearTimeout(timeoutId)
         router.push('/auth/login')
+        setLoading(false)
         return
       }
 
@@ -62,14 +73,19 @@ export default function ProfilesPage() {
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
 
+      if (timeoutId) clearTimeout(timeoutId)
+
       if (error) {
         console.error('Error fetching profiles:', error)
+        setProfiles([])
       } else {
         setProfiles(data || [])
       }
     } catch (error) {
       console.error('Error fetching profiles:', error)
+      setProfiles([])
     } finally {
+      if (timeoutId) clearTimeout(timeoutId)
       setLoading(false)
     }
   }

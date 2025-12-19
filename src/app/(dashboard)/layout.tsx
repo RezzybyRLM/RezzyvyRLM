@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -44,19 +44,58 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let mounted = true
+    let timeoutId: NodeJS.Timeout | null = null
+    let userLoaded = false
     
     const getUser = async () => {
       try {
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (mounted && !userLoaded) {
+            console.error('User fetch timeout - redirecting to login')
+            router.push('/auth/login')
+          }
+        }, 10000) // 10 second timeout
+
         // Get session first to ensure cookies are synced
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        if (!mounted) return
+        if (!mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          return
+        }
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          if (mounted) {
+            if (timeoutId) clearTimeout(timeoutId)
+            router.push('/auth/login')
+          }
+          return
+        }
         
         const currentUser = session?.user
         if (!currentUser) {
           // Try to get user directly as fallback
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user && mounted) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser()
+          
+          if (!mounted) {
+            if (timeoutId) clearTimeout(timeoutId)
+            return
+          }
+
+          if (userError || !user) {
+            console.error('User not found:', userError)
+            if (mounted) {
+              if (timeoutId) clearTimeout(timeoutId)
+              router.push('/auth/login')
+            }
+            return
+          }
+
+          if (mounted) {
+            if (timeoutId) clearTimeout(timeoutId)
+            userLoaded = true
             setUser(user)
             // Fetch user profile data
             const { data: profile } = await supabase
@@ -73,6 +112,8 @@ export default function DashboardLayout({
         }
 
         if (mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          userLoaded = true
           setUser(currentUser)
           // Fetch user profile data
           const { data: profile } = await supabase
@@ -87,6 +128,10 @@ export default function DashboardLayout({
         }
       } catch (error) {
         console.error('Error getting user:', error)
+        if (mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          router.push('/auth/login')
+        }
       }
     }
 
@@ -115,6 +160,7 @@ export default function DashboardLayout({
 
     return () => {
       mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [router, supabase])

@@ -37,20 +37,38 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let mounted = true
+    let timeoutId: NodeJS.Timeout | null = null
 
     const getUser = async () => {
       try {
         setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
+        
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
           if (mounted) {
+            console.error('Dashboard load timeout')
+            setLoading(false)
+          }
+        }, 10000) // 10 second timeout
+
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (!mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
+          setLoading(false)
+          return
+        }
+
+        if (userError || !user) {
+          if (mounted) {
+            if (timeoutId) clearTimeout(timeoutId)
             router.push('/auth/login')
+            setLoading(false)
           }
           return
         }
 
-        if (!mounted) return
-
+        if (timeoutId) clearTimeout(timeoutId)
         setUser(user)
         
         // Fetch user profile and stats in parallel
@@ -69,10 +87,13 @@ export default function DashboardPage() {
         // Fetch stats separately
         if (mounted) {
           await fetchStats(user.id)
+        } else {
+          setLoading(false)
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
         if (mounted) {
+          if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
         }
       }
@@ -82,6 +103,7 @@ export default function DashboardPage() {
 
     return () => {
       mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [router, supabase])
 
@@ -121,6 +143,13 @@ export default function DashboardPage() {
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
+      // Set default stats on error
+      setStats({
+        resumes: 0,
+        bookmarks: 0,
+        jobAlerts: 0,
+        interviews: 0,
+      })
     } finally {
       setLoading(false)
     }

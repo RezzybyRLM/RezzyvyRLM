@@ -6,8 +6,8 @@ Disallow: /admin/
 Disallow: /auth/
 
 # Host
-Host: rezzybyrlm.us
+Host: https://rezzybyrlm.us
 
 # Sitemaps
-Sitemap: rezzybyrlm.us/sitemap.xml
+Sitemap: https://rezzybyrlm.us/sitemap.xml
 Sitemap: https://rezzybyrlm.com/sitemap.xml

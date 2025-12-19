@@ -18,13 +18,17 @@ import {
   Menu,
   X,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  MessageSquare,
+  Rss
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
+  { name: 'Feed', href: '/feed', icon: Rss },
+  { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Resume Manager', href: '/resume-manager', icon: FileText },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
   { name: 'Job Alerts', href: '/job-alerts', icon: Bell },

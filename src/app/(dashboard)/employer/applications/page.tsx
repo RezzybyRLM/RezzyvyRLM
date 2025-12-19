@@ -21,6 +21,7 @@ import {
   Edit
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { StartConversationButton } from '@/components/ui/start-conversation-button'
 
 interface Application {
   id: string
@@ -282,7 +283,14 @@ export default function ApplicationsReceivedPage() {
                       </div>
                       
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <StartConversationButton
+                            otherUserId={application.applicant_user_id}
+                            otherUserName={application.applicant_name}
+                            jobTitle={application.job_title}
+                            variant="outline"
+                            size="sm"
+                          />
                           {application.resume_url && (
                             <Button
                               variant="outline"

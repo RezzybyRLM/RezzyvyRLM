@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle } from 'lucide-react'
+import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle, Mail, Phone, Briefcase, GraduationCap, FileText, Calendar, Users } from 'lucide-react'
 import { formatRelativeTime, formatSalary } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
 import { createClient } from '@/lib/supabase/client'
@@ -21,6 +21,7 @@ export default function JobDetailPage() {
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [isApplied, setIsApplied] = useState(false)
+  const [jobDetails, setJobDetails] = useState<any>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -32,13 +33,19 @@ export default function JobDetailPage() {
           .select(`
             *,
             companies (
-              name
+              name,
+              description,
+              website,
+              industry,
+              size,
+              location
             )
           `)
           .eq('id', jobId)
           .single()
 
         if (!premiumError && premiumJob) {
+          setJobDetails(premiumJob)
           const transformedJob: TransformedJob = {
             id: premiumJob.id,
             title: premiumJob.title,
@@ -231,13 +238,26 @@ export default function JobDetailPage() {
                   <div className="flex items-center space-x-2 text-gray-600">
                     <MapPin className="h-5 w-5" />
                     <span>{job.location}</span>
+                    {jobDetails?.remote_type && (
+                      <Badge variant="outline" className="ml-2">
+                        {jobDetails.remote_type === 'remote' ? 'Remote' : jobDetails.remote_type === 'hybrid' ? 'Hybrid' : 'On-site'}
+                      </Badge>
+                    )}
                   </div>
-                  {job.salary_range && (
+                  {jobDetails?.min_salary && jobDetails?.max_salary ? (
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <DollarSign className="h-5 w-5" />
+                      <span>
+                        ${jobDetails.min_salary.toLocaleString()} - ${jobDetails.max_salary.toLocaleString()} {jobDetails.salary_currency || 'USD'}
+                        {jobDetails.work_schedule && ` (${jobDetails.work_schedule})`}
+                      </span>
+                    </div>
+                  ) : job.salary_range ? (
                     <div className="flex items-center space-x-2 text-gray-600">
                       <DollarSign className="h-5 w-5" />
                       <span>{formatSalary(job.salary_range)}</span>
                     </div>
-                  )}
+                  ) : null}
                   {job.scraped_at && (
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Clock className="h-5 w-5" />
@@ -284,6 +304,118 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Detailed Information */}
+            {jobDetails && (
+              <>
+                {jobDetails.requirements && jobDetails.requirements.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Requirements
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {jobDetails.requirements.map((req: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-primary mt-1">•</span>
+                            <span className="text-gray-700">{req}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {jobDetails.benefits && jobDetails.benefits.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Benefits & Perks
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {jobDetails.benefits.map((benefit: string, index: number) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-gray-700">{benefit}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(jobDetails.experience_required || jobDetails.education_required) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        Qualifications
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {jobDetails.experience_required && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Experience Required</h4>
+                          <p className="text-gray-700">{jobDetails.experience_required}</p>
+                        </div>
+                      )}
+                      {jobDetails.education_required && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Education Required</h4>
+                          <p className="text-gray-700">{jobDetails.education_required}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {jobDetails.application_instructions && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Briefcase className="h-5 w-5" />
+                        How to Apply
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700 whitespace-pre-wrap">{jobDetails.application_instructions}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(jobDetails.contact_email || jobDetails.contact_phone) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Contact Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {jobDetails.contact_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-500" />
+                          <a href={`mailto:${jobDetails.contact_email}`} className="text-primary hover:underline">
+                            {jobDetails.contact_email}
+                          </a>
+                        </div>
+                      )}
+                      {jobDetails.contact_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <a href={`tel:${jobDetails.contact_phone}`} className="text-primary hover:underline">
+                            {jobDetails.contact_phone}
+                          </a>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+
             {/* AI Resume Suggestion */}
             <Card className="bg-blue-50 border-blue-200">
               <CardHeader>
@@ -308,10 +440,34 @@ export default function JobDetailPage() {
               <CardHeader>
                 <CardTitle>About {job.company_name}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">
-                  Learn more about this company and their culture.
-                </p>
+              <CardContent className="space-y-4">
+                {jobDetails?.companies?.description && (
+                  <p className="text-gray-600 text-sm">
+                    {jobDetails.companies.description}
+                  </p>
+                )}
+                <div className="space-y-2 text-sm">
+                  {jobDetails?.companies?.industry && (
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-600">{jobDetails.companies.industry}</span>
+                    </div>
+                  )}
+                  {jobDetails?.companies?.size && (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-600">{jobDetails.companies.size} employees</span>
+                    </div>
+                  )}
+                  {jobDetails?.companies?.website && (
+                    <div className="flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4 text-gray-500" />
+                      <a href={jobDetails.companies.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        Visit Website
+                      </a>
+                    </div>
+                  )}
+                </div>
                 <Button variant="outline" className="w-full">
                   View Company Profile
                 </Button>

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { jobId, jobTitle, companyName, applicationUrl, jobSource } = body
+    const { jobId, jobTitle, companyName, applicationUrl, jobSource, profileId } = body
 
     if (!jobId || !jobTitle || !companyName || !applicationUrl) {
       return NextResponse.json(
@@ -50,17 +50,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Record application
+    const applicationData: any = {
+      user_id: user.id,
+      job_id: jobId,
+      job_source: jobSource || 'indeed',
+      job_title: jobTitle,
+      company_name: companyName,
+      application_url: applicationUrl,
+      status: 'applied',
+    }
+
+    // Add profile_id to metadata if provided
+    if (profileId) {
+      applicationData.metadata = { profile_id: profileId }
+    }
+
     const { error } = await (supabase as any)
       .from('job_applications')
-      .insert({
-        user_id: user.id,
-        job_id: jobId,
-        job_source: jobSource || 'indeed',
-        job_title: jobTitle,
-        company_name: companyName,
-        application_url: applicationUrl,
-        status: 'applied',
-      })
+      .insert(applicationData)
 
     if (error) {
       console.error('Error marking job as applied:', error)

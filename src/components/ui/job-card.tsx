@@ -4,27 +4,38 @@ import { Button } from '@/components/ui/button'
 import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, CheckCircle } from 'lucide-react'
 import { formatRelativeTime, formatSalary, getJobTypeColor } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
+import { ProfileSelector } from '@/components/ui/profile-selector'
+import { useState } from 'react'
 
 interface JobCardProps {
   job: TransformedJob
   onBookmark?: (jobId: string) => void
-  onMarkApplied?: (jobId: string) => void
+  onMarkApplied?: (jobId: string, profileId?: string) => void
   isBookmarked?: boolean
   isApplied?: boolean
 }
 
 export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, isApplied = false }: JobCardProps) {
+  const [showProfileSelector, setShowProfileSelector] = useState(false)
+
   const handleApply = () => {
     if (job.source === 'indeed') {
       window.open(job.apply_url, '_blank', 'noopener,noreferrer')
-      // Mark as applied if callback provided
+      // Show profile selector before marking as applied
       if (onMarkApplied) {
-        onMarkApplied(job.id)
+        setShowProfileSelector(true)
       }
     } else {
       // For premium jobs, navigate to internal application
-      window.location.href = `/jobs/${job.id}/apply`
+      window.location.href = `/jobs/${job.id}`
     }
+  }
+
+  const handleProfileSelected = (profileId: string) => {
+    if (onMarkApplied) {
+      onMarkApplied(job.id, profileId)
+    }
+    setShowProfileSelector(false)
   }
 
   return (
@@ -123,7 +134,7 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
             )}
             {onMarkApplied && !isApplied && (
               <Button 
-                onClick={() => onMarkApplied(job.id)}
+                onClick={() => setShowProfileSelector(true)}
                 variant="outline"
                 className="w-full"
               >
@@ -133,6 +144,13 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
           </div>
         </div>
       </CardContent>
+      <ProfileSelector
+        isOpen={showProfileSelector}
+        onClose={() => setShowProfileSelector(false)}
+        onSelect={handleProfileSelected}
+        jobTitle={job.title}
+        companyName={job.company_name}
+      />
     </Card>
   )
 }

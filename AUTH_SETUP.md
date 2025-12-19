@@ -23,7 +23,7 @@ To complete the 5-day session timeout setup, you need to configure the following
    - In the same Auth Settings page
    - Set "Time-box user sessions" to `432000` seconds (5 days)
    - This ensures sessions expire after 5 days regardless of activity
-
+`-
 3. **Inactivity Timeout** (Optional):
    - Set "Inactivity timeout" to `432000` seconds (5 days)
    - This will expire sessions after 5 days of inactivity

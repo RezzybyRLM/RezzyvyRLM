@@ -94,6 +94,41 @@ function JobsPageContent() {
         }
       }
 
+      // Fetch premium jobs from database
+      let premiumJobs: TransformedJob[] = []
+      try {
+        const { data: dbJobs, error: dbError } = await supabase
+          .from('jobs')
+          .select(`
+            *,
+            companies (
+              name
+            )
+          `)
+          .gte('expires_at', new Date().toISOString())
+          .order('is_featured', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (!dbError && dbJobs) {
+          premiumJobs = dbJobs.map((job: any) => ({
+            id: job.id,
+            title: job.title,
+            company_name: job.companies?.name || 'Unknown Company',
+            location: job.location,
+            description: job.description || '',
+            apply_url: `/jobs/${job.id}`,
+            salary_range: job.salary_range || '',
+            job_type: job.job_type || 'full-time',
+            source: 'premium' as const,
+            scraped_at: job.created_at || new Date().toISOString(),
+          }))
+        }
+      } catch (err) {
+        console.error('Error fetching premium jobs:', err)
+      }
+
+      // Fetch Indeed jobs
       const params = new URLSearchParams({
         position,
         country: 'us',
@@ -108,9 +143,11 @@ function JobsPageContent() {
       const response = await fetch(`/api/fetch-indeed-jobs?${params.toString()}`)
       const data = await response.json()
 
-      if (data.success) {
-        setJobs(data.jobs)
-      } else {
+      // Combine premium jobs with Indeed jobs (premium first)
+      const allJobs = [...premiumJobs, ...(data.success ? data.jobs : [])]
+      setJobs(allJobs)
+
+      if (!data.success && premiumJobs.length === 0) {
         setError(data.error || 'Failed to fetch jobs')
       }
     } catch (err) {
@@ -163,7 +200,7 @@ function JobsPageContent() {
     }
   }
 
-  const handleMarkApplied = async (jobId: string) => {
+  const handleMarkApplied = async (jobId: string, profileId?: string) => {
     const job = jobs.find(j => j.id === jobId)
     if (!job) return
 
@@ -177,6 +214,7 @@ function JobsPageContent() {
           companyName: job.company_name,
           applicationUrl: job.apply_url,
           jobSource: job.source || 'indeed',
+          profileId: profileId,
         }),
       })
 
@@ -261,25 +299,25 @@ function JobsPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                     <Input
                       type="text"
                       placeholder="Job title, keywords, or company"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="input-professional pl-10"
+                      className="!pl-12 !pr-4"
                     />
                   </div>
                 </div>
                 <div>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                     <Input
                       type="text"
                       placeholder="Location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      className="input-professional pl-10"
+                      className="!pl-12 !pr-4"
                     />
                   </div>
                 </div>

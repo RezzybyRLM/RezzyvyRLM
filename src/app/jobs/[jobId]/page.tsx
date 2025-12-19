@@ -6,9 +6,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft } from 'lucide-react'
+import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle } from 'lucide-react'
 import { formatRelativeTime, formatSalary } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
+import { createClient } from '@/lib/supabase/client'
+import { ProfileSelector } from '@/components/ui/profile-selector'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -17,37 +19,116 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const [showProfileSelector, setShowProfileSelector] = useState(false)
+  const [isApplied, setIsApplied] = useState(false)
+  const supabase = createClient()
 
   useEffect(() => {
-    // In a real app, you'd fetch the job by ID from your API
-    // For now, we'll simulate with a mock job
-    const mockJob: TransformedJob = {
-      id: jobId,
-      title: 'Senior Software Engineer',
-      company_name: 'Tech Corp',
-      location: 'San Francisco, CA',
-      description: 'We are looking for a Senior Software Engineer to join our growing team. You will be responsible for designing and implementing scalable web applications using modern technologies.',
-      apply_url: 'https://indeed.com/viewjob?jk=123456',
-      salary_range: '$120,000 - $150,000',
-      job_type: 'full-time',
-      source: 'indeed',
-      scraped_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      search_query: 'software engineer',
+    const fetchJob = async () => {
+      try {
+        // Try to fetch from premium jobs table first
+        const { data: premiumJob, error: premiumError } = await supabase
+          .from('jobs')
+          .select(`
+            *,
+            companies (
+              name
+            )
+          `)
+          .eq('id', jobId)
+          .single()
+
+        if (!premiumError && premiumJob) {
+          const transformedJob: TransformedJob = {
+            id: premiumJob.id,
+            title: premiumJob.title,
+            company_name: premiumJob.companies?.name || 'Unknown Company',
+            location: premiumJob.location,
+            description: premiumJob.description || '',
+            apply_url: `/jobs/${premiumJob.id}`,
+            salary_range: premiumJob.salary_range || '',
+            job_type: premiumJob.job_type || 'full-time',
+            source: 'premium' as const,
+            scraped_at: premiumJob.created_at || new Date().toISOString(),
+          }
+          setJob(transformedJob)
+          setLoading(false)
+          return
+        }
+
+        // If not found in premium jobs, try cached Indeed jobs
+        const { data: indeedJob, error: indeedError } = await supabase
+          .from('cached_indeed_jobs')
+          .select('*')
+          .eq('id', jobId)
+          .single()
+
+        if (!indeedError && indeedJob) {
+          const transformedJob: TransformedJob = {
+            id: indeedJob.id,
+            title: indeedJob.title,
+            company_name: indeedJob.company,
+            location: indeedJob.location,
+            description: indeedJob.description || '',
+            apply_url: indeedJob.apply_url,
+            salary_range: indeedJob.salary || '',
+            job_type: indeedJob.job_type || 'full-time',
+            source: 'indeed' as const,
+            scraped_at: indeedJob.scraped_at || new Date().toISOString(),
+          }
+          setJob(transformedJob)
+          setLoading(false)
+          return
+        }
+
+        setError('Job not found')
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching job:', err)
+        setError('Failed to load job')
+        setLoading(false)
+      }
     }
 
-    setTimeout(() => {
-      setJob(mockJob)
-      setLoading(false)
-    }, 1000)
-  }, [jobId])
+    fetchJob()
+  }, [jobId, supabase])
 
   const handleApply = () => {
     if (job?.source === 'indeed') {
       window.open(job.apply_url, '_blank', 'noopener,noreferrer')
+      // Show profile selector for marking as applied
+      setShowProfileSelector(true)
     } else {
-      // For premium jobs, navigate to internal application
-      window.location.href = `/jobs/${jobId}/apply`
+      // For premium jobs, show profile selector first
+      setShowProfileSelector(true)
+    }
+  }
+
+  const handleProfileSelected = async (profileId: string) => {
+    if (!job) return
+
+    try {
+      const response = await fetch('/api/jobs/mark-applied', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          jobTitle: job.title,
+          companyName: job.company_name,
+          applicationUrl: job.apply_url,
+          jobSource: job.source || 'premium',
+          profileId: profileId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setIsApplied(true)
+        setShowProfileSelector(false)
+      }
+    } catch (error) {
+      console.error('Error marking job as applied:', error)
     }
   }
 
@@ -171,16 +252,23 @@ export default function JobDetailPage() {
                   </Badge>
                 )}
 
-                <Button onClick={handleApply} size="lg" className="w-full md:w-auto">
-                  {job.source === 'indeed' ? (
-                    <>
-                      Apply on Indeed
-                      <ExternalLink className="ml-2 h-4 w-4" />
-                    </>
-                  ) : (
-                    'Apply Now'
-                  )}
-                </Button>
+                {isApplied ? (
+                  <Button size="lg" className="w-full md:w-auto bg-green-50 border-green-200 text-green-700 hover:bg-green-100" disabled>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Applied
+                  </Button>
+                ) : (
+                  <Button onClick={handleApply} size="lg" className="w-full md:w-auto">
+                    {job.source === 'indeed' ? (
+                      <>
+                        Apply on Indeed
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </>
+                    ) : (
+                      'Apply Now'
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -276,6 +364,13 @@ export default function JobDetailPage() {
           </div>
         </div>
       </div>
+      <ProfileSelector
+        isOpen={showProfileSelector}
+        onClose={() => setShowProfileSelector(false)}
+        onSelect={handleProfileSelected}
+        jobTitle={job?.title}
+        companyName={job?.company_name}
+      />
     </div>
   )
 }

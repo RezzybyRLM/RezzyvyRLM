@@ -151,6 +151,12 @@ export function Navbar({ user: initialUser }: NavbarProps) {
               Home
             </Link>
             <Link
+              href="/jobs"
+              className="text-gray-700 hover:text-primary transition-colors font-medium"
+            >
+              Jobs
+            </Link>
+            <Link
               href="/resume-services"
               className="text-gray-700 hover:text-primary transition-colors"
             >
@@ -313,6 +319,13 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Home
+              </Link>
+              <Link
+                href="/jobs"
+                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Jobs
               </Link>
               <Link
                 href="/resume-services"

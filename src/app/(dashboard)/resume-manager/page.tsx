@@ -34,6 +34,7 @@ export default function ResumeManagerPage() {
   const [resumes, setResumes] = useState<Resume[]>([])
   const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([])
   const [loading, setLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(true) // Track if data is still loading
   const [uploading, setUploading] = useState(false)
   const [uploadingCoverLetter, setUploadingCoverLetter] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,37 +46,36 @@ export default function ResumeManagerPage() {
 
   useEffect(() => {
     let mounted = true
-    let timeoutId: NodeJS.Timeout | null = null
 
-    const getUser = async () => {
+    const loadData = async () => {
       try {
         setLoading(true)
         
-        // Set a shorter timeout - should load much faster now
-        timeoutId = setTimeout(() => {
+        // Safety timeout - only as last resort, should never hit this
+        const safetyTimeout = setTimeout(() => {
           if (mounted) {
-            console.error('Resume manager load timeout')
+            console.warn('Resume manager safety timeout - showing page anyway')
             setLoading(false)
           }
-        }, 5000) // Reduced to 5 seconds
+        }, 3000) // 3 second safety net
 
-        // Try getSession first (faster, reads from cookies)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        // Try getSession first (fastest, reads from cookies)
+        const { data: { session } } = await supabase.auth.getSession()
         
         if (!mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
+          clearTimeout(safetyTimeout)
           setLoading(false)
           return
         }
 
         let user = session?.user
 
-        // If no session, try getUser as fallback
+        // If no session, try getUser as fallback (should be rare)
         if (!user) {
           const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
           if (userError || !userData) {
             if (mounted) {
-              if (timeoutId) clearTimeout(timeoutId)
+              clearTimeout(safetyTimeout)
               router.push('/auth/login')
               setLoading(false)
             }
@@ -85,89 +85,90 @@ export default function ResumeManagerPage() {
         }
 
         if (!mounted || !user) {
-          if (timeoutId) clearTimeout(timeoutId)
+          clearTimeout(safetyTimeout)
           setLoading(false)
           return
         }
 
-        // Fetch critical data first (resumes and cover letters)
-        // Don't wait for user_plans - load it in background
-        const [resumesResult, coverLettersResult] = await Promise.all([
-          supabase
-            .from('resumes')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('cover_letters')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-        ])
+        // CRITICAL: Show page immediately after auth - don't wait for data!
+        clearTimeout(safetyTimeout)
+        setLoading(false) // Page can render now
+        setDataLoading(true) // But data is still loading
 
-        if (!mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
-          setLoading(false)
-          return
-        }
-
-        // Clear timeout and show page immediately with resumes/cover letters
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          timeoutId = null
-        }
-        setLoading(false) // Show page now!
-
-        // Set resumes and cover letters
-        if (resumesResult.data) {
-          setResumes(resumesResult.data)
-        }
-        if (resumesResult.error) {
-          setError(resumesResult.error.message)
-        }
-
-        if (coverLettersResult.data) {
-          setCoverLetters(coverLettersResult.data)
-        }
-        if (coverLettersResult.error) {
-          console.error('Error fetching cover letters:', coverLettersResult.error)
-        }
-
-        // Fetch user plan in background (non-blocking, optional)
+        // Now load all data in background (non-blocking)
         ;(async () => {
           try {
-            const { data: planData, error: planError } = await (supabase as any)
-              .from('user_plans')
-              .select('plan_type')
-              .eq('user_id', user.id)
-              .maybeSingle() // Use maybeSingle instead of single to avoid errors if no record exists
-            
-            if (mounted && planData && !planError) {
-              setCurrentPlan(planData.plan_type || 'Free')
+            // Fetch resumes and cover letters in parallel
+            const [resumesResult, coverLettersResult] = await Promise.all([
+              supabase
+                .from('resumes')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false }),
+              supabase
+                .from('cover_letters')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+            ])
+
+            if (!mounted) return
+
+            // Update state with fetched data
+            if (resumesResult.data) {
+              setResumes(resumesResult.data)
             }
-          } catch (planErr) {
-            // Non-critical, just log it
-            console.warn('Failed to fetch user plan:', planErr)
+            if (resumesResult.error) {
+              console.warn('Error fetching resumes:', resumesResult.error)
+              setError(resumesResult.error.message)
+            }
+
+            if (coverLettersResult.data) {
+              setCoverLetters(coverLettersResult.data)
+            }
+            if (coverLettersResult.error) {
+              console.warn('Error fetching cover letters:', coverLettersResult.error)
+            }
+
+            // Mark data loading as complete
+            setDataLoading(false)
+
+            // Fetch user plan in background (optional, non-critical)
+            try {
+              const { data: planData, error: planError } = await (supabase as any)
+                .from('user_plans')
+                .select('plan_type')
+                .eq('user_id', user.id)
+                .maybeSingle()
+              
+              if (mounted && planData && !planError) {
+                setCurrentPlan(planData.plan_type || 'Free')
+              }
+            } catch (planErr) {
+              // Non-critical, just log it
+              console.warn('Failed to fetch user plan:', planErr)
+            }
+          } catch (dataErr) {
+            console.error('Error loading resume data:', dataErr)
+            if (mounted) {
+              setError('Failed to load some data. Please refresh.')
+              setDataLoading(false) // Stop showing loading even on error
+            }
           }
         })()
       } catch (err) {
         if (mounted) {
-          setError('Failed to load data')
+          setError('Failed to authenticate')
           setLoading(false)
         }
-        console.error('Error loading resume manager:', err)
-      } finally {
-        if (mounted && timeoutId) {
-          clearTimeout(timeoutId)
-        }
+        console.error('Error in resume manager:', err)
       }
     }
 
-    getUser()
+    loadData()
 
     return () => {
       mounted = false
-      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [router, supabase])
 

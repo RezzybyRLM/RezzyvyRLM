@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -55,6 +56,16 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={120}
+              height={120}
+              className="object-contain"
+              priority
+            />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Sign in</CardTitle>
           <CardDescription className="text-center">
             Enter your email and password to access your account

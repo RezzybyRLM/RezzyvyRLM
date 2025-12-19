@@ -18,6 +18,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Briefcase,
   MessageSquare,
   Rss
@@ -35,6 +37,9 @@ const navigation = [
   { name: 'Interview Pro', href: '/interview-pro', icon: Mic },
 ]
 
+// Store sidebar state in localStorage for persistence
+const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
+
 export default function DashboardLayout({
   children,
 }: {
@@ -43,11 +48,24 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(SIDEBAR_STATE_KEY) === 'true'
+    }
+    return false
+  })
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [initialLoad, setInitialLoad] = useState(true) // Track if we're still doing initial load
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+
+  // Persist sidebar state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed))
+    }
+  }, [sidebarCollapsed])
 
   // Timeout to show page after initial load period (even if user state not loaded)
   useEffect(() => {
@@ -203,7 +221,7 @@ export default function DashboardLayout({
               <X className="h-6 w-6" />
             </Button>
           </div>
-          <nav className="flex-1 px-4 py-4 space-y-2">
+          <nav className="flex-1 px-4 py-4 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -211,15 +229,15 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <Icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               )
             })}
@@ -238,20 +256,49 @@ export default function DashboardLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-          <div className="flex h-16 items-center px-4">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="Rezzy Logo"
-                width={100}
-                height={32}
-                className="object-contain"
-              />
-            </Link>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
+      }`}>
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">
+          <div className="flex h-16 items-center px-4 justify-between relative">
+            {!sidebarCollapsed ? (
+              <Link href="/" className="flex items-center flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Rezzy Logo"
+                  width={100}
+                  height={32}
+                  className="object-contain"
+                  priority
+                />
+              </Link>
+            ) : (
+              <Link href="/" className="flex items-center justify-center w-full flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Rezzy Logo"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                  priority
+                />
+              </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 h-6 w-6 rounded-full p-0"
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-3 w-3" />
+              ) : (
+                <ChevronLeft className="h-3 w-3" />
+              )}
+            </Button>
           </div>
-          <nav className="flex-1 px-4 py-4 space-y-2">
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -259,33 +306,35 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group ${
                     isActive
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-white shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
+                  title={sidebarCollapsed ? item.name : ''}
                 >
-                  <Icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
+                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap">{item.name}</span>}
                 </Link>
               )
             })}
           </nav>
-          <div className="border-t px-4 py-4">
+          <div className="border-t px-2 py-4">
             <Button
               variant="ghost"
               onClick={handleSignOut}
-              className="w-full justify-start text-red-600 hover:text-red-700"
+              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
+              title={sidebarCollapsed ? 'Sign Out' : ''}
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Sign Out
+              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+              {!sidebarCollapsed && <span className="truncate whitespace-nowrap">Sign Out</span>}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
         {/* Desktop header */}
         <div className="hidden lg:flex h-16 items-center justify-between px-6 bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="flex-1" />

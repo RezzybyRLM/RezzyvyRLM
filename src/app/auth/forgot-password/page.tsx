@@ -22,16 +22,22 @@ export default function ForgotPasswordPage() {
     setError(null)
     setSuccess(false)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/auth/callback?next=/profile/update-password`,
-    })
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+      })
 
-    if (error) {
-      setError(error.message)
-    } else {
-      setSuccess(true)
+      if (resetError) {
+        setError(resetError.message)
+        setLoading(false)
+      } else {
+        setSuccess(true)
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -52,23 +58,30 @@ export default function ForgotPasswordPage() {
             )}
             {success && (
               <Alert>
-                <AlertDescription>Check your email for the password reset link.</AlertDescription>
+                <AlertDescription>
+                  Check your email for the password reset link. If you don&apos;t see it, check your spam folder.
+                </AlertDescription>
               </Alert>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Sending link...' : 'Send Reset Link'}
-            </Button>
+            {!success && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Sending link...' : 'Send Reset Link'}
+                </Button>
+              </>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2 text-center">

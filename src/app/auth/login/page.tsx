@@ -25,17 +25,30 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setError(error.message)
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.session) {
+        // Session is automatically stored in cookies by the client
+        // Redirect to the intended page
+        router.push(redirectTo)
+        router.refresh()
+      } else {
+        setError('Failed to create session. Please try again.')
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-    } else {
-      router.push(redirectTo)
-      router.refresh()
     }
   }
 
@@ -64,6 +77,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -82,6 +96,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

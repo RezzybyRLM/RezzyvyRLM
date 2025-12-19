@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// 5 days in seconds
+const SESSION_DURATION = 5 * 24 * 60 * 60
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -28,13 +31,22 @@ export async function middleware(request: NextRequest) {
           })
           
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
+            // Set cookie expiration to 5 days
+            response.cookies.set(name, value, {
+              ...options,
+              maxAge: SESSION_DURATION,
+              expires: new Date(Date.now() + SESSION_DURATION * 1000),
+              httpOnly: false, // Required for client-side access
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            })
           })
         },
       },
     }
   )
 
+  // Refresh session if expired - this ensures session persists across page reloads
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -51,6 +63,8 @@ export async function middleware(request: NextRequest) {
     '/interview-pro',
     '/employer',
     '/cart',
+    '/applications',
+    '/profiles',
   ]
 
   // Auth routes (redirect to dashboard if logged in)

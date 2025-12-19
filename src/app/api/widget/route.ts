@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('company_id')
@@ -11,7 +22,12 @@ export async function GET(request: NextRequest) {
     if (!companyId) {
       return NextResponse.json(
         { error: 'company_id parameter is required' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       )
     }
 
@@ -27,7 +43,12 @@ export async function GET(request: NextRequest) {
     if (companyError || !company) {
       return NextResponse.json(
         { error: 'Company not found' },
-        { status: 404 }
+        {
+          status: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       )
     }
 
@@ -46,7 +67,12 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching jobs:', jobsError)
       return NextResponse.json(
         { error: 'Failed to fetch jobs' },
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       )
     }
 
@@ -98,9 +124,25 @@ export async function GET(request: NextRequest) {
     console.error('Widget API error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     )
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }
 
 function generateHTMLWidget(data: any): string {

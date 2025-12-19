@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -23,21 +24,50 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
-    })
-
-    if (error) {
-      setError(error.message)
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
       setLoading(false)
-    } else {
-      // For email verification flows, you might show a success message instead
-      router.push('/dashboard')
-      router.refresh()
+      return
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.session) {
+        // User is automatically signed in after registration
+        // Session is automatically stored in cookies
+        router.push('/dashboard')
+        router.refresh()
+      } else if (data?.user) {
+        // Email confirmation required
+        router.push('/auth/login?message=Check your email to confirm your account')
+      } else {
+        setError('Failed to create account. Please try again.')
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+      setLoading(false)
     }
   }
 
@@ -66,6 +96,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -76,6 +107,21 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="new-password"
+                minLength={6}
+              />
+              <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={6}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

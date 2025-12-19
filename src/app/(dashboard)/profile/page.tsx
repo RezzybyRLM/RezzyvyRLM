@@ -22,8 +22,11 @@ import {
   Shield,
   Clock,
   TrendingUp,
-  Phone
+  Phone,
+  Camera,
+  X
 } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -51,11 +54,14 @@ export default function ProfilePage() {
     email: '',
     location: '',
     phone_number: '',
+    avatar_url: '',
     preferences: {},
   })
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [deletingProfile, setDeletingProfile] = useState<string | null>(null)
@@ -145,8 +151,12 @@ export default function ProfilePage() {
               email: profileResult.data.email || user.email || '',
               location: profileResult.data.location || '',
               phone_number: profileResult.data.phone_number || '',
+              avatar_url: profileResult.data.avatar_url || '',
               preferences: profileResult.data.preferences || {},
             })
+            if (profileResult.data.avatar_url) {
+              setAvatarPreview(profileResult.data.avatar_url)
+            }
           } else {
             const { error } = await supabase
               .from('users')
@@ -211,6 +221,102 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image size must be less than 2MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+    setError(null)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('You must be logged in to upload avatar')
+        return
+      }
+
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      
+      // Try user-assets bucket first, fallback to public bucket
+      let uploadData, uploadError, bucketName = 'user-assets'
+      
+      const uploadResult = await supabase.storage
+        .from('user-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+      
+      uploadData = uploadResult.data
+      uploadError = uploadResult.error
+
+      // If user-assets doesn't exist, try avatars bucket
+      if (uploadError && uploadError.message.includes('Bucket not found')) {
+        bucketName = 'avatars'
+        const fallbackResult = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          })
+        uploadData = fallbackResult.data
+        uploadError = fallbackResult.error
+      }
+
+      if (uploadError) {
+        setError(uploadError.message || 'Failed to upload avatar. Please try again.')
+        return
+      }
+
+      if (!uploadData) {
+        setError('Upload failed. Please try again.')
+        return
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(uploadData.path)
+
+      // Update profile with avatar URL
+      setProfile({ ...profile, avatar_url: publicUrl })
+      setAvatarPreview(publicUrl)
+
+      // Update in database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+
+      if (updateError) {
+        setError('Failed to save avatar URL')
+        return
+      }
+
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error)
+      setError(error.message || 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   const handleDeleteProfile = async (profileId: string) => {
     if (!confirm('Are you sure you want to delete this profile? This action cannot be undone.')) {
       return
@@ -263,6 +369,7 @@ export default function ProfilePage() {
           email: profile.email,
           location: profile.location,
           phone_number: profile.phone_number,
+          avatar_url: profile.avatar_url,
           preferences: profile.preferences,
           updated_at: new Date().toISOString(),
         })
@@ -344,6 +451,91 @@ export default function ProfilePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
+                {/* Profile Picture Section */}
+                <div className="flex items-center gap-6 pb-6 border-b">
+                  <div className="relative">
+                    {avatarPreview ? (
+                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200">
+                        <img
+                          src={avatarPreview}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center border-4 border-gray-200">
+                        <User className="h-12 w-12 text-primary" />
+                      </div>
+                    )}
+                    {isEditing && (
+                      <label className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors shadow-lg">
+                        <Camera className="h-4 w-4" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                          disabled={uploadingAvatar}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Profile Picture</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Upload a profile picture to help others recognize you
+                    </p>
+                    {isEditing && (
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingAvatar}
+                            asChild
+                          >
+                            <span>
+                              {uploadingAvatar ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Camera className="mr-2 h-4 w-4" />
+                                  {avatarPreview ? 'Change Picture' : 'Upload Picture'}
+                                </>
+                              )}
+                            </span>
+                          </Button>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                            disabled={uploadingAvatar}
+                          />
+                        </label>
+                        {avatarPreview && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setAvatarPreview(null)
+                              setProfile({ ...profile, avatar_url: '' })
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">

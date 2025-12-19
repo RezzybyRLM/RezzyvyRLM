@@ -24,6 +24,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { MessageBubble } from '@/components/ui/message-bubble'
 import { TypingIndicator } from '@/components/ui/typing-indicator'
+import { NewConversationDialog } from '@/components/ui/new-conversation-dialog'
+import { Textarea } from '@/components/ui/textarea'
 import { formatTime } from '@/lib/utils'
 
 interface Conversation {
@@ -92,12 +94,14 @@ export default function MessagesPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isTyping, setIsTyping] = useState(false)
   const [otherUserTyping, setOtherUserTyping] = useState(false)
+  const [showNewConversation, setShowNewConversation] = useState(false)
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     let mounted = true
+    let conversationsChannel: any = null
 
     const initialize = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -109,12 +113,45 @@ export default function MessagesPage() {
       
       setCurrentUserId(user.id)
       await fetchConversations()
+
+      // Set up realtime subscription for conversations list
+      if (mounted) {
+        conversationsChannel = supabase
+          .channel('conversations_list')
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant1_id=eq.${user.id}`
+          }, () => {
+            if (mounted) fetchConversations()
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant2_id=eq.${user.id}`
+          }, () => {
+            if (mounted) fetchConversations()
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'messages'
+          }, () => {
+            if (mounted) fetchConversations()
+          })
+          .subscribe()
+      }
     }
 
     initialize()
 
     return () => {
       mounted = false
+      if (conversationsChannel) {
+        supabase.removeChannel(conversationsChannel)
+      }
     }
   }, [router, supabase])
 
@@ -126,20 +163,37 @@ export default function MessagesPage() {
   }, [searchParams])
 
   useEffect(() => {
-    if (selectedConversation) {
-      fetchMessages(selectedConversation)
+    if (!selectedConversation || !currentUserId) return
+
+    let mounted = true
+    let messagesChannel: any = null
+    let typingChannel: any = null
+
+    const setupRealtime = async () => {
+      // Fetch initial messages
+      await fetchMessages(selectedConversation)
       
       // Set up realtime subscription for messages
-      const channel = supabase
+      messagesChannel = supabase
         .channel(`messages:${selectedConversation}`)
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${selectedConversation}`
-        }, () => {
-          fetchMessages(selectedConversation)
-          fetchConversations()
+        }, async (payload) => {
+          if (!mounted) return
+          await fetchMessages(selectedConversation)
+          await fetchConversations()
+          
+          // Mark as read if it's not from current user
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && payload.new && (payload.new as any).sender_id !== user.id) {
+            await supabase
+              .from('messages')
+              .update({ is_read: true })
+              .eq('id', payload.new.id)
+          }
         })
         .on('postgres_changes', {
           event: 'UPDATE',
@@ -147,12 +201,23 @@ export default function MessagesPage() {
           table: 'messages',
           filter: `conversation_id=eq.${selectedConversation}`
         }, () => {
-          fetchMessages(selectedConversation)
+          if (mounted) {
+            fetchMessages(selectedConversation)
+            fetchConversations()
+          }
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'message_attachments',
+          filter: `message_id=in.(${selectedConversation})`
+        }, () => {
+          if (mounted) fetchMessages(selectedConversation)
         })
         .subscribe()
 
       // Set up typing indicator subscription
-      const typingChannel = supabase
+      typingChannel = supabase
         .channel(`typing:${selectedConversation}`)
         .on('postgres_changes', {
           event: '*',
@@ -160,19 +225,51 @@ export default function MessagesPage() {
           table: 'typing_indicators',
           filter: `conversation_id=eq.${selectedConversation}`
         }, async (payload) => {
+          if (!mounted) return
           const { data: { user } } = await supabase.auth.getUser()
           if (user && payload.new && (payload.new as any).user_id !== user.id) {
             setOtherUserTyping((payload.new as any).is_typing || false)
+            
+            // Auto-hide typing indicator after 3 seconds
+            if ((payload.new as any).is_typing) {
+              setTimeout(() => {
+                if (mounted) setOtherUserTyping(false)
+              }, 3000)
+            }
+          }
+        })
+        .subscribe()
+
+      // Set up conversation updates subscription
+      const conversationChannel = supabase
+        .channel(`conversation:${selectedConversation}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `id=eq.${selectedConversation}`
+        }, () => {
+          if (mounted) {
+            fetchConversations()
           }
         })
         .subscribe()
 
       return () => {
-        supabase.removeChannel(channel)
-        supabase.removeChannel(typingChannel)
+        if (messagesChannel) supabase.removeChannel(messagesChannel)
+        if (typingChannel) supabase.removeChannel(typingChannel)
+        if (conversationChannel) supabase.removeChannel(conversationChannel)
       }
     }
-  }, [selectedConversation, supabase])
+
+    setupRealtime()
+
+    return () => {
+      mounted = false
+      if (messagesChannel) supabase.removeChannel(messagesChannel)
+      if (typingChannel) supabase.removeChannel(typingChannel)
+    }
+  }, [selectedConversation, currentUserId, supabase])
 
   const fetchConversations = async () => {
     try {
@@ -391,6 +488,11 @@ export default function MessagesPage() {
       setSelectedImage(null)
       setImagePreview(null)
 
+      // Stop typing indicator
+      await handleStopTyping()
+
+      // Messages and conversations will update via realtime subscriptions
+      // But we can also fetch to ensure immediate update
       fetchMessages(selectedConversation)
       fetchConversations()
     } catch (error) {
@@ -421,6 +523,34 @@ export default function MessagesPage() {
     }
   }
 
+  const handleTyping = async () => {
+    if (!selectedConversation || !currentUserId) return
+    
+    setIsTyping(true)
+    await supabase
+      .from('typing_indicators')
+      .upsert({
+        conversation_id: selectedConversation,
+        user_id: currentUserId,
+        is_typing: true,
+        updated_at: new Date().toISOString()
+      })
+  }
+
+  const handleStopTyping = async () => {
+    if (!selectedConversation || !currentUserId) return
+    
+    setIsTyping(false)
+    await supabase
+      .from('typing_indicators')
+      .upsert({
+        conversation_id: selectedConversation,
+        user_id: currentUserId,
+        is_typing: false,
+        updated_at: new Date().toISOString()
+      })
+  }
+
 
   const filteredConversations = conversations.filter(conv =>
     conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -446,7 +576,14 @@ export default function MessagesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
           {/* Conversations List */}
           <Card className="card-professional overflow-hidden">
-            <CardHeader className="border-b">
+            <CardHeader className="border-b space-y-3">
+              <Button
+                onClick={() => setShowNewConversation(true)}
+                className="w-full btn-primary"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                New Message
+              </Button>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                 <Input
@@ -605,42 +742,29 @@ export default function MessagesPage() {
                       className="flex gap-2"
                     >
                       <div className="flex-1 flex gap-2">
-                      <Input
+                      <Textarea
                         value={messageContent}
                         onChange={async (e) => {
                           setMessageContent(e.target.value)
                           
                           // Update typing indicator
-                          if (selectedConversation && e.target.value.length > 0) {
-                            setIsTyping(true)
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (user) {
-                              await supabase
-                                .from('typing_indicators')
-                                .upsert({
-                                  conversation_id: selectedConversation,
-                                  user_id: user.id,
-                                  is_typing: true,
-                                  updated_at: new Date().toISOString()
-                                })
-                            }
+                          if (e.target.value.trim().length > 0) {
+                            await handleTyping()
                           } else {
-                            setIsTyping(false)
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (user && selectedConversation) {
-                              await supabase
-                                .from('typing_indicators')
-                                .upsert({
-                                  conversation_id: selectedConversation,
-                                  user_id: user.id,
-                                  is_typing: false,
-                                  updated_at: new Date().toISOString()
-                                })
-                            }
+                            await handleStopTyping()
                           }
                         }}
-                        placeholder={replyingTo ? "Type your reply..." : "Type a message..."}
-                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            sendMessage()
+                          }
+                        }}
+                        onBlur={() => handleStopTyping()}
+                        placeholder="Type a message..."
+                        disabled={sending}
+                        className="flex-1 min-h-[60px] max-h-[120px] resize-none"
+                        rows={2}
                       />
                         <Button
                           type="button"
@@ -685,7 +809,13 @@ export default function MessagesPage() {
           </div>
         </div>
       </div>
+
+      <NewConversationDialog
+        isOpen={showNewConversation}
+        onClose={() => setShowNewConversation(false)}
+      />
     </div>
   )
 }
+
 

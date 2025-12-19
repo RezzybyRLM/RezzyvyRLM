@@ -22,6 +22,123 @@ import Link from 'next/link'
 import { PostCard } from '@/components/ui/post-card'
 import { formatTime } from '@/lib/utils'
 
+// Client-side functions for tracking user interests
+const trackUserInterestClient = async (
+  userId: string,
+  interestType: 'job_category' | 'skill' | 'industry' | 'hashtag' | 'company',
+  interestValue: string,
+  source: 'like' | 'view' | 'search' | 'apply' | 'bookmark'
+) => {
+  const supabase = createClient()
+  
+  const { data: existing } = await supabase
+    .from('user_interests')
+    .select('weight')
+    .eq('user_id', userId)
+    .eq('interest_type', interestType)
+    .eq('interest_value', interestValue)
+    .single()
+
+  if (existing) {
+    const weightMultiplier = {
+      'like': 2.0,
+      'apply': 3.0,
+      'bookmark': 2.5,
+      'view': 1.2,
+      'search': 1.5
+    }[source] || 1.0
+
+    const newWeight = Math.min((existing.weight || 1.0) * weightMultiplier, 10.0)
+
+    await supabase
+      .from('user_interests')
+      .update({
+        weight: newWeight,
+        source: source,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('interest_type', interestType)
+      .eq('interest_value', interestValue)
+  } else {
+    await supabase
+      .from('user_interests')
+      .insert({
+        user_id: userId,
+        interest_type: interestType,
+        interest_value: interestValue,
+        weight: 1.0,
+        source: source
+      })
+  }
+}
+
+const extractInterestsFromPostClient = (content: string): Array<{ type: 'hashtag', value: string }> => {
+  const interests: Array<{ type: 'hashtag', value: string }> = []
+  const hashtags = content.match(/#(\w+)/g) || []
+  hashtags.forEach(tag => {
+    interests.push({
+      type: 'hashtag',
+      value: tag.replace('#', '').toLowerCase()
+    })
+  })
+  return interests
+}
+
+const scorePostForUserClient = async (
+  userId: string,
+  postContent: string,
+  postHashtags: string[],
+  isSystemPost: boolean
+): Promise<number> => {
+  const supabase = createClient()
+  
+  if (isSystemPost) {
+    const { count } = await supabase
+      .from('user_interests')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    
+    if ((count || 0) === 0) {
+      return 0.7 // Higher base score for new users
+    }
+    return 0.6 // Boosted score for system posts
+  }
+
+  const { data: interests } = await supabase
+    .from('user_interests')
+    .select('interest_type, interest_value, weight')
+    .eq('user_id', userId)
+    .order('weight', { ascending: false })
+    .limit(10)
+
+  if (!interests || interests.length === 0) {
+    return 0.5
+  }
+
+  let score = 0
+  let totalWeight = 0
+
+  const postHashtagValues = postHashtags.map(h => h.toLowerCase())
+  
+  interests.forEach(interest => {
+    if (interest.interest_type === 'hashtag') {
+      if (postHashtagValues.includes(interest.interest_value.toLowerCase())) {
+        score += interest.weight || 1.0
+        totalWeight += interest.weight || 1.0
+      }
+    }
+    
+    if (postContent.toLowerCase().includes(interest.interest_value.toLowerCase())) {
+      score += (interest.weight || 1.0) * 0.5
+      totalWeight += (interest.weight || 1.0) * 0.5
+    }
+  })
+
+  if (totalWeight === 0) return 0.5
+  return Math.min(score / totalWeight, 1.0)
+}
+
 interface Post {
   id: string
   user_id: string
@@ -82,32 +199,71 @@ export default function FeedPage() {
       setCurrentUserId(user.id)
       await fetchPosts()
 
-      // Set up realtime subscription
+      // Set up comprehensive realtime subscription
       if (mounted) {
         channel = supabase
-          .channel('social_posts_changes')
+          .channel('social_feed_realtime')
           .on('postgres_changes', {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'social_posts'
           }, () => {
-            fetchPosts()
+            if (mounted) fetchPosts()
           })
           .on('postgres_changes', {
-            event: '*',
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'social_posts'
+          }, () => {
+            if (mounted) fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'social_posts'
+          }, () => {
+            if (mounted) fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: 'INSERT',
             schema: 'public',
             table: 'post_likes'
           }, () => {
-            fetchPosts()
+            if (mounted) fetchPosts()
           })
           .on('postgres_changes', {
-            event: '*',
+            event: 'DELETE',
+            schema: 'public',
+            table: 'post_likes'
+          }, () => {
+            if (mounted) fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: 'INSERT',
             schema: 'public',
             table: 'post_comments'
           }, () => {
-            fetchPosts()
+            if (mounted) fetchPosts()
           })
-          .subscribe()
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'post_comments'
+          }, () => {
+            if (mounted) fetchPosts()
+          })
+          .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'post_comments'
+          }, () => {
+            if (mounted) fetchPosts()
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Feed realtime subscription active')
+            }
+          })
       }
     }
 
@@ -151,28 +307,80 @@ export default function FeedPage() {
 
       const likedPostIds = new Set((likes || []).map(l => l.post_id))
 
-      const formattedPosts = (data || []).map((post: any) => ({
-        id: post.id,
-        user_id: post.user_id,
-        content: post.content,
-        image_url: post.image_url,
-        post_type: post.post_type,
-        job_id: post.job_id,
-        likes_count: post.likes_count,
-        comments_count: post.comments_count,
-        created_at: post.created_at,
-        user: {
-          full_name: post.user.full_name,
-          email: post.user.email
-        },
-        is_liked: likedPostIds.has(post.id),
-        job: post.job ? {
-          title: post.job.title,
-          company_name: post.job.companies?.name || 'Unknown Company'
-        } : undefined
-      }))
+      // Format posts and calculate personalization scores
+      const postsWithScores = await Promise.all(
+        (data || []).map(async (post: any) => {
+          // Check if this is a system/website post
+          const isSystemPost = post.is_system_post === true
+          
+          // Extract interests from post
+          const postInterests = extractInterestsFromPostClient(post.content)
+          
+          // Calculate personalization score
+          const personalizationScore = await scorePostForUserClient(
+            user.id,
+            post.content,
+            postInterests.map(i => i.value),
+            isSystemPost
+          )
+          
+          return {
+            id: post.id,
+            user_id: post.user_id,
+            content: post.content,
+            image_url: post.image_url,
+            post_type: post.post_type,
+            job_id: post.job_id,
+            likes_count: post.likes_count || 0,
+            comments_count: post.comments_count || 0,
+            created_at: post.created_at,
+            is_system_post: isSystemPost,
+            personalization_score: personalizationScore,
+            user: {
+              full_name: isSystemPost ? 'Rezzy' : (post.user?.full_name || post.user?.email?.split('@')[0] || 'User'),
+              email: post.user?.email || '',
+              avatar_url: isSystemPost ? '/logo.png' : (post.user?.avatar_url || null)
+            },
+            is_liked: likedPostIds.has(post.id),
+            job: post.job ? {
+              title: post.job.title,
+              company_name: post.job.companies?.name || 'Unknown Company'
+            } : undefined
+          }
+        })
+      )
 
-      setPosts(formattedPosts)
+      // Sort posts: personalized first, then by date
+      // System posts should always show if they're the only ones
+      const nonSystemPosts = postsWithScores.filter(p => !p.is_system_post)
+      const systemPosts = postsWithScores.filter(p => p.is_system_post)
+      
+      // If there are no non-system posts, show system posts
+      if (nonSystemPosts.length === 0) {
+        const sortedSystem = systemPosts.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setPosts(sortedSystem)
+        setLoading(false)
+        return
+      }
+      
+      // Sort non-system posts by personalization score, then by date
+      const sortedNonSystem = nonSystemPosts.sort((a, b) => {
+        if (Math.abs(a.personalization_score - b.personalization_score) > 0.1) {
+          return b.personalization_score - a.personalization_score
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+      
+      // Sort system posts by date
+      const sortedSystem = systemPosts.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      
+      // Combine: personalized posts first, then system posts
+      const sortedPosts = [...sortedNonSystem, ...sortedSystem]
+      setPosts(sortedPosts)
     } catch (error) {
       console.error('Error fetching posts:', error)
     } finally {
@@ -240,6 +448,12 @@ export default function FeedPage() {
           .from('social_posts')
           .update({ likes_count: post.likes_count + 1 })
           .eq('id', postId)
+
+        // Track interests from liked post
+        const interests = extractInterestsFromPostClient(post.content)
+        for (const interest of interests) {
+          await trackUserInterestClient(user.id, interest.type, interest.value, 'like')
+        }
       }
 
       fetchPosts()
@@ -273,6 +487,12 @@ export default function FeedPage() {
           .from('social_posts')
           .update({ comments_count: post.comments_count + 1 })
           .eq('id', postId)
+
+        // Track interests from viewing/interacting with post
+        const interests = extractInterestsFromPostClient(post.content)
+        for (const interest of interests) {
+          await trackUserInterestClient(user.id, interest.type, interest.value, 'view')
+        }
       }
 
       setCommentContent(prev => ({ ...prev, [postId]: '' }))
@@ -412,7 +632,7 @@ export default function FeedPage() {
                   <textarea
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
-                    placeholder="What's on your mind? Share an update, achievement, or job opportunity..."
+                    placeholder="What's on your mind? Share an update, achievement, or job opportunity... Use #hashtags and @mentions!"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                     rows={4}
                   />

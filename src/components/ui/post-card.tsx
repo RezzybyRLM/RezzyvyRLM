@@ -30,6 +30,7 @@ interface PostCardProps {
     user: {
       full_name: string | null
       email: string
+      avatar_url?: string | null
     }
     is_liked: boolean
     job?: {
@@ -68,9 +69,24 @@ export function PostCard({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
-            </div>
+            {post.user.avatar_url ? (
+              <img
+                src={post.user.avatar_url}
+                alt={post.user.full_name || post.user.email.split('@')[0]}
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                onError={(e) => {
+                  // Fallback to default if image fails to load
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const fallback = target.nextElementSibling as HTMLElement
+                  if (fallback) fallback.style.display = 'flex'
+                }}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+            )}
             <div>
               <h3 className="font-semibold text-gray-900">
                 {post.user.full_name || post.user.email.split('@')[0]}

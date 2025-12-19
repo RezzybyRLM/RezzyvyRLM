@@ -327,7 +327,7 @@ export default function ProfilePage() {
                       type="email"
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="input-professional pl-11"
+                      className="input-professional pl-12 pr-3"
                       placeholder="Enter your email"
                     />
                   </div>
@@ -343,7 +343,7 @@ export default function ProfilePage() {
                       type="text"
                       value={profile.location}
                       onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                      className="input-professional pl-11"
+                      className="input-professional pl-12 pr-3"
                       placeholder="City, State or Remote"
                     />
                   </div>

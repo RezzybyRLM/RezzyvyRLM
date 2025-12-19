@@ -3,8 +3,9 @@
 import { usePathname } from 'next/navigation'
 import { Navbar } from './navbar'
 import { Footer } from './footer'
+import { User } from '@supabase/supabase-js'
 
-export function ConditionalLayout({ children }: { children: React.ReactNode }) {
+export function ConditionalLayout({ children, user }: { children: React.ReactNode, user?: User | null }) {
   const pathname = usePathname()
   
   // Dashboard routes that should not show navbar/footer
@@ -28,7 +29,7 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   // Return full layout with navbar and footer for other routes
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Navbar user={user} />
       <main className="flex-1">
         {children}
       </main>

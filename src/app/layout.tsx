@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ConditionalLayout } from '@/components/layout/conditional-layout'
 import { Analytics } from '@vercel/analytics/react'
+import { createClient } from '@/lib/supabase/server'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -49,15 +50,18 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ConditionalLayout>
+        <ConditionalLayout user={user}>
           {children}
         </ConditionalLayout>
         <Analytics />

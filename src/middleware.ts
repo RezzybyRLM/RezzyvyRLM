@@ -36,28 +36,30 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key'
+  
+  // Use createServerClient for middleware to properly handle cookies
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          request.cookies.set(name, value)
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
+  
+  // Get user - this will refresh the session if needed
+  // This must be called on every request to ensure the session remains active
+  const { data: { user }, error } = await supabase.auth.getUser()
+
   // Always refresh session for protected routes
   if (isProtectedRoute || isAdminRoute) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co'
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key'
-    
-    // Use createServerClient for middleware to properly handle cookies
-    const supabase = createServerClient(supabaseUrl, supabaseKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    })
-    
-    // Get user - this will refresh the session if needed
-    const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user) {
       // Redirect to login with return URL

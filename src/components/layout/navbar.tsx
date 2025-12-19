@@ -8,23 +8,39 @@ import { Search, User, Menu, X, ShoppingCart, LogOut, Settings, Shield } from 'l
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCartItemCount } from '@/lib/cart/actions'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 
-export function Navbar() {
+interface NavbarProps {
+  user?: SupabaseUser | null
+}
+
+export function Navbar({ user: initialUser }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(initialUser || null)
   const [cartCount, setCartCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial user session
+    // If initialUser is provided, we can skip the initial fetch or just update cart/admin status
+    if (initialUser) {
+      setUser(initialUser)
+    }
+
+    // Get initial user session if not provided or to ensure freshness
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      // If we already have initialUser, we might not need to fetch immediately, 
+      // but fetching ensures we have the latest client-side state if it drifted.
+      // However, to avoid flickering, relying on initialUser is better.
       
-      if (user) {
+      const currentUser = initialUser || (await supabase.auth.getUser()).data.user
+      if (!initialUser && currentUser) {
+        setUser(currentUser)
+      }
+      
+      if (currentUser) {
         try {
           const count = await getCartItemCount()
           setCartCount(count)
@@ -33,7 +49,7 @@ export function Navbar() {
           const { data: userData } = await supabase
             .from('users')
             .select('role')
-            .eq('id', user.id)
+            .eq('id', currentUser.id)
             .single()
           
           setIsAdmin(userData?.role === 'admin')

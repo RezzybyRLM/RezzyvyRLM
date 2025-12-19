@@ -2,106 +2,84 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import Link from 'next/link'
-import { ArrowLeft, Mail } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const supabase = createClient()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
+    setError(null)
+    setSuccess(false)
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/auth/callback?next=/profile/update-password`,
+    })
 
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
-      } else {
-        setMessage({
-          type: 'success',
-          text: 'Check your email for a password reset link.',
-        })
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'An unexpected error occurred' })
-    } finally {
-      setLoading(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setSuccess(true)
     }
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <CardTitle className="text-2xl">Reset Password</CardTitle>
-          </div>
-          <CardDescription>
-            Enter your email address and we'll send you a link to reset your password.
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Forgot Password</CardTitle>
+          <CardDescription className="text-center">
+            Enter your email to reset your password
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
+          <form onSubmit={handleReset} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert>
+                <AlertDescription>Check your email for the password reset link.</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                placeholder="m@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="you@example.com"
-                className="w-full"
               />
             </div>
-
-            {message && (
-              <div
-                className={`p-3 rounded-md ${
-                  message.type === 'success'
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
-                }`}
-              >
-                {message.text}
-              </div>
-            )}
-
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                'Sending...'
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Reset Link
-                </>
-              )}
+              {loading ? 'Sending link...' : 'Send Reset Link'}
             </Button>
-
-            <div className="text-center text-sm">
-              <Link href="/auth/login" className="text-primary hover:underline">
-                Back to login
-              </Link>
-            </div>
           </form>
         </CardContent>
+        <CardFooter className="flex flex-col space-y-2 text-center">
+          <div className="text-sm text-gray-500">
+            Remember your password?{' '}
+            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+              Sign in
+            </Link>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   )
 }
-

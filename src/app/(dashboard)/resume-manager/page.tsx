@@ -44,13 +44,20 @@ export default function ResumeManagerPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+
     const getUser = async () => {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          router.push('/auth/login')
+          if (mounted) {
+            router.push('/auth/login')
+          }
           return
         }
+
+        if (!mounted) return
 
         // Fetch user plan, resumes, and cover letters in parallel
         const [planResult, resumesResult, coverLettersResult] = await Promise.all([
@@ -71,6 +78,8 @@ export default function ResumeManagerPage() {
             .order('created_at', { ascending: false })
         ])
 
+        if (!mounted) return
+
         if (planResult.data) {
           setCurrentPlan(planResult.data.plan_type || 'Free')
         }
@@ -89,14 +98,22 @@ export default function ResumeManagerPage() {
           console.error('Error fetching cover letters:', coverLettersResult.error)
         }
       } catch (err) {
-        setError('Failed to load data')
+        if (mounted) {
+          setError('Failed to load data')
+        }
         console.error('Error loading resume manager:', err)
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     getUser()
+
+    return () => {
+      mounted = false
+    }
   }, [router, supabase])
 
   const fetchResumes = async () => {

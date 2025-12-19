@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Create server client with service role for admin operations
     const supabase = await createClient()
     
     // Get all active job alerts
@@ -57,17 +58,22 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // Get user information
-        const { data: user, error: userError } = await (supabase as any)
-          .from('profiles')
+        // Get user information from users table (which has email from auth.users)
+        const { data: userData, error: userError } = await (supabase as any)
+          .from('users')
           .select('email, full_name')
           .eq('id', alert.user_id)
           .single()
 
-        if (userError || !user) {
+        if (userError || !userData || !userData.email) {
           console.error('Error fetching user for alert:', alert.id, userError)
           errorCount++
           continue
+        }
+
+        const user = {
+          email: userData.email,
+          full_name: userData.full_name || null
         }
 
         // Search for new jobs matching the alert criteria

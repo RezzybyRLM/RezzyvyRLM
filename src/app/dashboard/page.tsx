@@ -36,36 +36,53 @@ export default function DashboardPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+
     const getUser = async () => {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          router.push('/auth/login')
+          if (mounted) {
+            router.push('/auth/login')
+          }
           return
         }
+
+        if (!mounted) return
 
         setUser(user)
         
         // Fetch user profile and stats in parallel
-        const [profileResult, _] = await Promise.all([
+        const [profileResult] = await Promise.all([
           supabase
             .from('users')
             .select('full_name, avatar_url')
             .eq('id', user.id)
             .single(),
-          fetchStats(user.id) // Start stats fetch immediately
         ])
         
-        if (profileResult.data) {
+        if (mounted && profileResult.data) {
           setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
+        }
+
+        // Fetch stats separately
+        if (mounted) {
+          await fetchStats(user.id)
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     getUser()
+
+    return () => {
+      mounted = false
+    }
   }, [router, supabase])
 
   const handleSignOut = async () => {

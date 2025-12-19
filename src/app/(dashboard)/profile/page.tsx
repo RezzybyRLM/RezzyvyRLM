@@ -66,14 +66,20 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
+    let mounted = true
+
     const getUser = async () => {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          router.push('/auth/login')
+          if (mounted) {
+            router.push('/auth/login')
+          }
           return
         }
 
+        if (!mounted) return
         setUser(user)
 
         // Fetch user profile and user profiles in parallel
@@ -90,39 +96,49 @@ export default function ProfilePage() {
             .order('created_at', { ascending: false })
         ])
 
-        if (profileResult.data) {
-          setProfile({
-            full_name: profileResult.data.full_name || '',
-            email: profileResult.data.email || user.email || '',
-            location: profileResult.data.location || '',
-            preferences: profileResult.data.preferences || {},
-          })
-        } else {
-          // Create profile if it doesn't exist
-          const { error } = await supabase
-            .from('users')
-            .insert({
-              id: user.id,
-              email: user.email,
-              full_name: user.user_metadata?.full_name || '',
+        if (!mounted) return
+
+        if (mounted) {
+          if (profileResult.data) {
+            setProfile({
+              full_name: profileResult.data.full_name || '',
+              email: profileResult.data.email || user.email || '',
+              location: profileResult.data.location || '',
+              preferences: profileResult.data.preferences || {},
             })
+          } else {
+            // Create profile if it doesn't exist
+            const { error } = await supabase
+              .from('users')
+              .insert({
+                id: user.id,
+                email: user.email,
+                full_name: user.user_metadata?.full_name || '',
+              })
 
-          if (error) {
-            console.error('Error creating profile:', error)
+            if (error) {
+              console.error('Error creating profile:', error)
+            }
           }
-        }
 
-        if (profilesResult.data) {
-          setUserProfiles(profilesResult.data)
+          if (profilesResult.data) {
+            setUserProfiles(profilesResult.data)
+          }
         }
       } catch (error) {
         console.error('Error loading profile:', error)
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     getUser()
+
+    return () => {
+      mounted = false
+    }
   }, [router, supabase])
 
   const handleSetDefaultProfile = async (profileId: string) => {

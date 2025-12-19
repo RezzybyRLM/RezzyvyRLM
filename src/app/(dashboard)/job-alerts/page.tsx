@@ -15,8 +15,10 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Mail
+  Mail,
+  Loader2
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface JobAlert {
   id: string
@@ -31,58 +33,53 @@ interface JobAlert {
 export default function JobAlertsPage() {
   const [alerts, setAlerts] = useState<JobAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newAlert, setNewAlert] = useState({
     search_query: '',
     location: '',
     frequency: 'daily' as 'daily' | 'weekly',
   })
+  const supabase = createClient()
 
   useEffect(() => {
-    fetchAlerts()
-  }, [])
+    let mounted = true
 
-  const fetchAlerts = async () => {
-    try {
-      // TODO: Implement real API call to fetch user's job alerts
-      // Mock data for now
-      const mockAlerts: JobAlert[] = [
-        {
-          id: '1',
-          search_query: 'Software Engineer',
-          location: 'San Francisco, CA',
-          frequency: 'daily',
-          is_active: true,
-          last_sent_at: '2024-01-15T09:00:00Z',
-          created_at: '2024-01-10T10:00:00Z',
-        },
-        {
-          id: '2',
-          search_query: 'Product Manager',
-          location: 'Remote',
-          frequency: 'weekly',
-          is_active: true,
-          last_sent_at: '2024-01-14T09:00:00Z',
-          created_at: '2024-01-08T14:30:00Z',
-        },
-        {
-          id: '3',
-          search_query: 'UX Designer',
-          location: 'New York, NY',
-          frequency: 'daily',
-          is_active: false,
-          last_sent_at: '2024-01-12T09:00:00Z',
-          created_at: '2024-01-05T16:45:00Z',
-        },
-      ]
-      
-      setAlerts(mockAlerts)
-    } catch (error) {
-      console.error('Error fetching job alerts:', error)
-    } finally {
-      setLoading(false)
+    const fetchAlerts = async () => {
+      try {
+        setLoading(true)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const response = await fetch('/api/job-alerts')
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to fetch job alerts')
+        }
+
+        if (mounted && result.success) {
+          setAlerts(result.alerts || [])
+        }
+      } catch (error) {
+        console.error('Error fetching job alerts:', error)
+        if (mounted) {
+          // Fallback to empty array on error
+          setAlerts([])
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchAlerts()
+
+    return () => {
+      mounted = false
+    }
+  }, [supabase])
 
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,36 +90,57 @@ export default function JobAlertsPage() {
     }
 
     try {
-      // TODO: Implement real API call to create job alert
-      const alertData: JobAlert = {
-        id: Date.now().toString(),
-        search_query: newAlert.search_query,
-        location: newAlert.location,
-        frequency: newAlert.frequency,
-        is_active: true,
-        last_sent_at: null,
-        created_at: new Date().toISOString(),
+      setSaving(true)
+      const response = await fetch('/api/job-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAlert),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create job alert')
       }
-      
-      setAlerts(prev => [alertData, ...prev])
-      setNewAlert({ search_query: '', location: '', frequency: 'daily' })
-      setShowCreateForm(false)
+
+      if (result.success && result.alert) {
+        setAlerts(prev => [result.alert, ...prev])
+        setNewAlert({ search_query: '', location: '', frequency: 'daily' })
+        setShowCreateForm(false)
+      }
     } catch (error) {
       console.error('Error creating job alert:', error)
-      alert('Failed to create job alert. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to create job alert. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleToggleAlert = async (alertId: string) => {
     try {
-      // TODO: Implement real API call to toggle alert status
-      setAlerts(prev => prev.map(alert => 
-        alert.id === alertId 
-          ? { ...alert, is_active: !alert.is_active }
-          : alert
-      ))
+      const alert = alerts.find(a => a.id === alertId)
+      if (!alert) return
+
+      const response = await fetch(`/api/job-alerts/${alertId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !alert.is_active }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update job alert')
+      }
+
+      if (result.success && result.alert) {
+        setAlerts(prev => prev.map(a => 
+          a.id === alertId ? result.alert : a
+        ))
+      }
     } catch (error) {
       console.error('Error toggling job alert:', error)
+      alert(error instanceof Error ? error.message : 'Failed to update job alert')
     }
   }
 
@@ -132,10 +150,22 @@ export default function JobAlertsPage() {
     }
 
     try {
-      // TODO: Implement real API call to delete job alert
-      setAlerts(prev => prev.filter(alert => alert.id !== alertId))
+      const response = await fetch(`/api/job-alerts/${alertId}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete job alert')
+      }
+
+      if (result.success) {
+        setAlerts(prev => prev.filter(alert => alert.id !== alertId))
+      }
     } catch (error) {
       console.error('Error deleting job alert:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete job alert')
     }
   }
 
@@ -220,11 +250,20 @@ export default function JobAlertsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button type="submit">
-                  <Bell className="h-4 w-4 mr-2" />
-                  Create Alert
+                <Button type="submit" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="h-4 w-4 mr-2" />
+                      Create Alert
+                    </>
+                  )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)} disabled={saving}>
                   Cancel
                 </Button>
               </div>

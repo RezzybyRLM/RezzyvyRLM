@@ -777,14 +777,14 @@ Now transform this text to sound like natural human speech:
           return !isDefault || isNatural
         })
         .map(v => ({
-          voice: v,
-          score: this.scoreVoiceQuality(v)
+        voice: v,
+        score: this.scoreVoiceQuality(v)
         }))
         .sort((a, b) => b.score - a.score)
       
       if (scoredVoices.length > 0) {
-        console.warn(`⚠️ No voice found for ${language}, using best available: ${scoredVoices[0]?.voice.name}`)
-        console.log(`📊 Top 5 voices:`, scoredVoices.slice(0, 5).map(sv => `${sv.voice.name} (score: ${sv.score})`))
+      console.warn(`⚠️ No voice found for ${language}, using best available: ${scoredVoices[0]?.voice.name}`)
+      console.log(`📊 Top 5 voices:`, scoredVoices.slice(0, 5).map(sv => `${sv.voice.name} (score: ${sv.score})`))
         return scoredVoices[0]?.voice
       }
       

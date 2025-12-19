@@ -88,7 +88,7 @@ export default function ManageJobsPage() {
 
       if (error) {
         console.error('Error fetching jobs:', error)
-        setLoading(false)
+    setLoading(false)
         return
       }
 

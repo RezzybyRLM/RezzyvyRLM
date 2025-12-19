@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Plus, X, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, Trash2, Loader2, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -43,6 +43,10 @@ interface Certification {
   issuer: string
   date_earned: string
   expiry_date?: string
+  certificate_number?: string
+  file_url?: string
+  file_name?: string
+  id?: string // For database certificates
 }
 
 export default function NewProfilePage() {
@@ -51,6 +55,8 @@ export default function NewProfilePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [availableResumes, setAvailableResumes] = useState<Array<{ id: string; file_name: string }>>([])
+  const [availableCertificates, setAvailableCertificates] = useState<Array<{ id: string; certificate_name: string; issuer: string; file_name?: string }>>([])
+  const [uploadingCert, setUploadingCert] = useState(false)
 
   const [formData, setFormData] = useState({
     profile_name: '',
@@ -78,8 +84,12 @@ export default function NewProfilePage() {
     name: '',
     issuer: '',
     date_earned: '',
-    expiry_date: ''
+    expiry_date: '',
+    certificate_number: ''
   })
+  const [certFile, setCertFile] = useState<File | null>(null)
+  const [useExistingCert, setUseExistingCert] = useState(false)
+  const [selectedCertId, setSelectedCertId] = useState('')
 
   const fetchResumes = async () => {
     try {
@@ -101,13 +111,35 @@ export default function NewProfilePage() {
     }
   }
 
+  const fetchCertificates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data } = await supabase
+        .from('certificates')
+        .select('id, certificate_name, issuer, file_name')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (data) {
+        setAvailableCertificates(data)
+      }
+    } catch (error) {
+      console.error('Error fetching certificates:', error)
+    }
+  }
+
   useEffect(() => {
     fetchResumes()
+    fetchCertificates()
     
-    // Refresh resumes when page becomes visible (user might have uploaded a resume in another tab)
+    // Refresh resumes and certificates when page becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchResumes()
+        fetchCertificates()
       }
     }
     
@@ -145,10 +177,97 @@ export default function NewProfilePage() {
     setEducation(education.filter((_, i) => i !== index))
   }
 
-  const handleAddCertification = () => {
-    if (newCertification.name && newCertification.issuer && newCertification.date_earned) {
+  const handleAddCertification = async () => {
+    if (useExistingCert && selectedCertId) {
+      // Link existing certificate
+      const selectedCert = availableCertificates.find(c => c.id === selectedCertId)
+      if (selectedCert) {
+        // Fetch full certificate details
+        const { data: certData } = await supabase
+          .from('certificates')
+          .select('*')
+          .eq('id', selectedCertId)
+          .single()
+        
+        if (certData) {
+          setCertifications([...certifications, {
+            name: certData.certificate_name,
+            issuer: certData.issuer,
+            date_earned: certData.date_earned || '',
+            expiry_date: certData.expiry_date || undefined,
+            certificate_number: certData.certificate_number || undefined,
+            file_url: certData.file_url || undefined,
+            file_name: certData.file_name || undefined,
+            id: certData.id
+          }])
+        }
+        setSelectedCertId('')
+        setUseExistingCert(false)
+        setShowCertificationForm(false)
+      }
+      return
+    }
+
+    // Upload new certificate file if provided
+    if (certFile && newCertification.name && newCertification.issuer && newCertification.date_earned) {
+      setUploadingCert(true)
+      try {
+        const formData = new FormData()
+        formData.append('file', certFile)
+        formData.append('certificateName', newCertification.name)
+        formData.append('issuer', newCertification.issuer)
+        formData.append('dateEarned', newCertification.date_earned)
+        if (newCertification.expiry_date) {
+          formData.append('expiryDate', newCertification.expiry_date)
+        }
+        if (newCertification.certificate_number) {
+          formData.append('certificateNumber', newCertification.certificate_number)
+        }
+
+        const response = await fetch('/api/certificates/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          setError(result.error || 'Failed to upload certificate')
+          setUploadingCert(false)
+          return
+        }
+
+        // Add to certifications list
+        if (result.certificate) {
+          setCertifications([...certifications, {
+            name: result.certificate.certificate_name,
+            issuer: result.certificate.issuer,
+            date_earned: result.certificate.date_earned,
+            expiry_date: result.certificate.expiry_date || undefined,
+            certificate_number: result.certificate.certificate_number || undefined,
+            file_url: result.certificate.file_url || undefined,
+            file_name: result.certificate.file_name || undefined,
+            id: result.certificate.id
+          }])
+        }
+
+        // Refresh certificates list
+        await fetchCertificates()
+        
+        // Reset form
+        setNewCertification({ name: '', issuer: '', date_earned: '', expiry_date: '', certificate_number: '' })
+        setCertFile(null)
+        setShowCertificationForm(false)
+      } catch (err) {
+        setError('Failed to upload certificate')
+        console.error('Error uploading certificate:', err)
+      } finally {
+        setUploadingCert(false)
+      }
+    } else if (newCertification.name && newCertification.issuer && newCertification.date_earned) {
+      // Add certification without file (text-only)
       setCertifications([...certifications, { ...newCertification }])
-      setNewCertification({ name: '', issuer: '', date_earned: '', expiry_date: '' })
+      setNewCertification({ name: '', issuer: '', date_earned: '', expiry_date: '', certificate_number: '' })
       setShowCertificationForm(false)
     }
   }
@@ -483,33 +602,100 @@ export default function NewProfilePage() {
 
             {showCertificationForm && (
               <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                <Input
-                  placeholder="Certification Name"
-                  value={newCertification.name}
-                  onChange={(e) => setNewCertification({ ...newCertification, name: e.target.value })}
-                />
-                <Input
-                  placeholder="Issuing Organization"
-                  value={newCertification.issuer}
-                  onChange={(e) => setNewCertification({ ...newCertification, issuer: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    type="date"
-                    placeholder="Date Earned"
-                    value={newCertification.date_earned}
-                    onChange={(e) => setNewCertification({ ...newCertification, date_earned: e.target.value })}
-                  />
-                  <Input
-                    type="date"
-                    placeholder="Expiry Date (optional)"
-                    value={newCertification.expiry_date}
-                    onChange={(e) => setNewCertification({ ...newCertification, expiry_date: e.target.value })}
-                  />
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    type="button"
+                    variant={!useExistingCert ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setUseExistingCert(false)}
+                  >
+                    Upload New
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={useExistingCert ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setUseExistingCert(true)}
+                  >
+                    Use Existing
+                  </Button>
                 </div>
+
+                {useExistingCert ? (
+                  <div className="space-y-3">
+                    <select
+                      value={selectedCertId}
+                      onChange={(e) => setSelectedCertId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Select a certificate</option>
+                      {availableCertificates.map(cert => (
+                        <option key={cert.id} value={cert.id}>
+                          {cert.certificate_name} - {cert.issuer}
+                        </option>
+                      ))}
+                    </select>
+                    {availableCertificates.length === 0 && (
+                      <p className="text-xs text-gray-500">
+                        No certificates available. Upload a certificate first.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      placeholder="Certification Name *"
+                      value={newCertification.name}
+                      onChange={(e) => setNewCertification({ ...newCertification, name: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Issuing Organization *"
+                      value={newCertification.issuer}
+                      onChange={(e) => setNewCertification({ ...newCertification, issuer: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="date"
+                        placeholder="Date Earned *"
+                        value={newCertification.date_earned}
+                        onChange={(e) => setNewCertification({ ...newCertification, date_earned: e.target.value })}
+                      />
+                      <Input
+                        type="date"
+                        placeholder="Expiry Date (optional)"
+                        value={newCertification.expiry_date}
+                        onChange={(e) => setNewCertification({ ...newCertification, expiry_date: e.target.value })}
+                      />
+                    </div>
+                    <Input
+                      placeholder="Certificate Number (optional)"
+                      value={newCertification.certificate_number}
+                      onChange={(e) => setNewCertification({ ...newCertification, certificate_number: e.target.value })}
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Certificate File (optional)
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.jpg,.jpeg,.png,.gif,.webp"
+                        onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        PDF, Word, text, RTF, OpenDocument, or image files (max 5MB)
+                      </p>
+                    </div>
+                  </>
+                )}
                 <div className="flex gap-2">
-                  <Button type="button" onClick={handleAddCertification} size="sm">
-                    Add
+                  <Button 
+                    type="button" 
+                    onClick={handleAddCertification} 
+                    size="sm"
+                    disabled={uploadingCert}
+                  >
+                    {uploadingCert ? 'Uploading...' : 'Add'}
                   </Button>
                   <Button
                     type="button"
@@ -517,7 +703,10 @@ export default function NewProfilePage() {
                     size="sm"
                     onClick={() => {
                       setShowCertificationForm(false)
-                      setNewCertification({ name: '', issuer: '', date_earned: '', expiry_date: '' })
+                      setNewCertification({ name: '', issuer: '', date_earned: '', expiry_date: '', certificate_number: '' })
+                      setCertFile(null)
+                      setUseExistingCert(false)
+                      setSelectedCertId('')
                     }}
                   >
                     Cancel
@@ -528,19 +717,36 @@ export default function NewProfilePage() {
 
             {certifications.map((cert, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
+                <div className="flex-1">
                   <p className="font-medium">{cert.name}</p>
                   <p className="text-sm text-gray-600">{cert.issuer} - {cert.date_earned}</p>
+                  {cert.file_name && (
+                    <p className="text-xs text-gray-500 mt-1">📎 {cert.file_name}</p>
+                  )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveCertification(index)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                  {cert.file_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                    >
+                      <a href={cert.file_url} target="_blank" rel="noopener noreferrer">
+                        <FileText className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveCertification(index)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

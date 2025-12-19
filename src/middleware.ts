@@ -1,9 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 5 days in seconds (432000) - matches Supabase session timeout
-const SESSION_DURATION = 5 * 24 * 60 * 60
-
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -24,7 +21,6 @@ export async function middleware(request: NextRequest) {
             request.cookies.set(name, value)
           })
           
-          // Create new response with updated cookies
           response = NextResponse.next({
             request: {
               headers: request.headers,
@@ -32,16 +28,7 @@ export async function middleware(request: NextRequest) {
           })
           
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Set cookie expiration to 5 days to match Supabase session timeout
-            response.cookies.set(name, value, {
-              ...options,
-              maxAge: SESSION_DURATION,
-              expires: new Date(Date.now() + SESSION_DURATION * 1000),
-              httpOnly: false, // Required for client-side access
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/',
-            })
+            response.cookies.set(name, value, options)
           })
         },
       },
@@ -49,7 +36,6 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session to ensure it persists across page reloads
-  // This ensures the session is valid and cookies are properly set
   const {
     data: { user },
   } = await supabase.auth.getUser()

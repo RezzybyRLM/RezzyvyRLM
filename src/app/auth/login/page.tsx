@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,12 +36,11 @@ export default function LoginPage() {
         return
       }
 
-      if (data?.session) {
-        // Wait a moment for cookies to be set, then redirect
-        // Using window.location.href forces a full page reload so middleware can read cookies
-        setTimeout(() => {
-          window.location.href = redirectTo
-        }, 100)
+      if (data?.user) {
+        // Session is automatically stored by Supabase
+        // Use router.push for client-side navigation
+        router.push(redirectTo)
+        router.refresh()
       } else {
         setError('Failed to create session. Please try again.')
         setLoading(false)

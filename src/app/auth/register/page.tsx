@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,6 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,16 +52,16 @@ export default function RegisterPage() {
         return
       }
 
-      if (data?.session) {
-        // User is automatically signed in after registration
-        // Wait a moment for cookies to be set, then redirect
-        // Using window.location.href forces a full page reload so middleware can read cookies
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 100)
-      } else if (data?.user) {
-        // Email confirmation required
-        router.push('/auth/login?message=Check your email to confirm your account')
+      if (data?.user) {
+        // Session is automatically stored by Supabase
+        if (data.session) {
+          // User is automatically signed in after registration
+          router.push('/dashboard')
+          router.refresh()
+        } else {
+          // Email confirmation required
+          router.push('/auth/login?message=Check your email to confirm your account')
+        }
       } else {
         setError('Failed to create account. Please try again.')
         setLoading(false)

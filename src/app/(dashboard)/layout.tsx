@@ -54,382 +54,106 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let mounted = true
-    let timeoutId: NodeJS.Timeout | null = null
-    let userLoaded = false
-    
-    // Helper to check if Supabase auth cookies exist
-    // Supabase SSR uses cookies like: sb-<project-ref>-auth-token
-    const hasAuthCookies = () => {
-      if (typeof document === 'undefined') return false
-      const cookies = document.cookie
-      if (!cookies) return false
-      
-      // Check for Supabase auth cookies
-      // Pattern: sb-<project>-auth-token or similar
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      if (supabaseUrl) {
-        try {
-          const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
-          if (projectRef) {
-            // Look for cookies with the project ref
-            return cookies.includes(`sb-${projectRef}`) || 
-                   cookies.includes('sb-') ||
-                   cookies.includes('supabase')
-          }
-        } catch (e) {
-          // Fallback to simple check
-        }
-      }
-      
-      // Fallback: check for any sb- cookie
-      return cookies.includes('sb-')
-    }
-    
-    // Wait for cookies to be available (middleware sets them on refresh)
-    const waitForCookies = async (maxWait = 2000) => {
-      const start = Date.now()
-      while (!hasAuthCookies() && (Date.now() - start) < maxWait) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-    }
-    
-    const getUser = async (retryCount = 0) => {
+
+    // Initialize user from session
+    const initializeUser = async () => {
       try {
-        // Wait for cookies to sync after page load (middleware sets them)
-        // Shorter wait since getSession() is fast and reads from cookies
-        if (retryCount === 0) {
-          await waitForCookies(1000) // Wait up to 1 second for cookies
-        } else {
-          // On retry, wait a bit longer
-          await new Promise(resolve => setTimeout(resolve, 300 + (retryCount * 200)))
-        }
-        
-        // Set a timeout to prevent infinite loading
-        // DON'T redirect on timeout - just log it and keep trying
-        // The middleware will handle redirects if user is truly not authenticated
-        timeoutId = setTimeout(() => {
-          if (mounted && !userLoaded) {
-            console.warn('User fetch taking longer than expected, but continuing...')
-            console.warn('Debug info:', {
-              hasCookies: hasAuthCookies(),
-              cookies: typeof document !== 'undefined' ? document.cookie.substring(0, 200) : 'N/A',
-              retryCount,
-              timestamp: new Date().toISOString()
-            })
-            // Don't redirect - let middleware handle it or keep trying
-            // router.push('/auth/login') // REMOVED - don't redirect on timeout
-          }
-        }, 10000) // Increased to 10 seconds - give it more time
-
-        // Try getSession first (faster, reads from cookies directly)
-        // This is more reliable on page refresh when middleware just set cookies
-        const sessionStart = Date.now()
+        // Get session first - this reads from cookies set by middleware
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        const sessionTime = Date.now() - sessionStart
         
-        if (!mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
-          return
-        }
-        
-        // If we have a session, use it immediately
+        if (!mounted) return
+
         if (session?.user && !sessionError) {
-          if (timeoutId) {
-            clearTimeout(timeoutId)
-            timeoutId = null
-          }
-          userLoaded = true
-          if (mounted) {
-            console.log('User loaded from session:', { 
-              userId: session.user.id, 
-              sessionTime: `${sessionTime}ms`,
-              hasCookies: hasAuthCookies()
-            })
-            setUser(session.user)
-            setInitialLoad(false) // Mark initial load as complete
-            // Fetch user profile data (don't await, load in background)
-            ;(async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', session.user.id)
-                  .single()
-                
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch (err) {
-                console.warn('Failed to fetch user profile:', err)
-                // Non-critical, continue without profile
-              }
-            })()
-          }
-          return
-        }
-        
-        // Log if session failed
-        if (sessionError) {
-          console.warn('getSession failed:', {
-            error: sessionError.message,
-            hasCookies: hasAuthCookies(),
-            retryCount
-          })
-        }
-        
-        // If no session, try getUser as fallback (validates JWT)
-        const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
-        
-        if (!mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
-          return
-        }
-        
-        if (userError) {
-          // If it's a JWT/token error and we haven't retried much, try again
-          const isTokenError = userError.message.includes('JWT') || 
-                              userError.message.includes('token') ||
-                              userError.message.includes('expired') ||
-                              userError.status === 401
+          setUser(session.user)
+          setInitialLoad(false)
           
-          if (isTokenError && retryCount < 3) {
-            console.warn(`Token error (attempt ${retryCount + 1}/4):`, userError.message)
-            if (timeoutId) clearTimeout(timeoutId)
-            // Wait a bit longer before retry
-            await new Promise(resolve => setTimeout(resolve, 500 + (retryCount * 300)))
-            return getUser(retryCount + 1)
-          }
-          
-          console.error('Auth error after retries:', {
-            message: userError.message,
-            status: userError.status,
-            name: userError.name,
-            hasCookies: hasAuthCookies(),
-            retryCount
-          })
-          
-          // Final attempt: check if cookies exist but auth failed
-          if (hasAuthCookies() && retryCount < 2) {
-            console.warn('Cookies exist but auth failed, retrying once more...')
-            if (timeoutId) clearTimeout(timeoutId)
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            return getUser(retryCount + 1)
-          }
-          
-          // Only redirect if we're absolutely sure there's no valid session
-          // Check one more time with getSession before redirecting
-          const { data: { session: finalSession } } = await supabase.auth.getSession()
-          if (!finalSession?.user && mounted) {
-            if (timeoutId) clearTimeout(timeoutId)
-            console.error('No valid session found after all retries, redirecting to login')
-            router.push('/auth/login')
-          } else if (finalSession?.user && mounted) {
-            // We found a session! Use it
-            if (timeoutId) {
-              clearTimeout(timeoutId)
-              timeoutId = null
-            }
-            userLoaded = true
-            setInitialLoad(false)
-            setUser(finalSession.user)
-            // Fetch profile in background
-            ;(async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', finalSession.user.id)
-                  .single()
-                
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch (err) {
-                console.warn('Failed to fetch user profile:', err)
-              }
-            })()
-          }
-          return
-        }
-
-        if (!userData) {
-          // Retry if no user found - might be a timing issue
-          if (retryCount < 2) {
-            console.warn('No user found, retrying...', { retryCount })
-            if (timeoutId) clearTimeout(timeoutId)
-            await new Promise(resolve => setTimeout(resolve, 500 + (retryCount * 300)))
-            return getUser(retryCount + 1)
-          }
-          
-          // Last attempt: try getSession one more time
-          const { data: { session: lastSession } } = await supabase.auth.getSession()
-          if (lastSession?.user && mounted) {
-            if (timeoutId) {
-              clearTimeout(timeoutId)
-              timeoutId = null
-            }
-            userLoaded = true
-            setInitialLoad(false)
-            setUser(lastSession.user)
-            // Fetch profile in background
-            ;(async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', lastSession.user.id)
-                  .single()
-                
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch (err) {
-                console.warn('Failed to fetch user profile:', err)
-              }
-            })()
-            return
-          }
-          
-          console.error('No user found after all retries')
-          // Only redirect if middleware hasn't already (middleware will handle it)
-          // Don't redirect here - let the middleware handle authentication
-          if (mounted) {
-            if (timeoutId) clearTimeout(timeoutId)
-            // Don't redirect - middleware will handle it if needed
-            // router.push('/auth/login')
-          }
-          return
-        }
-
-        if (mounted) {
-          if (timeoutId) {
-            clearTimeout(timeoutId)
-            timeoutId = null
-          }
-          userLoaded = true
-          setInitialLoad(false) // Mark initial load as complete
-          console.log('User loaded from getUser:', { 
-            userId: userData.id,
-            retryCount
-          })
-          setUser(userData)
-          // Fetch user profile data (don't await, load in background)
+          // Fetch user profile in background
           ;(async () => {
             try {
               const { data: profile } = await supabase
                 .from('users')
                 .select('full_name, avatar_url')
-                .eq('id', userData.id)
+                .eq('id', session.user.id)
                 .single()
               
               if (profile && mounted) {
                 setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
               }
-            } catch (err) {
-              console.warn('Failed to fetch user profile:', err)
-              // Non-critical, continue without profile
+            } catch {
+              // Non-critical error, continue without profile
             }
           })()
+          return
+        }
+
+        // If no session, try getUser as fallback
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (!mounted) return
+
+        if (user && !userError) {
+          setUser(user)
+          setInitialLoad(false)
+          
+          // Fetch user profile in background
+          ;(async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('full_name, avatar_url')
+                .eq('id', user.id)
+                .single()
+              
+              if (profile && mounted) {
+                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+              }
+            } catch {
+              // Non-critical error, continue without profile
+            }
+          })()
+        } else {
+          // No user found - middleware will handle redirect
+          setInitialLoad(false)
         }
       } catch (error) {
-        console.error('Error getting user:', error)
-        // Retry on network errors
-        if (retryCount < 3 && error instanceof Error && (
-          error.message.includes('fetch') || 
-          error.message.includes('network') ||
-          error.message.includes('Failed to fetch')
-        )) {
-          console.warn(`Network error, retrying (attempt ${retryCount + 1}/4)...`)
-          if (timeoutId) clearTimeout(timeoutId)
-          await new Promise(resolve => setTimeout(resolve, 500 + (retryCount * 300)))
-          return getUser(retryCount + 1)
-        }
-        
-        // Last attempt: try getSession
-        try {
-          const { data: { session: errorSession } } = await supabase.auth.getSession()
-          if (errorSession?.user && mounted) {
-            if (timeoutId) {
-              clearTimeout(timeoutId)
-              timeoutId = null
-            }
-            userLoaded = true
-            setInitialLoad(false)
-            setUser(errorSession.user)
-            // Fetch profile in background
-            ;(async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', errorSession.user.id)
-                  .single()
-                
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch (err) {
-                console.warn('Failed to fetch user profile:', err)
-              }
-            })()
-            return
-          }
-        } catch (sessionErr) {
-          console.error('Failed to get session in error handler:', sessionErr)
-        }
-        
-        // Don't redirect on error - let middleware handle authentication
-        // The middleware will redirect if user is truly not authenticated
+        console.error('Error initializing user:', error)
         if (mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
-          // Don't redirect - middleware handles it
-          // router.push('/auth/login')
+          setInitialLoad(false)
         }
       }
     }
 
-    getUser()
+    initializeUser()
 
-    // Listen for auth state changes - this fires when cookies sync
-    // This is crucial for handling page refreshes where middleware sets cookies
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
       
-      // Clear any existing timeout since we got an auth event
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-      
       if (event === 'SIGNED_OUT') {
-        userLoaded = false
+        setUser(null)
+        setUserProfile(null)
         router.push('/auth/login')
-      } else if (session?.user && mounted && !userLoaded) {
-        // Only update if we haven't loaded the user yet
-        // This prevents unnecessary updates after initial load
-        userLoaded = true
-        setInitialLoad(false)
-        setUser(session.user)
-        // Fetch user profile data
-        const { data: profile } = await supabase
-          .from('users')
-          .select('full_name, avatar_url')
-          .eq('id', session.user.id)
-          .single()
-        
-        if (profile && mounted) {
-          setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          setUser(session.user)
+          setInitialLoad(false)
+          
+          // Fetch user profile
+          const { data: profile } = await supabase
+            .from('users')
+            .select('full_name, avatar_url')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (profile && mounted) {
+            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+          }
         }
-      } else if (event === 'TOKEN_REFRESHED' && session?.user && mounted) {
-        // Update user on token refresh
-        setInitialLoad(false)
-        setUser(session.user)
       }
     })
 
     return () => {
       mounted = false
-      if (timeoutId) clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [router, supabase])

@@ -56,49 +56,14 @@ export async function middleware(request: NextRequest) {
       },
     })
     
-    // Refresh session - this updates cookies automatically
-    // Use getSession first to refresh, then getUser to verify
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    // If getSession fails or returns no session, try getUser
-    let user: any = session?.user || null
-    let error: any = sessionError || null
-    
-    if (!user) {
-      const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
-      user = userData || null
-      error = userError || null
-    }
+    // Get user - this will refresh the session if needed
+    const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user) {
-      // Log the error for debugging
-      if (error) {
-        console.error('Middleware auth error:', {
-          message: error.message,
-          status: error.status,
-          name: error.name,
-          hasSession: !!session,
-          pathname
-        })
-      }
-      // Only redirect if we're absolutely sure there's no valid session
-      // Give it one more try with getSession
-      if (!session) {
-        const { data: { session: retrySession } } = await supabase.auth.getSession()
-        if (!retrySession?.user) {
-          // Redirect to login with return URL
-          const loginUrl = new URL('/auth/login', request.url)
-          loginUrl.searchParams.set('redirectTo', pathname)
-          return NextResponse.redirect(loginUrl)
-        }
-        // Found a session on retry, continue
-        user = retrySession.user
-      } else {
-        // Redirect to login with return URL
-        const loginUrl = new URL('/auth/login', request.url)
-        loginUrl.searchParams.set('redirectTo', pathname)
-        return NextResponse.redirect(loginUrl)
-      }
+      // Redirect to login with return URL
+      const loginUrl = new URL('/auth/login', request.url)
+      loginUrl.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(loginUrl)
     }
     
     // For admin routes, check if user has admin role

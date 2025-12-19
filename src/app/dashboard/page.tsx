@@ -37,63 +37,56 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let mounted = true
-    let timeoutId: NodeJS.Timeout | null = null
 
     const getUser = async () => {
       try {
         setLoading(true)
         
-        // Set a timeout to prevent infinite loading
-        timeoutId = setTimeout(() => {
-          if (mounted) {
-            console.error('Dashboard load timeout')
-            setLoading(false)
-          }
-        }, 10000) // 10 second timeout
-
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        // Get session first - this reads from cookies set by middleware
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (!mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
           return
         }
 
-        if (userError || !user) {
-          if (mounted) {
-            if (timeoutId) clearTimeout(timeoutId)
-            router.push('/auth/login')
-            setLoading(false)
+        let user = session?.user || null
+
+        // If no session, try getUser as fallback
+        if (!user) {
+          const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
+          if (userError || !userData) {
+            if (mounted) {
+              router.push('/auth/login')
+              setLoading(false)
+            }
+            return
           }
-          return
+          user = userData
         }
 
-        if (timeoutId) clearTimeout(timeoutId)
-        setUser(user)
-        
-        // Fetch user profile and stats in parallel
-        const [profileResult] = await Promise.all([
-          supabase
-            .from('users')
-            .select('full_name, avatar_url')
-            .eq('id', user.id)
-            .single(),
-        ])
-        
-        if (mounted && profileResult.data) {
-          setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
-        }
-
-        // Fetch stats separately
         if (mounted) {
+          setUser(user)
+          
+          // Fetch user profile and stats in parallel
+          const [profileResult] = await Promise.all([
+            supabase
+              .from('users')
+              .select('full_name, avatar_url')
+              .eq('id', user.id)
+              .single(),
+          ])
+          
+          if (profileResult.data) {
+            setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
+          }
+
+          // Fetch stats
           await fetchStats(user.id)
-        } else {
-          setLoading(false)
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
         if (mounted) {
-          if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
         }
       }
@@ -101,9 +94,22 @@ export default function DashboardPage() {
 
     getUser()
 
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/login')
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          setUser(session.user)
+        }
+      }
+    })
+
     return () => {
       mounted = false
-      if (timeoutId) clearTimeout(timeoutId)
+      subscription.unsubscribe()
     }
   }, [router, supabase])
 

@@ -32,7 +32,22 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message)
-      } else if (data.user) {
+        setLoading(false)
+        return
+      }
+
+      if (data.session && data.user) {
+        // Wait a moment for session to be fully established
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Verify session is set
+        const { data: { session: verifySession } } = await supabase.auth.getSession()
+        if (!verifySession) {
+          setError('Failed to establish session. Please try again.')
+          setLoading(false)
+          return
+        }
+
         // Check onboarding status first
         const { data: userData } = await supabase
           .from('users')
@@ -47,7 +62,7 @@ export default function LoginPage() {
         }
 
         // Check if user has a plan
-        const { data: plan } = await (supabase as any)
+        const { data: plan } = await supabase
           .from('user_plans')
           .select('plan_type')
           .eq('user_id', data.user.id)
@@ -57,12 +72,12 @@ export default function LoginPage() {
           // No plan, redirect to plans page
           router.push('/plans?redirectTo=/dashboard')
         } else {
-          router.push('/dashboard')
+          // Force a page reload to ensure session is properly set
+          window.location.href = '/dashboard'
         }
       }
     } catch (err) {
       setError('An unexpected error occurred')
-    } finally {
       setLoading(false)
     }
   }

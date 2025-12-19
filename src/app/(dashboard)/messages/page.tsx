@@ -14,10 +14,17 @@ import {
   Loader2,
   Clock,
   Check,
-  CheckCheck
+  CheckCheck,
+  Phone,
+  Image as ImageIcon,
+  X,
+  Reply
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { MessageBubble } from '@/components/ui/message-bubble'
+import { TypingIndicator } from '@/components/ui/typing-indicator'
+import { formatTime } from '@/lib/utils'
 
 interface Conversation {
   id: string
@@ -28,6 +35,7 @@ interface Conversation {
     id: string
     full_name: string | null
     email: string
+    phone_number?: string | null
   }
   last_message: {
     content: string
@@ -44,10 +52,30 @@ interface Message {
   content: string
   is_read: boolean
   created_at: string
+  reply_to_message_id?: string | null
+  attachment_url?: string | null
+  attachment_type?: string | null
+  is_edited?: boolean
+  edited_at?: string | null
   sender: {
     full_name: string | null
     email: string
+    phone_number?: string | null
   }
+  reply_to?: {
+    id: string
+    content: string
+    sender: {
+      full_name: string | null
+      email: string
+    }
+  } | null
+  attachments?: Array<{
+    id: string
+    file_url: string
+    file_type: string
+    file_name: string
+  }>
 }
 
 export default function MessagesPage() {
@@ -59,6 +87,11 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isTyping, setIsTyping] = useState(false)
+  const [otherUserTyping, setOtherUserTyping] = useState(false)
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -82,12 +115,51 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation)
-      const interval = setInterval(() => {
-        fetchMessages(selectedConversation)
-      }, 3000) // Poll every 3 seconds
-      return () => clearInterval(interval)
+      
+      // Set up realtime subscription for messages
+      const channel = supabase
+        .channel(`messages:${selectedConversation}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${selectedConversation}`
+        }, () => {
+          fetchMessages(selectedConversation)
+          fetchConversations()
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${selectedConversation}`
+        }, () => {
+          fetchMessages(selectedConversation)
+        })
+        .subscribe()
+
+      // Set up typing indicator subscription
+      const typingChannel = supabase
+        .channel(`typing:${selectedConversation}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'typing_indicators',
+          filter: `conversation_id=eq.${selectedConversation}`
+        }, async (payload) => {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && payload.new && (payload.new as any).user_id !== user.id) {
+            setOtherUserTyping((payload.new as any).is_typing || false)
+          }
+        })
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+        supabase.removeChannel(typingChannel)
+      }
     }
-  }, [selectedConversation])
+  }, [selectedConversation, supabase])
 
   const fetchConversations = async () => {
     try {
@@ -101,8 +173,8 @@ export default function MessagesPage() {
         .from('conversations')
         .select(`
           *,
-          participant1:users!conversations_participant1_id_fkey(id, full_name, email),
-          participant2:users!conversations_participant2_id_fkey(id, full_name, email)
+          participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number),
+          participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number)
         `)
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .order('last_message_at', { ascending: false })
@@ -122,7 +194,8 @@ export default function MessagesPage() {
           other_user: {
             id: otherUser.id,
             full_name: otherUser.full_name,
-            email: otherUser.email
+            email: otherUser.email,
+            phone_number: otherUser.phone_number || null
           }
         }
       })
@@ -167,26 +240,65 @@ export default function MessagesPage() {
         .from('messages')
         .select(`
           *,
-          sender:users!messages_sender_id_fkey(id, full_name, email)
+          sender:users!messages_sender_id_fkey(id, full_name, email, phone_number),
+          attachments:message_attachments(id, file_url, file_type, file_name)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
 
       if (error) throw error
 
-      const formattedMessages = (data || []).map((msg: any) => ({
-        id: msg.id,
-        sender_id: msg.sender_id,
-        content: msg.content,
-        is_read: msg.is_read,
-        created_at: msg.created_at,
-        sender: {
-          full_name: msg.sender.full_name,
-          email: msg.sender.email
-        }
-      }))
+          // Fetch reply_to messages for messages that have replies
+          const messagesWithReplies = await Promise.all(
+            (data || []).map(async (msg: any) => {
+              let replyTo = null
+              if (msg.reply_to_message_id) {
+                const { data: replyData } = await supabase
+                  .from('messages')
+                  .select(`
+                    id,
+                    content,
+                    sender:users!messages_sender_id_fkey(id, full_name, email)
+                  `)
+                  .eq('id', msg.reply_to_message_id)
+                  .single()
+                
+                if (replyData && replyData.sender) {
+                  const sender = Array.isArray(replyData.sender) ? replyData.sender[0] : replyData.sender
+                  replyTo = {
+                    id: replyData.id,
+                    content: replyData.content,
+                    sender: {
+                      full_name: sender?.full_name || null,
+                      email: sender?.email || ''
+                    }
+                  }
+                }
+              }
 
-      setMessages(formattedMessages)
+          return {
+            id: msg.id,
+            sender_id: msg.sender_id,
+            content: msg.content,
+            is_read: msg.is_read,
+            created_at: msg.created_at,
+            reply_to_message_id: msg.reply_to_message_id,
+            attachment_url: msg.attachment_url,
+            attachment_type: msg.attachment_type,
+            is_edited: msg.is_edited || false,
+            edited_at: msg.edited_at,
+            sender: {
+              full_name: msg.sender.full_name,
+              email: msg.sender.email,
+              phone_number: msg.sender.phone_number || null
+            },
+            reply_to: replyTo,
+            attachments: msg.attachments || []
+          }
+        })
+      )
+
+      setMessages(messagesWithReplies)
 
       // Mark messages as read
       const { data: { user } } = await supabase.auth.getUser()
@@ -204,22 +316,55 @@ export default function MessagesPage() {
   }
 
   const sendMessage = async () => {
-    if (!messageContent.trim() || !selectedConversation) return
+    if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
 
     setSending(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { error } = await supabase
+      // Create message first
+      const messageData: any = {
+        conversation_id: selectedConversation,
+        sender_id: user.id,
+        content: messageContent.trim() || '',
+      }
+
+      if (replyingTo) {
+        messageData.reply_to_message_id = replyingTo.id
+      }
+
+      const { data: newMessage, error: msgError } = await supabase
         .from('messages')
-        .insert({
-          conversation_id: selectedConversation,
-          sender_id: user.id,
-          content: messageContent.trim(),
+        .insert(messageData)
+        .select()
+        .single()
+
+      if (msgError) throw msgError
+
+      // Upload image if selected
+      if (selectedImage && newMessage) {
+        const formData = new FormData()
+        formData.append('file', selectedImage)
+        formData.append('messageId', newMessage.id)
+
+        const uploadResponse = await fetch('/api/messages/attachments/upload', {
+          method: 'POST',
+          body: formData
         })
 
-      if (error) throw error
+        if (uploadResponse.ok) {
+          const { url } = await uploadResponse.json()
+          // Update message with attachment URL
+          await supabase
+            .from('messages')
+            .update({
+              attachment_url: url,
+              attachment_type: selectedImage.type
+            })
+            .eq('id', newMessage.id)
+        }
+      }
 
       // Update conversation last_message_at
       await supabase
@@ -227,7 +372,12 @@ export default function MessagesPage() {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', selectedConversation)
 
+      // Clear form
       setMessageContent('')
+      setReplyingTo(null)
+      setSelectedImage(null)
+      setImagePreview(null)
+
       fetchMessages(selectedConversation)
       fetchConversations()
     } catch (error) {
@@ -237,20 +387,27 @@ export default function MessagesPage() {
     }
   }
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-
-    if (minutes < 1) return 'Just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
+  const handleImageSelect = (file: File) => {
+    setSelectedImage(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
   }
+
+  const handleImageRemove = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+  }
+
+  const handleReply = (messageId: string) => {
+    const message = messages.find(m => m.id === messageId)
+    if (message) {
+      setReplyingTo(message)
+    }
+  }
+
 
   const filteredConversations = conversations.filter(conv =>
     conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -352,6 +509,12 @@ export default function MessagesPage() {
                         <div>
                           <div>{conv.other_user.full_name || conv.other_user.email.split('@')[0]}</div>
                           <div className="text-sm font-normal text-gray-500">{conv.other_user.email}</div>
+                          {conv.other_user.phone_number && (
+                            <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3" />
+                              {conv.other_user.phone_number}
+                            </div>
+                          )}
                         </div>
                       </CardTitle>
                     ) : null
@@ -366,40 +529,61 @@ export default function MessagesPage() {
                         <p className="text-sm text-gray-500 mt-2">Start the conversation!</p>
                       </div>
                     ) : (
-                      messages.map((message) => {
-                        const isOwn = message.sender_id === currentUserId
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div
-                              className={`max-w-[70%] rounded-lg p-3 ${
-                                isOwn
-                                  ? 'bg-primary text-white'
-                                  : 'bg-gray-100 text-gray-900'
-                              }`}
-                            >
-                              <p className="text-sm">{message.content}</p>
-                              <div className={`flex items-center gap-1 mt-1 text-xs ${
-                                isOwn ? 'text-white/70' : 'text-gray-500'
-                              }`}>
-                                <span>{formatTime(message.created_at)}</span>
-                                {isOwn && (
-                                  message.is_read ? (
-                                    <CheckCheck className="h-3 w-3" />
-                                  ) : (
-                                    <Check className="h-3 w-3" />
-                                  )
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })
+                      <>
+                        {messages.map((message) => {
+                          const isOwn = message.sender_id === currentUserId
+                          return (
+                            <MessageBubble
+                              key={message.id}
+                              message={message}
+                              isOwn={isOwn}
+                              onReply={handleReply}
+                              formatTime={formatTime}
+                            />
+                          )
+                        })}
+                        {otherUserTyping && <TypingIndicator />}
+                      </>
                     )}
                   </div>
-                  <div className="border-t p-4 flex-shrink-0">
+                  <div className="border-t p-4 flex-shrink-0 space-y-3">
+                    {/* Reply preview */}
+                    {replyingTo && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-blue-900 mb-1">
+                            Replying to {replyingTo.sender.full_name || replyingTo.sender.email.split('@')[0]}
+                          </p>
+                          <p className="text-sm text-blue-800 truncate">{replyingTo.content}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(null)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Image preview */}
+                    {imagePreview && (
+                      <div className="relative">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="max-w-xs max-h-48 rounded-lg object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleImageRemove}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
                     <form
                       onSubmit={(e) => {
                         e.preventDefault()
@@ -407,13 +591,65 @@ export default function MessagesPage() {
                       }}
                       className="flex gap-2"
                     >
+                      <div className="flex-1 flex gap-2">
                       <Input
                         value={messageContent}
-                        onChange={(e) => setMessageContent(e.target.value)}
-                        placeholder="Type a message..."
+                        onChange={async (e) => {
+                          setMessageContent(e.target.value)
+                          
+                          // Update typing indicator
+                          if (selectedConversation && e.target.value.length > 0) {
+                            setIsTyping(true)
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (user) {
+                              await supabase
+                                .from('typing_indicators')
+                                .upsert({
+                                  conversation_id: selectedConversation,
+                                  user_id: user.id,
+                                  is_typing: true,
+                                  updated_at: new Date().toISOString()
+                                })
+                            }
+                          } else {
+                            setIsTyping(false)
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (user && selectedConversation) {
+                              await supabase
+                                .from('typing_indicators')
+                                .upsert({
+                                  conversation_id: selectedConversation,
+                                  user_id: user.id,
+                                  is_typing: false,
+                                  updated_at: new Date().toISOString()
+                                })
+                            }
+                          }
+                        }}
+                        placeholder={replyingTo ? "Type your reply..." : "Type a message..."}
                         className="flex-1"
                       />
-                      <Button type="submit" disabled={sending || !messageContent.trim()}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => document.getElementById('image-upload-input')?.click()}
+                          disabled={sending}
+                        >
+                          <ImageIcon className="h-4 w-4" />
+                        </Button>
+                        <input
+                          id="image-upload-input"
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleImageSelect(file)
+                          }}
+                          className="hidden"
+                        />
+                      </div>
+                      <Button type="submit" disabled={sending || (!messageContent.trim() && !selectedImage)}>
                         {sending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (

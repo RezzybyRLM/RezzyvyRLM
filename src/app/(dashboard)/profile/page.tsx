@@ -21,7 +21,8 @@ import {
   Trash2,
   Shield,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Phone
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -49,6 +50,7 @@ export default function ProfilePage() {
     full_name: '',
     email: '',
     location: '',
+    phone_number: '',
     preferences: {},
   })
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
@@ -142,6 +144,7 @@ export default function ProfilePage() {
               full_name: profileResult.data.full_name || '',
               email: profileResult.data.email || user.email || '',
               location: profileResult.data.location || '',
+              phone_number: profileResult.data.phone_number || '',
               preferences: profileResult.data.preferences || {},
             })
           } else {
@@ -259,6 +262,7 @@ export default function ProfilePage() {
           full_name: profile.full_name,
           email: profile.email,
           location: profile.location,
+          phone_number: profile.phone_number,
           preferences: profile.preferences,
           updated_at: new Date().toISOString(),
         })
@@ -390,6 +394,24 @@ export default function ProfilePage() {
                         className="!pl-12 !pr-4"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
+                      <Input
+                        type="tel"
+                        value={profile.phone_number}
+                        onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
+                        placeholder="+1 (555) 123-4567"
+                        disabled={!isEditing}
+                        className="!pl-12 !pr-4"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">For contact information only</p>
                   </div>
                 </div>
 

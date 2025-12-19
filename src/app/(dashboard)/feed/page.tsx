@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PostCard } from '@/components/ui/post-card'
+import { formatTime } from '@/lib/utils'
 
 interface Post {
   id: string
@@ -59,14 +61,50 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [commentContent, setCommentContent] = useState<Record<string, string>>({})
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editingPost, setEditingPost] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
+    }
+    getCurrentUser()
     fetchPosts()
-    const interval = setInterval(fetchPosts, 10000) // Refresh every 10 seconds
-    return () => clearInterval(interval)
-  }, [])
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('social_posts_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'social_posts'
+      }, () => {
+        fetchPosts()
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'post_likes'
+      }, () => {
+        fetchPosts()
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'post_comments'
+      }, () => {
+        fetchPosts()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
 
   const fetchPosts = async () => {
     try {
@@ -270,19 +308,65 @@ export default function FeedPage() {
     }
   }
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
+  const handleShare = async (post: Post) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Post by ${post.user.full_name || post.user.email.split('@')[0]}`,
+          text: post.content,
+          url: window.location.href
+        })
+      } catch (err) {
+        // User cancelled or error occurred
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(`${post.content}\n\n${window.location.href}`)
+      alert('Post link copied to clipboard!')
+    }
+  }
 
-    if (minutes < 1) return 'Just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
+  const handleEdit = (post: Post) => {
+    setEditingPost(post.id)
+    setEditContent(post.content)
+  }
+
+  const handleSaveEdit = async (postId: string) => {
+    try {
+      const { error } = await supabase
+        .from('social_posts')
+        .update({
+          content: editContent.trim(),
+          is_edited: true,
+          edited_at: new Date().toISOString()
+        })
+        .eq('id', postId)
+
+      if (error) throw error
+
+      setEditingPost(null)
+      setEditContent('')
+      fetchPosts()
+    } catch (error) {
+      console.error('Error editing post:', error)
+    }
+  }
+
+  const handleDelete = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) return
+
+    try {
+      const { error } = await supabase
+        .from('social_posts')
+        .delete()
+        .eq('id', postId)
+
+      if (error) throw error
+
+      fetchPosts()
+    } catch (error) {
+      console.error('Error deleting post:', error)
+    }
   }
 
   if (loading) {
@@ -363,20 +447,69 @@ export default function FeedPage() {
               </CardContent>
             </Card>
           ) : (
-            posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onLike={() => toggleLike(post.id)}
-                onComment={() => toggleComments(post.id)}
-                onAddComment={() => addComment(post.id)}
-                commentContent={commentContent[post.id] || ''}
-                onCommentChange={(content) => setCommentContent(prev => ({ ...prev, [post.id]: content }))}
-                showComments={expandedComments.has(post.id)}
-                fetchComments={fetchComments}
-                formatTime={formatTime}
-              />
-            ))
+            posts.map((post) => {
+              if (editingPost === post.id) {
+                return (
+                  <Card key={post.id} className="card-professional">
+                    <CardContent className="p-6">
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                        rows={4}
+                      />
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          onClick={() => handleSaveEdit(post.id)}
+                          disabled={!editContent.trim()}
+                          className="btn-primary"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingPost(null)
+                            setEditContent('')
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              return (
+                <div key={post.id}>
+                  <PostCard
+                    post={post}
+                    currentUserId={currentUserId || ''}
+                    onLike={() => toggleLike(post.id)}
+                    onComment={() => toggleComments(post.id)}
+                    onShare={() => handleShare(post)}
+                    onEdit={() => handleEdit(post)}
+                    onDelete={() => handleDelete(post.id)}
+                    formatTime={formatTime}
+                  />
+                  {expandedComments.has(post.id) && (
+                    <Card className="card-professional mt-2">
+                      <CardContent className="p-4">
+                        <PostComments
+                          postId={post.id}
+                          showComments={true}
+                          commentContent={commentContent[post.id] || ''}
+                          onCommentChange={(content) => setCommentContent(prev => ({ ...prev, [post.id]: content }))}
+                          onAddComment={() => addComment(post.id)}
+                          formatTime={formatTime}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
       </div>
@@ -384,150 +517,110 @@ export default function FeedPage() {
   )
 }
 
-function PostCard({
-  post,
-  onLike,
-  onComment,
-  onAddComment,
+// Comments section component
+function PostComments({
+  postId,
+  showComments,
   commentContent,
   onCommentChange,
-  showComments,
-  fetchComments,
+  onAddComment,
   formatTime
 }: {
-  post: Post
-  onLike: () => void
-  onComment: () => void
-  onAddComment: () => void
+  postId: string
+  showComments: boolean
   commentContent: string
   onCommentChange: (content: string) => void
-  showComments: boolean
-  fetchComments: (postId: string) => Promise<Comment[]>
+  onAddComment: () => void
   formatTime: (date: string) => string
 }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
+  const supabase = createClient()
 
   useEffect(() => {
     if (showComments) {
       setLoadingComments(true)
-      fetchComments(post.id).then(data => {
-        setComments(data)
-        setLoadingComments(false)
-      })
+      const fetchComments = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('post_comments')
+            .select(`
+              *,
+              user:users!post_comments_user_id_fkey(id, full_name, email)
+            `)
+            .eq('post_id', postId)
+            .order('created_at', { ascending: true })
+
+          if (error) throw error
+
+          const formatted = (data || []).map((comment: any) => ({
+            id: comment.id,
+            user_id: comment.user_id,
+            content: comment.content,
+            created_at: comment.created_at,
+            user: {
+              full_name: comment.user.full_name,
+              email: comment.user.email
+            }
+          }))
+
+          setComments(formatted)
+        } catch (error) {
+          console.error('Error fetching comments:', error)
+        } finally {
+          setLoadingComments(false)
+        }
+      }
+      fetchComments()
     }
-  }, [showComments, post.id, fetchComments])
+  }, [showComments, postId, supabase])
+
+  if (!showComments) return null
 
   return (
-    <Card className="card-professional">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">
-                {post.user.full_name || post.user.email.split('@')[0]}
-              </h3>
-              <p className="text-sm text-gray-500">{formatTime(post.created_at)}</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
+    <div className="pt-4 border-t space-y-3">
+      {loadingComments ? (
+        <div className="text-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {post.job && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Briefcase className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-900">Job Opportunity</span>
+      ) : (
+        <>
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex items-start gap-2">
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                <User className="h-4 w-4 text-gray-600" />
               </div>
-              <Link href={`/jobs/${post.job_id}`} className="hover:underline">
-                <p className="text-sm text-blue-800 font-medium">{post.job.title}</p>
-                <p className="text-xs text-blue-600">{post.job.company_name}</p>
-              </Link>
+              <div className="flex-1">
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-sm font-medium text-gray-900">
+                    {comment.user.full_name || comment.user.email.split('@')[0]}
+                  </p>
+                  <p className="text-sm text-gray-700">{comment.content}</p>
+                  <p className="text-xs text-gray-500 mt-1">{formatTime(comment.created_at)}</p>
+                </div>
+              </div>
             </div>
-          )}
-          <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
-          {post.image_url && (
-            <img src={post.image_url} alt="Post" className="w-full rounded-lg" />
-          )}
-          <div className="flex items-center gap-4 pt-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLike}
-              className={post.is_liked ? 'text-red-600' : 'text-gray-600'}
-            >
-              <Heart className={`h-4 w-4 mr-1 ${post.is_liked ? 'fill-current' : ''}`} />
-              {post.likes_count}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onComment}
-              className="text-gray-600"
-            >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              {post.comments_count}
-            </Button>
-            <Button variant="ghost" size="sm" className="text-gray-600">
-              <Share2 className="h-4 w-4 mr-1" />
-              Share
+          ))}
+          <div className="flex gap-2">
+            <Input
+              value={commentContent}
+              onChange={(e) => onCommentChange(e.target.value)}
+              placeholder="Write a comment..."
+              className="flex-1"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  onAddComment()
+                }
+              }}
+            />
+            <Button onClick={onAddComment} disabled={!commentContent.trim()}>
+              <Send className="h-4 w-4" />
             </Button>
           </div>
-          {showComments && (
-            <div className="pt-4 border-t space-y-3">
-              {loadingComments ? (
-                <div className="text-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                </div>
-              ) : (
-                <>
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                        <User className="h-4 w-4 text-gray-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-50 rounded-lg p-2">
-                          <p className="text-sm font-medium text-gray-900">
-                            {comment.user.full_name || comment.user.email.split('@')[0]}
-                          </p>
-                          <p className="text-sm text-gray-700">{comment.content}</p>
-                          <p className="text-xs text-gray-500 mt-1">{formatTime(comment.created_at)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      value={commentContent}
-                      onChange={(e) => onCommentChange(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="flex-1"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          onAddComment()
-                        }
-                      }}
-                    />
-                    <Button onClick={onAddComment} disabled={!commentContent.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </>
+      )}
+    </div>
   )
 }
 

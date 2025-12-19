@@ -256,14 +256,53 @@ function JobsPageContent() {
     return true
   })
 
-  // Load jobs on component mount if search params exist
+  // Load premium jobs on component mount
   useEffect(() => {
+    const loadPremiumJobs = async () => {
+      try {
+        const { data: dbJobs, error: dbError } = await supabase
+          .from('jobs')
+          .select(`
+            *,
+            companies (
+              name
+            )
+          `)
+          .gte('expires_at', new Date().toISOString())
+          .order('is_featured', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (!dbError && dbJobs) {
+          const premiumJobs: TransformedJob[] = dbJobs.map((job: any) => ({
+            id: job.id,
+            title: job.title,
+            company_name: job.companies?.name || 'Unknown Company',
+            location: job.location,
+            description: job.description || '',
+            apply_url: `/jobs/${job.id}`,
+            salary_range: job.salary_range || '',
+            job_type: job.job_type || 'full-time',
+            source: 'premium' as const,
+            scraped_at: job.created_at || new Date().toISOString(),
+          }))
+          setJobs(premiumJobs)
+        }
+      } catch (err) {
+        console.error('Error loading premium jobs:', err)
+      }
+    }
+
     const q = searchParams.get('q')
     const loc = searchParams.get('location')
     
     if (q) {
       fetchJobs(q, loc || undefined)
+    } else {
+      // Load premium jobs if no search query
+      loadPremiumJobs()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   const handleJobsFiltered = (filteredJobs: JobLocation[]) => {
@@ -439,7 +478,7 @@ function JobsPageContent() {
             />
           )}
 
-          {!loading && !error && !searchQuery && (
+          {!loading && !error && jobs.length === 0 && !searchQuery && (
             <Card className="card-professional">
               <CardContent className="p-6 text-center">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">

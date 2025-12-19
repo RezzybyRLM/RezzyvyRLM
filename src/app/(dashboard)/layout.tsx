@@ -17,12 +17,14 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Briefcase
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
+  { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Resume Manager', href: '/resume-manager', icon: FileText },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
   { name: 'Job Alerts', href: '/job-alerts', icon: Bell },

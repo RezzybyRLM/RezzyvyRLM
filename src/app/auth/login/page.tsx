@@ -38,10 +38,11 @@ export default function LoginPage() {
       }
 
       if (data?.session) {
-        // Session is automatically stored in cookies by the client
-        // Redirect to the intended page
-        router.push(redirectTo)
-        router.refresh()
+        // Wait a moment for cookies to be set, then redirect
+        // Using window.location.href forces a full page reload so middleware can read cookies
+        setTimeout(() => {
+          window.location.href = redirectTo
+        }, 100)
       } else {
         setError('Failed to create session. Please try again.')
         setLoading(false)

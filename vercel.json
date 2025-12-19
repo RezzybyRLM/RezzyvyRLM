@@ -1,7 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    },
+    "src/app/auth/callback/route.ts": {
       "maxDuration": 30
     }
   },

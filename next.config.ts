@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Ensure Next.js uses Edge Runtime by default
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
   // Disable turbopack for production builds (Vercel compatibility)
   turbopack: {
     rules: {

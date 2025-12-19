@@ -24,6 +24,7 @@ export async function middleware(request: NextRequest) {
             request.cookies.set(name, value)
           })
           
+          // Create new response with updated cookies
           response = NextResponse.next({
             request: {
               headers: request.headers,
@@ -39,6 +40,7 @@ export async function middleware(request: NextRequest) {
               httpOnly: false, // Required for client-side access
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
+              path: '/',
             })
           })
         },

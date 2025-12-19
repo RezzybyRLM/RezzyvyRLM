@@ -55,9 +55,11 @@ export default function RegisterPage() {
 
       if (data?.session) {
         // User is automatically signed in after registration
-        // Session is automatically stored in cookies
-        router.push('/dashboard')
-        router.refresh()
+        // Wait a moment for cookies to be set, then redirect
+        // Using window.location.href forces a full page reload so middleware can read cookies
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 100)
       } else if (data?.user) {
         // Email confirmation required
         router.push('/auth/login?message=Check your email to confirm your account')

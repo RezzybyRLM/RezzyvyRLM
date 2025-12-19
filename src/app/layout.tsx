@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import { ConditionalLayout } from '@/components/layout/conditional-layout'
 import { Analytics } from '@vercel/analytics/react'
 import { createClient } from '@/lib/supabase/server'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -60,6 +61,43 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        {/* Suppress CORS errors from third-party scripts */}
+        <Script
+          id="suppress-cors-errors"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Suppress CORS errors from third-party scripts (like feedback.js)
+              const originalFetch = window.fetch;
+              window.fetch = function(...args) {
+                return originalFetch.apply(this, args).catch(error => {
+                  // Silently handle CORS errors from third-party scripts
+                  if (error.message && error.message.includes('Failed to fetch')) {
+                    console.debug('Suppressed CORS error from third-party script');
+                    return Promise.reject(error);
+                  }
+                  throw error;
+                });
+              };
+              
+              // Suppress unhandled promise rejections from third-party scripts
+              window.addEventListener('unhandledrejection', function(event) {
+                const error = event.reason;
+                if (error && (
+                  error.message?.includes('Failed to fetch') ||
+                  error.message?.includes('ERR_ABORTED') ||
+                  error.message?.includes('CORS') ||
+                  error.stack?.includes('feedback.js')
+                )) {
+                  console.debug('Suppressed unhandled rejection from third-party script:', error.message);
+                  event.preventDefault();
+                }
+              });
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <ConditionalLayout user={user}>
           {children}

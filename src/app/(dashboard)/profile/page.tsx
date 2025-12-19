@@ -346,14 +346,14 @@ export default function ProfilePage() {
                       Full Name
                     </label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                       <Input
                         type="text"
                         value={profile.full_name}
                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                         placeholder="Enter your full name"
                         disabled={!isEditing}
-                        className="input-professional pl-12 pr-4"
+                        className="!pl-12 !pr-4"
                       />
                     </div>
                   </div>
@@ -363,14 +363,14 @@ export default function ProfilePage() {
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                       <Input
                         type="email"
                         value={profile.email}
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                         placeholder="Enter your email"
                         disabled={!isEditing}
-                        className="input-professional pl-12 pr-4"
+                        className="!pl-12 !pr-4"
                       />
                     </div>
                   </div>
@@ -380,14 +380,14 @@ export default function ProfilePage() {
                       Location
                     </label>
                     <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                       <Input
                         type="text"
                         value={profile.location}
                         onChange={(e) => setProfile({ ...profile, location: e.target.value })}
                         placeholder="City, State or Remote"
                         disabled={!isEditing}
-                        className="input-professional pl-12 pr-4"
+                        className="!pl-12 !pr-4"
                       />
                     </div>
                   </div>

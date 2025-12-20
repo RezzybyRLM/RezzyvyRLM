@@ -309,18 +309,19 @@ export default function DashboardLayout({
               const Icon = item.icon
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
-                <Link
+                <div
                   key={item.name}
-                  href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${isActive
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
+                  onClick={() => router.push(item.href)}
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
                   <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
                   {!sidebarCollapsed && <span className="truncate whitespace-nowrap">{item.name}</span>}
-                </Link>
+                </div>
               )
             })}
           </nav>

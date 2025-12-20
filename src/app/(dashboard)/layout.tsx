@@ -60,6 +60,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
 
   // Persist sidebar state
   useEffect(() => {
@@ -184,6 +185,22 @@ export default function DashboardLayout({
       subscription.unsubscribe()
     }
   }, [router, supabase])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+
+    if (profileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [profileMenuOpen])
 
   const handleSignOut = async () => {
     try {
@@ -349,50 +366,68 @@ export default function DashboardLayout({
           <div className="flex-1" />
           <div className="flex items-center gap-4">
             {/* Profile dropdown */}
-            <div className="relative">
+            <div className="relative z-50" ref={profileDropdownRef}>
               <button
-                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setProfileMenuOpen(!profileMenuOpen)
+                }}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors relative z-50"
               >
                 {userProfile?.avatar_url ? (
                   <img
                     src={userProfile.avatar_url}
                     alt={userProfile.full_name || 'User'}
-                    className="w-8 h-8 rounded-full object-cover"
+                    className="w-8 h-8 rounded-full object-cover pointer-events-none"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center pointer-events-none">
                     <User className="h-5 w-5 text-primary" />
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-700 hidden xl:block">
+                <span className="text-sm font-medium text-gray-700 hidden xl:block pointer-events-none">
                   {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
                 </span>
-                <ChevronDown className="h-4 w-4 text-gray-500 hidden xl:block" />
+                <ChevronDown className="h-4 w-4 text-gray-500 hidden xl:block pointer-events-none" />
               </button>
 
               {/* Dropdown menu */}
               {profileMenuOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setProfileMenuOpen(false)}
+                    className="fixed inset-0 z-40"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setProfileMenuOpen(false)
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                    }}
                   />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                  <div 
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Link
                       href="/profile"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setProfileMenuOpen(false)
+                      }}
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                       <User className="h-4 w-4 mr-2" />
                       Profile Settings
                     </Link>
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
                         handleSignOut()
                         setProfileMenuOpen(false)
                       }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
                     >
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign Out

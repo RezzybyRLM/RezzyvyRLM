@@ -39,9 +39,11 @@ export default function LoginPage() {
 
       if (data?.user) {
         // Session is automatically stored by Supabase
+        // Wait a brief moment to ensure session cookies are set
+        await new Promise(resolve => setTimeout(resolve, 100))
         // Use router.push for client-side navigation
         router.push(redirectTo)
-        router.refresh()
+        // Don't call router.refresh() as it can cause infinite loading
       } else {
         setError('Failed to create session. Please try again.')
         setLoading(false)

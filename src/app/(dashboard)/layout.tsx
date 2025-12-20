@@ -68,11 +68,11 @@ export default function DashboardLayout({
     }
   }, [sidebarCollapsed])
 
-  // Timeout to show page after initial load period (even if user state not loaded)
+  // Timeout to show page after initial load period - trust middleware if we're here
   useEffect(() => {
     const timeout = setTimeout(() => {
       setInitialLoad(false)
-    }, 3000) // Show page after 3 seconds max, even if user state not loaded
+    }, 1000) // Reduced to 1 second - middleware already verified auth
 
     return () => clearTimeout(timeout)
   }, [])
@@ -92,22 +92,22 @@ export default function DashboardLayout({
           setUser(session.user)
           setInitialLoad(false)
 
-            // Fetch user profile in background
-            ; (async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', session.user.id)
-                  .single()
+          // Fetch user profile in background
+          ;(async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single()
 
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch {
-                // Non-critical error, continue without profile
+              if (profile && mounted) {
+                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
               }
-            })()
+            } catch {
+              // Non-critical error, continue without profile
+            }
+          })()
           return
         }
 
@@ -120,28 +120,30 @@ export default function DashboardLayout({
           setUser(user)
           setInitialLoad(false)
 
-            // Fetch user profile in background
-            ; (async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', user.id)
-                  .single()
+          // Fetch user profile in background
+          ;(async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('full_name, avatar_url')
+                .eq('id', user.id)
+                .single()
 
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch {
-                // Non-critical error, continue without profile
+              if (profile && mounted) {
+                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
               }
-            })()
+            } catch {
+              // Non-critical error, continue without profile
+            }
+          })()
         } else {
-          // No user found - middleware will handle redirect
+          // No user found - but middleware already verified, so show page anyway
+          // Middleware will handle redirect if truly unauthenticated
           setInitialLoad(false)
         }
       } catch (error) {
         console.error('Error initializing user:', error)
+        // Even on error, show the page - middleware already verified auth
         if (mounted) {
           setInitialLoad(false)
         }
@@ -194,10 +196,10 @@ export default function DashboardLayout({
     }
   }
 
-  // Show loading only during initial load
-  // After initial load, trust middleware - if we're here, user is authenticated
-  // The middleware already verified authentication, so show the page even if user state hasn't loaded yet
-  if (initialLoad && !user) {
+  // Show loading only during very brief initial load
+  // Trust middleware - if we're here, user is authenticated
+  // The middleware already verified authentication, so show the page quickly
+  if (initialLoad) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

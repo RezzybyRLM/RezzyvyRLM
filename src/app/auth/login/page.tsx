@@ -39,11 +39,22 @@ export default function LoginPage() {
 
       if (data?.user) {
         // Session is automatically stored by Supabase
-        // Wait a brief moment to ensure session cookies are set
-        await new Promise(resolve => setTimeout(resolve, 100))
-        // Use router.push for client-side navigation
-        router.push(redirectTo)
-        // Don't call router.refresh() as it can cause infinite loading
+        // Wait for session to be confirmed before redirecting
+        let sessionConfirmed = false
+        let attempts = 0
+        const maxAttempts = 10
+        
+        while (!sessionConfirmed && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            sessionConfirmed = true
+          }
+          attempts++
+        }
+        
+        // Use window.location for full page reload to ensure cookies are read
+        window.location.href = redirectTo
       } else {
         setError('Failed to create session. Please try again.')
         setLoading(false)

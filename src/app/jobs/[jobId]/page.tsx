@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import { ProfileSelector } from '@/components/ui/profile-selector'
 
 export default function JobDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const jobId = params.jobId as string
   const [job, setJob] = useState<TransformedJob | null>(null)
   const [loading, setLoading] = useState(true)
@@ -224,10 +225,16 @@ export default function JobDetailPage() {
                       size="icon"
                       onClick={handleBookmark}
                       className={isBookmarked ? 'text-accent' : 'text-gray-400'}
+                      type="button"
                     >
                       <Bookmark className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleShare}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handleShare}
+                      type="button"
+                    >
                       <Share2 className="h-5 w-5" />
                     </Button>
                   </div>
@@ -278,7 +285,12 @@ export default function JobDetailPage() {
                     Applied
                   </Button>
                 ) : (
-                  <Button onClick={handleApply} size="lg" className="w-full md:w-auto">
+                  <Button 
+                    onClick={handleApply} 
+                    size="lg" 
+                    className="w-full md:w-auto"
+                    type="button"
+                  >
                     {job.source === 'indeed' ? (
                       <>
                         Apply on Indeed
@@ -426,7 +438,12 @@ export default function JobDetailPage() {
                   Which of your resumes fits this job best? Our AI can analyze your resumes 
                   and match them to this job description.
                 </p>
-                <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                <Button 
+                  variant="outline" 
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  onClick={() => router.push('/resume-optimizer')}
+                  type="button"
+                >
                   Analyze My Resumes
                 </Button>
               </CardContent>
@@ -468,7 +485,12 @@ export default function JobDetailPage() {
                     </div>
                   )}
                 </div>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
+                  type="button"
+                >
                   View Company Profile
                 </Button>
               </CardContent>
@@ -497,7 +519,12 @@ export default function JobDetailPage() {
                     <p className="text-sm text-gray-500">New York, NY</p>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full mt-4">
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={() => router.push(`/jobs?q=${encodeURIComponent(job.title)}`)}
+                  type="button"
+                >
                   View All Similar Jobs
                 </Button>
               </CardContent>
@@ -512,7 +539,12 @@ export default function JobDetailPage() {
                 <p className="text-gray-600 mb-4">
                   Get notified when similar jobs are posted.
                 </p>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => router.push('/job-alerts')}
+                  type="button"
+                >
                   Create Job Alert
                 </Button>
               </CardContent>

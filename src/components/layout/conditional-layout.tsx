@@ -17,14 +17,15 @@ export function ConditionalLayout({ children, user }: { children: React.ReactNod
     '/job-alerts',
     '/interview-pro',
     '/employer',
-    '/jobs',
     '/feed',
     '/messages',
     '/applications',
     '/profiles',
   ]
   
-  const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route))
+  // Check if it's exactly /jobs (listing page) but not /jobs/[jobId] (detail page)
+  const isJobsListingPage = pathname === '/jobs' || pathname === '/jobs/'
+  const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route)) || isJobsListingPage
   
   if (isDashboardRoute) {
     // Return only children for dashboard routes

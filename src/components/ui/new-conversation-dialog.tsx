@@ -113,8 +113,8 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <Card className="w-full max-w-[500px] max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose}>
+      <Card className="w-full max-w-[500px] max-h-[90vh] overflow-y-auto bg-white" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold">Start New Conversation</CardTitle>

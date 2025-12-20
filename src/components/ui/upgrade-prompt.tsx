@@ -53,8 +53,8 @@ export function UpgradePrompt({
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose}>
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="relative">
           <button
             onClick={onClose}

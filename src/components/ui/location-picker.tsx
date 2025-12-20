@@ -174,7 +174,7 @@ export default function LocationPicker({
 
       {/* Suggestions Dropdown */}
       {isOpen && suggestions.length > 0 && (
-        <Card className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto">
+        <Card className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto bg-white">
           <CardContent className="p-0">
             <div className="py-1">
               {suggestions.map((suggestion, index) => (

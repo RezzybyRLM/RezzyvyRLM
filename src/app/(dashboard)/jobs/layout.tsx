@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { PageLoader } from '@/components/ui/page-loader'
 import {
   User,
@@ -14,7 +13,6 @@ import {
   Bookmark,
   Bell,
   Mic,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -39,9 +37,9 @@ const navigation = [
 ]
 
 // Store sidebar state in localStorage for persistence
-const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
+const JOBS_SIDEBAR_STATE_KEY = 'jobs-sidebar-collapsed'
 
-export default function DashboardLayout({
+export default function JobsLayout({
   children,
 }: {
   children: React.ReactNode
@@ -51,37 +49,21 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(SIDEBAR_STATE_KEY) === 'true'
+      return localStorage.getItem(JOBS_SIDEBAR_STATE_KEY) === 'true'
     }
     return false
   })
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [initialLoad, setInitialLoad] = useState(true) // Track if we're still doing initial load
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
 
-  // Skip rendering dashboard layout for jobs routes - they have their own layout
-  const isJobsRoute = pathname === '/jobs' || pathname.startsWith('/jobs/')
-  if (isJobsRoute) {
-    return <>{children}</>
-  }
-
   // Persist sidebar state
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed))
+      localStorage.setItem(JOBS_SIDEBAR_STATE_KEY, String(sidebarCollapsed))
     }
   }, [sidebarCollapsed])
-
-  // Timeout to show page after initial load period - trust middleware if we're here
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setInitialLoad(false)
-    }, 1000) // Reduced to 1 second - middleware already verified auth
-
-    return () => clearTimeout(timeout)
-  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -96,7 +78,6 @@ export default function DashboardLayout({
 
         if (session?.user && !sessionError) {
           setUser(session.user)
-          setInitialLoad(false)
 
           // Fetch user profile in background
           ;(async () => {
@@ -124,7 +105,6 @@ export default function DashboardLayout({
 
         if (user && !userError) {
           setUser(user)
-          setInitialLoad(false)
 
           // Fetch user profile in background
           ;(async () => {
@@ -142,17 +122,9 @@ export default function DashboardLayout({
               // Non-critical error, continue without profile
             }
           })()
-        } else {
-          // No user found - but middleware already verified, so show page anyway
-          // Middleware will handle redirect if truly unauthenticated
-          setInitialLoad(false)
         }
       } catch (error) {
         console.error('Error initializing user:', error)
-        // Even on error, show the page - middleware already verified auth
-        if (mounted) {
-          setInitialLoad(false)
-        }
       }
     }
 
@@ -169,7 +141,6 @@ export default function DashboardLayout({
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setUser(session.user)
-          setInitialLoad(false)
 
           // Fetch user profile
           const { data: profile } = await supabase
@@ -202,20 +173,6 @@ export default function DashboardLayout({
     }
   }
 
-  // Show loading only during very brief initial load
-  // Trust middleware - if we're here, user is authenticated
-  // The middleware already verified authentication, so show the page quickly
-  if (initialLoad) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
@@ -244,10 +201,11 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${isActive
-                    ? 'bg-primary text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon className="mr-3 h-5 w-5 flex-shrink-0 pointer-events-none" />
@@ -271,8 +229,9 @@ export default function DashboardLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
-        }`}>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${
+        sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
+      }`}>
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">
           <div className="flex h-16 items-center px-4 justify-between relative">
             {!sidebarCollapsed ? (
@@ -462,3 +421,4 @@ export default function DashboardLayout({
     </div>
   )
 }
+

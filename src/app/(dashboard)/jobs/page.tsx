@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { JobCard } from '@/components/ui/job-card'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
-import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { Search, MapPin, Settings, Loader2, AlertCircle } from 'lucide-react'
 import { TransformedJob } from '@/lib/types/indeed-job'
 import GeoJobManager from '@/components/ui/geo-job-manager'
@@ -18,6 +18,7 @@ import { canPerformAction } from '@/lib/plans/usage-tracking'
 
 function JobsPageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [jobs, setJobs] = useState<TransformedJob[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -362,7 +363,7 @@ function JobsPageContent() {
                   </div>
                 </div>
               </div>
-              <Button type="submit" disabled={loading} className="btn-primary w-full md:w-auto">
+              <Button type="submit" disabled={loading} className="btn-primary w-full md:w-auto" onClick={(e) => e.stopPropagation()}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -525,3 +526,4 @@ export default function JobsPage() {
     </Suspense>
   )
 }
+

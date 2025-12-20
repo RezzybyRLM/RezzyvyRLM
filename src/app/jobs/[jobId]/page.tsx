@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle, Mail, Phone, Briefcase, GraduationCap, FileText, Calendar, Users } from 'lucide-react'
+import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle, Mail, Phone, Briefcase, GraduationCap, FileText, Users } from 'lucide-react'
 import { formatRelativeTime, formatSalary } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
 import { createClient } from '@/lib/supabase/client'
@@ -98,7 +98,9 @@ export default function JobDetailPage() {
       }
     }
 
-    fetchJob()
+    if (jobId) {
+      fetchJob()
+    }
   }, [jobId, supabase])
 
   const handleApply = () => {
@@ -140,9 +142,28 @@ export default function JobDetailPage() {
     }
   }
 
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked)
-    // TODO: Implement bookmark functionality
+  const handleBookmark = async () => {
+    if (!job) return
+    
+    try {
+      const response = await fetch('/api/jobs/bookmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          jobSnapshot: job,
+          source: job.source || 'indeed',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setIsBookmarked(!isBookmarked)
+      }
+    } catch (error) {
+      console.error('Error bookmarking job:', error)
+    }
   }
 
   const handleShare = async () => {
@@ -179,7 +200,7 @@ export default function JobDetailPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
           <p className="text-gray-600 mb-6">The job you're looking for doesn't exist or has expired.</p>
-          <Button asChild>
+          <Button asChild type="button">
             <Link href="/jobs">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Jobs
@@ -195,7 +216,7 @@ export default function JobDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4">
+          <Button variant="ghost" asChild className="mb-4" type="button">
             <Link href="/jobs">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Jobs
@@ -280,7 +301,7 @@ export default function JobDetailPage() {
                 )}
 
                 {isApplied ? (
-                  <Button size="lg" className="w-full md:w-auto bg-green-50 border-green-200 text-green-700 hover:bg-green-100" disabled>
+                  <Button size="lg" className="w-full md:w-auto bg-green-50 border-green-200 text-green-700 hover:bg-green-100" disabled type="button">
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Applied
                   </Button>
@@ -562,3 +583,4 @@ export default function JobDetailPage() {
     </div>
   )
 }
+

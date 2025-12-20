@@ -135,6 +135,7 @@ export default function GeoJobManager({
               onClick={handleDetectLocation}
               disabled={isDetectingLocation}
               className="whitespace-nowrap"
+              type="button"
             >
               {isDetectingLocation ? (
                 <>
@@ -194,6 +195,7 @@ export default function GeoJobManager({
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
+            type="button"
           >
             <List className="h-4 w-4 mr-1" />
             List
@@ -202,6 +204,7 @@ export default function GeoJobManager({
             variant={viewMode === 'map' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('map')}
+            type="button"
           >
             <Map className="h-4 w-4 mr-1" />
             Map
@@ -299,10 +302,10 @@ export default function GeoJobManager({
               Try expanding your search radius or searching in a different location.
             </p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button variant="outline" onClick={() => setMaxDistance(100)}>
+              <Button variant="outline" onClick={() => setMaxDistance(100)} type="button">
                 Expand to 100 miles
               </Button>
-              <Button variant="outline" onClick={() => setSearchLocation('Remote')}>
+              <Button variant="outline" onClick={() => setSearchLocation('Remote')} type="button">
                 Search Remote Jobs
               </Button>
             </div>

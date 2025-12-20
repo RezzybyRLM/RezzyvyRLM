@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { jobId, jobTitle, companyName, applicationUrl, jobSource, profileId } = body
+    const { jobId, jobTitle, companyName, applicationUrl, jobSource, profileId, notes, metadata } = body
 
     if (!jobId || !jobTitle || !companyName || !applicationUrl) {
       return NextResponse.json(
@@ -58,11 +58,19 @@ export async function POST(request: NextRequest) {
       company_name: companyName,
       application_url: applicationUrl,
       status: 'applied',
+      notes: notes || null,
     }
 
-    // Add profile_id to metadata if provided
+    // Build metadata object
+    const metadataObj: any = {}
     if (profileId) {
-      applicationData.metadata = { profile_id: profileId }
+      metadataObj.profile_id = profileId
+    }
+    if (metadata) {
+      Object.assign(metadataObj, metadata)
+    }
+    if (Object.keys(metadataObj).length > 0) {
+      applicationData.metadata = metadataObj
     }
 
     const { error } = await (supabase as any)

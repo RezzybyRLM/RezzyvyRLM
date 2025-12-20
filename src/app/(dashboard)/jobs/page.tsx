@@ -25,6 +25,7 @@ import {
   Users
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { JobApplicationModal } from '@/components/ui/job-application-modal'
 
 interface Job {
   id: string
@@ -64,6 +65,7 @@ export default function JobsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
+  const [showApplicationModal, setShowApplicationModal] = useState(false)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const jobsListRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -375,18 +377,14 @@ export default function JobsPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  {selectedJob.contact_email && (
-                    <Button
-                      asChild
-                      className="flex-1"
-                      type="button"
-                    >
-                      <a href={`mailto:${selectedJob.contact_email}`}>
-                        <Mail className="mr-2 h-4 w-4" />
-                        Apply Now
-                      </a>
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => setShowApplicationModal(true)}
+                    className="flex-1"
+                    type="button"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Apply Now
+                  </Button>
                   <Button variant="outline" size="icon" type="button">
                     <Bookmark className="h-4 w-4" />
                   </Button>
@@ -552,6 +550,26 @@ export default function JobsPage() {
           />
         )}
       </div>
+
+      {/* Application Modal */}
+      {selectedJob && (
+        <JobApplicationModal
+          isOpen={showApplicationModal}
+          onClose={() => setShowApplicationModal(false)}
+          job={{
+            id: selectedJob.id,
+            title: selectedJob.title,
+            company: selectedJob.company,
+            contact_email: selectedJob.contact_email,
+            contact_phone: selectedJob.contact_phone,
+            application_instructions: selectedJob.application_instructions,
+          }}
+          onSuccess={() => {
+            // Refresh jobs or show success message
+            fetchJobs()
+          }}
+        />
+      )}
 
       <style jsx>{`
         @keyframes fadeInUp {

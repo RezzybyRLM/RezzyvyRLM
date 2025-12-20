@@ -237,15 +237,15 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${
                     isActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                  <span className="truncate">{item.name}</span>
+                  <Icon className="mr-3 h-5 w-5 flex-shrink-0 pointer-events-none" />
+                  <span className="truncate pointer-events-none">{item.name}</span>
                 </Link>
               )
             })}
@@ -314,15 +314,15 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group ${
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative z-10 ${
                     isActive
                       ? 'bg-primary text-white shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100'
                   } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
-                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap">{item.name}</span>}
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all pointer-events-none`} />
+                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap pointer-events-none">{item.name}</span>}
                 </Link>
               )
             })}

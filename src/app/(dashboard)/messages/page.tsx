@@ -604,40 +604,41 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <div className="divide-y">
-                  {filteredConversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => setSelectedConversation(conv.id)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                        selectedConversation === conv.id ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <User className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-semibold text-gray-900 truncate">
-                              {conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                            </h3>
-                            {conv.unread_count > 0 && (
-                              <Badge className="bg-primary text-white">
-                                {conv.unread_count}
-                              </Badge>
-                            )}
+                  {filteredConversations.map((conv, index) => (
+                    <ScrollAnimate key={conv.id} animation="slideInLeft" delay={index * 50} triggerOnce={true}>
+                      <button
+                        onClick={() => setSelectedConversation(conv.id)}
+                        className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
+                          selectedConversation === conv.id ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <User className="h-6 w-6 text-primary" />
                           </div>
-                          {conv.last_message && (
-                            <p className="text-sm text-gray-600 truncate">
-                              {conv.last_message.content}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                              </h3>
+                              {conv.unread_count > 0 && (
+                                <Badge className="bg-primary text-white">
+                                  {conv.unread_count}
+                                </Badge>
+                              )}
+                            </div>
+                            {conv.last_message && (
+                              <p className="text-sm text-gray-600 truncate">
+                                {conv.last_message.content}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatTime(conv.last_message_at)}
                             </p>
-                          )}
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatTime(conv.last_message_at)}
-                          </p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                    </ScrollAnimate>
                   ))}
                 </div>
               )}
@@ -680,16 +681,17 @@ export default function MessagesPage() {
                       </div>
                     ) : (
                       <>
-                        {messages.map((message) => {
+                        {messages.map((message, index) => {
                           const isOwn = message.sender_id === currentUserId
                           return (
-                            <MessageBubble
-                              key={message.id}
-                              message={message}
-                              isOwn={isOwn}
-                              onReply={handleReply}
-                              formatTime={formatTime}
-                            />
+                            <ScrollAnimate key={message.id} animation={isOwn ? "slideInRight" : "slideInLeft"} delay={index * 50} triggerOnce={true}>
+                              <MessageBubble
+                                message={message}
+                                isOwn={isOwn}
+                                onReply={handleReply}
+                                formatTime={formatTime}
+                              />
+                            </ScrollAnimate>
                           )
                         })}
                         {otherUserTyping && <TypingIndicator />}

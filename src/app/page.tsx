@@ -12,6 +12,8 @@ import { addToCart } from '@/lib/cart/actions'
 import { submitContactForm } from '@/lib/contact/actions'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Skeleton } from '@/components/ui/skeleton-loader'
+import { ScrollAnimate } from '@/components/ui/scroll-animate'
+import { PageLoader } from '@/components/ui/page-loader'
 
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
@@ -205,6 +207,7 @@ export default function HomePage() {
   ]
 
   return (
+    <PageLoader>
     <div className="min-h-screen bg-background">
 
       {/* Hero Section */}
@@ -282,55 +285,63 @@ export default function HomePage() {
       <section id="services" className="section-padding bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto container-padding">
           {/* Section Header */}
-          <div className="text-center mb-16">
-            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-              Rezzy, The Powerful Tool to Streamline Your Employment Search!
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-            <p className="text-responsive-md text-gray-600 max-w-4xl mx-auto italic">
-              We are not just another resume service; we support, empower, and free your time so you can live your life while still actively pursuing your next career move.
-            </p>
-          </div>
+          <ScrollAnimate animation="fadeInUp" delay={0}>
+            <div className="text-center mb-16">
+              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
+                Rezzy, The Powerful Tool to Streamline Your Employment Search!
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
+              <p className="text-responsive-md text-gray-600 max-w-4xl mx-auto italic">
+                We are not just another resume service; we support, empower, and free your time so you can live your life while still actively pursuing your next career move.
+              </p>
+            </div>
+          </ScrollAnimate>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
             {/* Left Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(0, 3).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 animate-fadeInUp" style={{ animationDelay: `${index * 0.2}s` }}>
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-                    {feature.icon}
+                <ScrollAnimate key={index} animation="slideInLeft" delay={index * 100}>
+                  <div className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 hover:shadow-lg">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 animate-float" style={{ animationDelay: `${index * 0.2}s` }}>
+                      {feature.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                      <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                    <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
-                  </div>
-                </div>
+                </ScrollAnimate>
               ))}
             </div>
 
             {/* Center Column - Main Image */}
-            <div className="lg:col-span-1 flex justify-center">
-              <div className="relative w-full max-w-md animate-float">
-                <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 text-center card-elevated">
-                  <div className="text-6xl mb-4">💼</div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">EMPOWERED</h3>
-                  <p className="text-gray-600">Your career journey starts here</p>
+            <ScrollAnimate animation="scaleIn" delay={300}>
+              <div className="lg:col-span-1 flex justify-center">
+                <div className="relative w-full max-w-md animate-float">
+                  <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 text-center card-elevated hover:shadow-2xl transition-all duration-500">
+                    <div className="text-6xl mb-4 animate-bounce-custom">💼</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">EMPOWERED</h3>
+                    <p className="text-gray-600">Your career journey starts here</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            </ScrollAnimate>
 
             {/* Right Column - Features */}
             <div className="lg:col-span-1 space-y-12">
               {features.slice(3, 6).map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 animate-fadeInUp" style={{ animationDelay: `${(index + 3) * 0.2}s` }}>
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-                    {feature.icon}
+                <ScrollAnimate key={index} animation="slideInRight" delay={index * 100 + 400}>
+                  <div className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 hover:shadow-lg">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 animate-float" style={{ animationDelay: `${(index + 3) * 0.2}s` }}>
+                      {feature.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                      <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                    <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
-                  </div>
-                </div>
+                </ScrollAnimate>
               ))}
             </div>
           </div>
@@ -340,19 +351,26 @@ export default function HomePage() {
       {/* Testimonials Section */}
       <section className="section-padding bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
         {/* Professional Background */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M50%200L100%2050L50%20100L0%2050z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M50%200L100%2050L50%20100L0%2050z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30 animate-pulse-custom"></div>
         
         <div className="max-w-7xl mx-auto container-padding relative">
+          <ScrollAnimate animation="fadeInUp" delay={0}>
+            <div className="text-center mb-12">
+              <h2 className="text-responsive-xl font-bold text-gray-900 mb-4">What Our Clients Say</h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto rounded-full"></div>
+            </div>
+          </ScrollAnimate>
           {/* Testimonial Slider */}
-          <div className="relative max-w-4xl mx-auto">
-            <div className="overflow-hidden rounded-2xl">
-              <div 
-                className="flex transition-transform duration-700 ease-in-out"
-                style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
-              >
-                {testimonials.map((testimonial, index) => (
-                  <div key={index} className="w-full flex-shrink-0 px-4">
-                    <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group card-glass">
+          <ScrollAnimate animation="fadeInUp" delay={200}>
+            <div className="relative max-w-4xl mx-auto">
+              <div className="overflow-hidden rounded-2xl">
+                <div 
+                  className="flex transition-transform duration-700 ease-in-out"
+                  style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
+                >
+                  {testimonials.map((testimonial, index) => (
+                    <div key={index} className="w-full flex-shrink-0 px-4">
+                      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group card-glass hover:scale-105">
                       <CardContent className="pt-8 pb-8 px-8">
                         <div className="text-center">
                           <Quote className="h-12 w-12 text-primary/20 mx-auto mb-6 animate-pulse" />
@@ -372,12 +390,12 @@ export default function HomePage() {
                       </CardContent>
                     </Card>
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-            
-            {/* Testimonial Navigation */}
-            <div className="flex justify-center mt-8 space-x-4">
+              
+              {/* Testimonial Navigation */}
+              <div className="flex justify-center mt-8 space-x-4">
               <button
                 onClick={() => setCurrentTestimonial((prev) => prev === 0 ? testimonials.length - 1 : prev - 1)}
                 className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
@@ -407,17 +425,19 @@ export default function HomePage() {
                 <ArrowRight className="h-5 w-5 text-primary" />
               </button>
             </div>
-          </div>
+            </div>
+          </ScrollAnimate>
         </div>
       </section>
 
       {/* Call-to-Action Section */}
       <section className="section-padding bg-gradient-to-br from-primary via-primary to-secondary relative overflow-hidden">
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90 animate-gradient"></div>
         
         <div className="max-w-5xl mx-auto container-padding text-center relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <ScrollAnimate animation="zoomIn" delay={0}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             {/* Left Column */}
             <div className="text-left md:text-left">
               <h2 className="text-responsive-xl font-bold text-white mb-6 leading-tight">
@@ -443,34 +463,38 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
-          </div>
+            </div>
+          </ScrollAnimate>
         </div>
       </section>
 
       {/* Why Choose Us Section */}
       <section className="section-padding bg-white">
         <div className="max-w-7xl mx-auto container-padding">
-          <div className="text-center mb-16">
-            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-              Why Choose Us
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-            <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
-              Rezzy has an inside and unique perspective on the hiring process with a proven and extensive selection of services and tools that put you ahead of the competition.
-            </p>
-          </div>
+          <ScrollAnimate animation="fadeInUp" delay={0}>
+            <div className="text-center mb-16">
+              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
+                Why Choose Us
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
+              <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
+                Rezzy has an inside and unique perspective on the hiring process with a proven and extensive selection of services and tools that put you ahead of the competition.
+              </p>
+            </div>
+          </ScrollAnimate>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-lg text-gray-600 mb-6 italic">
-                We are committed to outstanding quality in all that we offer. Our professionalism is backed by multiple industry experience and a genuine desire to see all our clients succeed. We provide each client with their own personal certified resume writer with lightning-fast turnaround times.
-              </p>
-              <p className="text-lg text-gray-600 mb-8 italic">
-                Our customized and tailored packages work for you and provide results.
-              </p>
-              
-              {/* Progress Bars */}
-              <div className="space-y-6">
+            <ScrollAnimate animation="slideInLeft" delay={200}>
+              <div>
+                <p className="text-lg text-gray-600 mb-6 italic">
+                  We are committed to outstanding quality in all that we offer. Our professionalism is backed by multiple industry experience and a genuine desire to see all our clients succeed. We provide each client with their own personal certified resume writer with lightning-fast turnaround times.
+                </p>
+                <p className="text-lg text-gray-600 mb-8 italic">
+                  Our customized and tailored packages work for you and provide results.
+                </p>
+                
+                {/* Progress Bars */}
+                <div className="space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Essential Package</span>
@@ -508,14 +532,17 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 card-elevated">
-                <div className="text-6xl mb-4">📊</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Success Rates</h3>
-                <p className="text-gray-600">Proven results across all our packages</p>
               </div>
-            </div>
+            </ScrollAnimate>
+            <ScrollAnimate animation="slideInRight" delay={400}>
+              <div className="text-center">
+                <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 card-elevated hover:shadow-2xl transition-all duration-500 animate-float">
+                  <div className="text-6xl mb-4 animate-bounce-custom">📊</div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Success Rates</h3>
+                  <p className="text-gray-600">Proven results across all our packages</p>
+                </div>
+              </div>
+            </ScrollAnimate>
           </div>
         </div>
       </section>
@@ -523,19 +550,22 @@ export default function HomePage() {
       {/* Pricing Plans Section */}
       <section id="pricing" className="section-padding bg-gray-50">
         <div className="max-w-7xl mx-auto container-padding">
-          <div className="text-center mb-16">
-            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-              Pricing Plans
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-            <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
-              Rezzy offers a variety of packages so our clients can pick and choose what best fits their needs.
-            </p>
-          </div>
+          <ScrollAnimate animation="fadeInUp" delay={0}>
+            <div className="text-center mb-16">
+              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
+                Pricing Plans
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
+              <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
+                Rezzy offers a variety of packages so our clients can pick and choose what best fits their needs.
+              </p>
+            </div>
+          </ScrollAnimate>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, index) => (
-              <Card key={index} className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 card-professional ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
+              <ScrollAnimate key={index} animation="scaleIn" delay={index * 150}>
+                <Card className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 card-professional ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
                 <CardHeader className="pb-4">
                   {plan.featured && (
                     <Badge className="mb-4 bg-primary text-white animate-pulse">Most Popular</Badge>
@@ -585,6 +615,7 @@ export default function HomePage() {
                   </div>
                 </CardContent>
               </Card>
+              </ScrollAnimate>
             ))}
           </div>
         </div>
@@ -593,15 +624,18 @@ export default function HomePage() {
       {/* Contact Form Section */}
       <section className="section-padding bg-white">
         <div className="max-w-7xl mx-auto container-padding">
-          <div className="text-center mb-16">
-            <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-              Contact Us
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full"></div>
-          </div>
+          <ScrollAnimate animation="fadeInUp" delay={0}>
+            <div className="text-center mb-16">
+              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
+                Contact Us
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
+            </div>
+          </ScrollAnimate>
 
-          <div className="max-w-2xl mx-auto">
-            <Card className="shadow-2xl card-elevated">
+          <ScrollAnimate animation="scaleIn" delay={200}>
+            <div className="max-w-2xl mx-auto">
+              <Card className="shadow-2xl card-elevated hover:shadow-3xl transition-all duration-500">
               <CardContent className="p-8">
                 {contactMessage && (
                   <div className={`mb-6 p-4 rounded-lg ${
@@ -685,7 +719,8 @@ export default function HomePage() {
                 </form>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          </ScrollAnimate>
         </div>
       </section>
 
@@ -751,5 +786,6 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+    </PageLoader>
   )
 }

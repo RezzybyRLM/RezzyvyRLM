@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PostCard } from '@/components/ui/post-card'
 import { formatTime } from '@/lib/utils'
+import { ScrollAnimate } from '@/components/ui/scroll-animate'
 
 // Client-side functions for tracking user interests
 const trackUserInterestClient = async (
@@ -682,7 +683,7 @@ export default function FeedPage() {
               </CardContent>
             </Card>
           ) : (
-            posts.map((post) => {
+            posts.map((post, index) => {
               if (editingPost === post.id) {
                 return (
                   <Card key={post.id} className="card-professional">
@@ -717,32 +718,34 @@ export default function FeedPage() {
               }
 
               return (
-                <div key={post.id}>
-                  <PostCard
-                    post={post}
-                    currentUserId={currentUserId || ''}
-                    onLike={() => toggleLike(post.id)}
-                    onComment={() => toggleComments(post.id)}
-                    onShare={() => handleShare(post)}
-                    onEdit={() => handleEdit(post)}
-                    onDelete={() => handleDelete(post.id)}
-                    formatTime={formatTime}
-                  />
-                  {expandedComments.has(post.id) && (
-                    <Card className="card-professional mt-2">
-                      <CardContent className="p-4">
-                        <PostComments
-                          postId={post.id}
-                          showComments={true}
-                          commentContent={commentContent[post.id] || ''}
-                          onCommentChange={(content) => setCommentContent(prev => ({ ...prev, [post.id]: content }))}
-                          onAddComment={() => addComment(post.id)}
-                          formatTime={formatTime}
-                        />
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                <ScrollAnimate key={post.id} animation="fadeInUp" delay={index * 100} triggerOnce={true}>
+                  <div>
+                    <PostCard
+                      post={post}
+                      currentUserId={currentUserId || ''}
+                      onLike={() => toggleLike(post.id)}
+                      onComment={() => toggleComments(post.id)}
+                      onShare={() => handleShare(post)}
+                      onEdit={() => handleEdit(post)}
+                      onDelete={() => handleDelete(post.id)}
+                      formatTime={formatTime}
+                    />
+                    {expandedComments.has(post.id) && (
+                      <Card className="card-professional mt-2">
+                        <CardContent className="p-4">
+                          <PostComments
+                            postId={post.id}
+                            showComments={true}
+                            commentContent={commentContent[post.id] || ''}
+                            onCommentChange={(content) => setCommentContent(prev => ({ ...prev, [post.id]: content }))}
+                            onAddComment={() => addComment(post.id)}
+                            formatTime={formatTime}
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </ScrollAnimate>
               )
             })
           )}

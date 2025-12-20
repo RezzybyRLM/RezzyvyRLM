@@ -26,6 +26,7 @@ import { MessageBubble } from '@/components/ui/message-bubble'
 import { TypingIndicator } from '@/components/ui/typing-indicator'
 import { NewConversationDialog } from '@/components/ui/new-conversation-dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { formatTime } from '@/lib/utils'
 
 interface Conversation {

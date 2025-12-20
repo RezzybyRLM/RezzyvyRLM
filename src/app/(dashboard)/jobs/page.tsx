@@ -344,7 +344,7 @@ export default function JobsPage() {
             ref={detailPanelRef}
             className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] bg-white border-l border-gray-200 overflow-y-auto z-30 animate-slideInRight shadow-xl lg:shadow-none"
           >
-            {/* Sticky Header - Always Visible */}
+            {/* Original Header - Always Sticky at Top */}
             <div className="sticky top-0 bg-white border-b border-gray-200 z-10 shadow-sm">
               <div className="px-6 py-4">
                 <div className="flex items-start justify-between gap-4 mb-4">
@@ -410,9 +410,11 @@ export default function JobsPage() {
               </div>
             </div>
 
-            {/* Compact Sticky Header - Appears on Scroll */}
-            <div className={`sticky top-0 bg-white border-b border-gray-200 z-20 shadow-md transition-all duration-300 ${
-              detailPanelScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+            {/* Compact Sticky Header - Appears Below Original Header on Scroll */}
+            <div className={`sticky bg-white border-b border-gray-200 z-20 shadow-md transition-all duration-300 ${
+              detailPanelScrolled 
+                ? 'opacity-100 translate-y-0 top-[140px]' 
+                : 'opacity-0 -translate-y-full pointer-events-none top-0'
             }`}>
               <div className="px-6 py-3">
                 <div className="flex items-center justify-between gap-4">

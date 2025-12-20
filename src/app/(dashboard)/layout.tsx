@@ -265,7 +265,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-40 ${
         sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
       }`}>
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">

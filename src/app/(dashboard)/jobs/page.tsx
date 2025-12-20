@@ -64,7 +64,6 @@ export default function JobsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
-  const [detailPanelScrolled, setDetailPanelScrolled] = useState(false)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const jobsListRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -80,18 +79,6 @@ export default function JobsPage() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  useEffect(() => {
-    const detailPanel = detailPanelRef.current
-    if (!detailPanel) return
-
-    const handleDetailScroll = () => {
-      setDetailPanelScrolled(detailPanel.scrollTop > 150)
-    }
-
-    detailPanel.addEventListener('scroll', handleDetailScroll)
-    return () => detailPanel.removeEventListener('scroll', handleDetailScroll)
-  }, [selectedJob])
 
   useEffect(() => {
     if (selectedJob && detailPanelRef.current) {
@@ -406,57 +393,6 @@ export default function JobsPage() {
                   <Button variant="outline" size="icon" type="button">
                     <Share2 className="h-4 w-4" />
                   </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Compact Sticky Header - Appears Below Original Header on Scroll */}
-            <div className={`sticky bg-white border-b border-gray-200 z-20 shadow-md transition-all duration-300 ${
-              detailPanelScrolled 
-                ? 'opacity-100 translate-y-0 top-[140px]' 
-                : 'opacity-0 -translate-y-full pointer-events-none top-0'
-            }`}>
-              <div className="px-6 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">{selectedJob.title}</h3>
-                    <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
-                      {selectedJob.company && (
-                        <span className="truncate">{selectedJob.company.name}</span>
-                      )}
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span className="truncate">{selectedJob.location}</span>
-                      </div>
-                      {selectedJob.salary_range && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{selectedJob.salary_range}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    {selectedJob.contact_email && (
-                      <Button
-                        asChild
-                        size="sm"
-                        type="button"
-                      >
-                        <a href={`mailto:${selectedJob.contact_email}`}>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Apply
-                        </a>
-                      </Button>
-                    )}
-                    <Button variant="outline" size="icon" className="h-9 w-9" type="button">
-                      <Bookmark className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="h-9 w-9" type="button">
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>

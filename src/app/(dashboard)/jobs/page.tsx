@@ -325,7 +325,7 @@ function JobsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative z-0">
       <div className="max-w-7xl mx-auto container-padding section-padding">
         {/* Header */}
         <div className="mb-8 text-center">

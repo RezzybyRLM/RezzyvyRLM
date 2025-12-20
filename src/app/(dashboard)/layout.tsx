@@ -265,7 +265,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-40 ${
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${
         sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
       }`}>
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">
@@ -315,15 +315,15 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative z-10 ${
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${
                     isActive
                       ? 'bg-primary text-white shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100'
                   } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all pointer-events-none`} />
-                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap pointer-events-none">{item.name}</span>}
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
+                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap">{item.name}</span>}
                 </Link>
               )
             })}
@@ -332,19 +332,19 @@ export default function DashboardLayout({
             <Button
               variant="ghost"
               onClick={handleSignOut}
-              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all z-10 relative ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
+              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all cursor-pointer ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
               title={sidebarCollapsed ? 'Sign Out' : ''}
               type="button"
             >
-              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} pointer-events-none`} />
-              {!sidebarCollapsed && <span className="truncate whitespace-nowrap pointer-events-none">Sign Out</span>}
+              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+              {!sidebarCollapsed && <span className="truncate whitespace-nowrap">Sign Out</span>}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
+      <div className={`transition-all duration-300 relative z-0 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
         {/* Desktop header */}
         <div className="hidden lg:flex h-16 items-center justify-between px-6 bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="flex-1" />

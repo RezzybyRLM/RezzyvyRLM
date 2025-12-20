@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +10,6 @@ import {
   Loader2, 
   AlertCircle, 
   Briefcase, 
-  Calendar, 
   DollarSign,
   X,
   Mail,
@@ -57,29 +55,18 @@ interface Job {
 }
 
 export default function JobsPage() {
-  const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
-  const [isScrolled, setIsScrolled] = useState(false)
   const [showApplicationModal, setShowApplicationModal] = useState(false)
   const detailPanelRef = useRef<HTMLDivElement>(null)
-  const jobsListRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
   
   useEffect(() => {
     fetchJobs()
-  }, [])
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 100)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => {
@@ -124,9 +111,7 @@ export default function JobsPage() {
 
       if (data) {
         setJobs(data as Job[])
-        if (data.length > 0 && !selectedJob) {
-          setSelectedJob(data[0] as Job)
-        }
+        // DO NOT auto-select first job - user must click to select
       }
     } catch (err: any) {
       console.error('Error fetching jobs:', err)
@@ -141,10 +126,23 @@ export default function JobsPage() {
     fetchJobs()
   }
 
+  const handleJobClick = (job: Job) => {
+    // Toggle selection: if clicking the same job, deselect it
+    if (selectedJob?.id === job.id) {
+      setSelectedJob(null)
+    } else {
+      setSelectedJob(job)
+    }
+  }
+
+  const handleCloseDetails = () => {
+    setSelectedJob(null)
+  }
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
-    const now = new Date()
+      const now = new Date()
     const diffTime = Math.abs(now.getTime() - date.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     
@@ -165,11 +163,9 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative" style={{ zIndex: 0 }}>
       {/* Sticky Search Bar */}
-      <div className={`sticky top-0 z-40 bg-white border-b border-gray-200 transition-all duration-300 ${
-        isScrolled ? 'shadow-md' : 'shadow-sm'
-      }`}>
+      <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 30 }}>
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <form onSubmit={handleSearch} className="flex gap-3">
             <div className="flex-1 relative">
@@ -203,11 +199,11 @@ export default function JobsPage() {
               </div>
               </div>
 
-      <div className="flex max-w-full h-[calc(100vh-80px)]">
+      <div className="flex max-w-full h-[calc(100vh-140px)]">
         {/* Jobs List - Left Side */}
         <div className={`flex-1 transition-all duration-300 overflow-y-auto ${
           selectedJob ? 'lg:w-1/2' : 'w-full'
-        }`} ref={jobsListRef}>
+        }`}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Results Count */}
             {!loading && !error && (
@@ -252,7 +248,7 @@ export default function JobsPage() {
                     {jobs.map((job, index) => (
                       <div
                         key={job.id}
-                        onClick={() => setSelectedJob(job)}
+                        onClick={() => handleJobClick(job)}
                         className={`bg-white rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5 ${
                           selectedJob?.id === job.id
                             ? 'border-primary shadow-lg'
@@ -329,225 +325,227 @@ export default function JobsPage() {
 
         {/* Job Details Panel - Right Side */}
         {selectedJob && (
-          <div
-            ref={detailPanelRef}
-            className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] bg-white border-l border-gray-200 overflow-y-auto z-30 animate-slideInRight shadow-xl lg:shadow-none"
-          >
-            {/* Original Header - Always Sticky at Top */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 z-10 shadow-sm">
-              <div className="px-6 py-4">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h2>
-                    {selectedJob.company && (
-                      <p className="text-lg text-gray-700">{selectedJob.company.name}</p>
+          <>
+            {/* Mobile Overlay */}
+            <div
+              className="lg:hidden fixed inset-0 bg-black bg-opacity-50"
+              style={{ zIndex: 20 }}
+              onClick={handleCloseDetails}
+            />
+            
+            <div
+              ref={detailPanelRef}
+              className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-140px)] lg:h-[calc(100vh-140px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none"
+              style={{ zIndex: 30 }}
+            >
+              {/* Header - Sticky at Top */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 10 }}>
+                <div className="px-6 py-4">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h2>
+                      {selectedJob.company && (
+                        <p className="text-lg text-gray-700">{selectedJob.company.name}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCloseDetails}
+                      className="flex-shrink-0"
+                      type="button"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{selectedJob.location}</span>
+                    </div>
+                    {selectedJob.job_type && (
+                      <div className="flex items-center gap-1">
+                        <Briefcase className="h-4 w-4" />
+                        <span className="capitalize">{selectedJob.job_type.replace('-', ' ')}</span>
+                      </div>
+                    )}
+                    {selectedJob.salary_range && (
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4" />
+                        <span>{selectedJob.salary_range}</span>
+                      </div>
+                    )}
+                    {selectedJob.remote_type && (
+                      <Badge variant="outline">{selectedJob.remote_type}</Badge>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedJob(null)}
-                    className="lg:hidden"
-                    type="button"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{selectedJob.location}</span>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => setShowApplicationModal(true)}
+                      className="flex-1"
+                      type="button"
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Apply Now
+                    </Button>
+                    <Button variant="outline" size="icon" type="button">
+                      <Bookmark className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" type="button">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  {selectedJob.job_type && (
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="h-4 w-4" />
-                      <span className="capitalize">{selectedJob.job_type.replace('-', ' ')}</span>
-                    </div>
-                  )}
-                  {selectedJob.salary_range && (
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" />
-                      <span>{selectedJob.salary_range}</span>
-                    </div>
-                  )}
-                  {selectedJob.remote_type && (
-                    <Badge variant="outline">{selectedJob.remote_type}</Badge>
-                  )}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowApplicationModal(true)}
-                    className="flex-1"
-                    type="button"
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Apply Now
-                  </Button>
-                  <Button variant="outline" size="icon" type="button">
-                    <Bookmark className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" type="button">
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Job Details Content */}
-            <div className="px-6 py-6 space-y-6">
-              {/* Job Description */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
-                <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
-                  {selectedJob.description}
                 </div>
               </div>
 
-              {/* Requirements */}
-              {selectedJob.requirements && selectedJob.requirements.length > 0 && (
+              {/* Job Details Content */}
+              <div className="px-6 py-6 space-y-6">
+                {/* Job Description */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Requirements
-                  </h3>
-                  <ul className="list-disc list-inside space-y-2 text-gray-700">
-                    {selectedJob.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </ul>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
+                  <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+                    {selectedJob.description}
+                  </div>
                 </div>
-              )}
 
-              {/* Benefits */}
-              {selectedJob.benefits && selectedJob.benefits.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Benefits
-                </h3>
-                  <ul className="list-disc list-inside space-y-2 text-gray-700">
-                    {selectedJob.benefits.map((benefit, index) => (
-                      <li key={index}>{benefit}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {/* Requirements */}
+                {selectedJob.requirements && selectedJob.requirements.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5" />
+                      Requirements
+                    </h3>
+                    <ul className="list-disc list-inside space-y-2 text-gray-700">
+                      {selectedJob.requirements.map((req, index) => (
+                        <li key={index}>{req}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {/* Job Details */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {selectedJob.work_schedule && (
-                    <div>
-                      <p className="text-gray-500 mb-1">Work Schedule</p>
-                      <p className="text-gray-900 font-medium">{selectedJob.work_schedule}</p>
-                    </div>
-                  )}
-                  {selectedJob.experience_required && (
-                    <div>
-                      <p className="text-gray-500 mb-1">Experience</p>
-                      <p className="text-gray-900 font-medium">{selectedJob.experience_required}</p>
-                    </div>
-                  )}
-                  {selectedJob.education_required && (
-                    <div>
-                      <p className="text-gray-500 mb-1">Education</p>
-                      <p className="text-gray-900 font-medium">{selectedJob.education_required}</p>
-                    </div>
-                  )}
-                  {selectedJob.application_deadline && (
-                    <div>
-                      <p className="text-gray-500 mb-1">Application Deadline</p>
-                      <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
-                    </div>
+                {/* Benefits */}
+                {selectedJob.benefits && selectedJob.benefits.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Benefits
+                    </h3>
+                    <ul className="list-disc list-inside space-y-2 text-gray-700">
+                      {selectedJob.benefits.map((benefit, index) => (
+                        <li key={index}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Job Details */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedJob.work_schedule && (
+                      <div>
+                        <p className="text-gray-500 mb-1">Work Schedule</p>
+                        <p className="text-gray-900 font-medium">{selectedJob.work_schedule}</p>
+                      </div>
+                    )}
+                    {selectedJob.experience_required && (
+                      <div>
+                        <p className="text-gray-500 mb-1">Experience</p>
+                        <p className="text-gray-900 font-medium">{selectedJob.experience_required}</p>
+                      </div>
+                    )}
+                    {selectedJob.education_required && (
+                      <div>
+                        <p className="text-gray-500 mb-1">Education</p>
+                        <p className="text-gray-900 font-medium">{selectedJob.education_required}</p>
+                      </div>
+                    )}
+                    {selectedJob.application_deadline && (
+                      <div>
+                        <p className="text-gray-500 mb-1">Application Deadline</p>
+                        <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
+                      </div>
           )}
         </div>
       </div>
 
-              {/* Application Instructions */}
-              {selectedJob.application_instructions && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
-                  <div className="text-gray-700 whitespace-pre-wrap bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    {selectedJob.application_instructions}
+                {/* Application Instructions */}
+                {selectedJob.application_instructions && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
+                    <div className="text-gray-700 whitespace-pre-wrap bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      {selectedJob.application_instructions}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Company Info */}
-              {selectedJob.company && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    About {selectedJob.company.name}
-                  </h3>
-                  {selectedJob.company.description && (
-                    <p className="text-gray-700 mb-3">{selectedJob.company.description}</p>
-                  )}
-                  {selectedJob.company.website && (
-                    <a
-                      href={selectedJob.company.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline flex items-center gap-1 text-sm"
-                    >
-                      Visit company website
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {/* Contact Information */}
-              {(selectedJob.contact_email || selectedJob.contact_phone) && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
-                  <div className="space-y-2">
-                    {selectedJob.contact_email && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <a href={`mailto:${selectedJob.contact_email}`} className="text-primary hover:underline">
-                          {selectedJob.contact_email}
-                        </a>
-                      </div>
+                {/* Company Info */}
+                {selectedJob.company && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      About {selectedJob.company.name}
+                    </h3>
+                    {selectedJob.company.description && (
+                      <p className="text-gray-700 mb-3">{selectedJob.company.description}</p>
                     )}
-                    {selectedJob.contact_phone && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <a href={`tel:${selectedJob.contact_phone}`} className="text-primary hover:underline">
-                          {selectedJob.contact_phone}
-                        </a>
-                      </div>
+                    {selectedJob.company.website && (
+                      <a
+                        href={selectedJob.company.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1 text-sm"
+                      >
+                        Visit company website
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Tags */}
-              {selectedJob.tags && selectedJob.tags.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedJob.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-sm">
-                        {tag}
-                      </Badge>
-                    ))}
+                {/* Contact Information */}
+                {(selectedJob.contact_email || selectedJob.contact_phone) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
+                    <div className="space-y-2">
+                      {selectedJob.contact_email && (
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          <a href={`mailto:${selectedJob.contact_email}`} className="text-primary hover:underline">
+                            {selectedJob.contact_email}
+                          </a>
+                        </div>
+                      )}
+                      {selectedJob.contact_phone && (
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <a href={`tel:${selectedJob.contact_phone}`} className="text-primary hover:underline">
+                            {selectedJob.contact_phone}
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Tags */}
+                {selectedJob.tags && selectedJob.tags.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedJob.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-sm">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Mobile Overlay */}
-        {selectedJob && (
-          <div
-            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-20 animate-fadeIn"
-            onClick={() => setSelectedJob(null)}
-          />
+          </>
         )}
       </div>
 
@@ -565,7 +563,6 @@ export default function JobsPage() {
             application_instructions: selectedJob.application_instructions,
           }}
           onSuccess={() => {
-            // Refresh jobs or show success message
             fetchJobs()
           }}
         />
@@ -592,15 +589,8 @@ export default function JobsPage() {
             transform: translateX(0);
           }
         }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
       `}</style>
     </div>
   )
 }
+

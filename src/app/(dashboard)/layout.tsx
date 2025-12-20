@@ -61,12 +61,6 @@ export default function DashboardLayout({
   const router = useRouter()
   const supabase = createClient()
 
-  // Skip rendering dashboard layout for jobs routes - they have their own layout
-  const isJobsRoute = pathname === '/jobs' || pathname.startsWith('/jobs/')
-  if (isJobsRoute) {
-    return <>{children}</>
-  }
-
   // Persist sidebar state
   useEffect(() => {
     if (typeof window !== 'undefined') {

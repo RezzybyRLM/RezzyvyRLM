@@ -6,189 +6,104 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, MapPin, Clock, DollarSign, Bookmark, Share2, ArrowLeft, CheckCircle, Mail, Phone, Briefcase, GraduationCap, FileText, Users } from 'lucide-react'
-import { formatRelativeTime, formatSalary } from '@/lib/utils'
-import { TransformedJob } from '@/lib/types/indeed-job'
+import { ArrowLeft, MapPin, Briefcase, DollarSign, Calendar, Clock, Mail, Phone, Loader2, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { ProfileSelector } from '@/components/ui/profile-selector'
+
+interface Job {
+  id: string
+  title: string
+  description: string
+  location: string
+  salary_range: string | null
+  job_type: string | null
+  is_featured: boolean | null
+  created_at: string | null
+  expires_at: string | null
+  application_deadline: string | null
+  requirements: string[] | null
+  benefits: string[] | null
+  tags: string[] | null
+  work_schedule: string | null
+  remote_type: string | null
+  experience_required: string | null
+  education_required: string | null
+  application_instructions: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  company: {
+    name: string
+    logo_url: string | null
+    description: string | null
+    website: string | null
+  } | null
+}
 
 export default function JobDetailPage() {
   const params = useParams()
   const router = useRouter()
   const jobId = params.jobId as string
-  const [job, setJob] = useState<TransformedJob | null>(null)
+  const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isBookmarked, setIsBookmarked] = useState(false)
-  const [showProfileSelector, setShowProfileSelector] = useState(false)
-  const [isApplied, setIsApplied] = useState(false)
-  const [jobDetails, setJobDetails] = useState<any>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        // Try to fetch from premium jobs table first
-        const { data: premiumJob, error: premiumError } = await supabase
-          .from('jobs')
-          .select(`
-            *,
-            companies (
-              name,
-              description,
-              website,
-              industry,
-              size,
-              location
-            )
-          `)
-          .eq('id', jobId)
-          .single()
-
-        if (!premiumError && premiumJob) {
-          setJobDetails(premiumJob)
-          const transformedJob: TransformedJob = {
-            id: premiumJob.id,
-            title: premiumJob.title,
-            company_name: premiumJob.companies?.name || 'Unknown Company',
-            location: premiumJob.location,
-            description: premiumJob.description || '',
-            apply_url: `/jobs/${premiumJob.id}`,
-            salary_range: premiumJob.salary_range || '',
-            job_type: premiumJob.job_type || 'full-time',
-            source: 'premium' as const,
-            scraped_at: premiumJob.created_at || new Date().toISOString(),
-          }
-          setJob(transformedJob)
-          setLoading(false)
-          return
-        }
-
-        // If not found in premium jobs, try cached Indeed jobs
-        const { data: indeedJob, error: indeedError } = await supabase
-          .from('cached_indeed_jobs')
-          .select('*')
-          .eq('id', jobId)
-          .single()
-
-        if (!indeedError && indeedJob) {
-          const transformedJob: TransformedJob = {
-            id: indeedJob.id,
-            title: indeedJob.title,
-            company_name: indeedJob.company,
-            location: indeedJob.location,
-            description: indeedJob.description || '',
-            apply_url: indeedJob.apply_url,
-            salary_range: indeedJob.salary || '',
-            job_type: indeedJob.job_type || 'full-time',
-            source: 'indeed' as const,
-            scraped_at: indeedJob.scraped_at || new Date().toISOString(),
-          }
-          setJob(transformedJob)
-          setLoading(false)
-          return
-        }
-
-        setError('Job not found')
-        setLoading(false)
-      } catch (err) {
-        console.error('Error fetching job:', err)
-        setError('Failed to load job')
-        setLoading(false)
-      }
-    }
-
     if (jobId) {
       fetchJob()
     }
-  }, [jobId, supabase])
+  }, [jobId])
 
-  const handleApply = () => {
-    if (job?.source === 'indeed') {
-      window.open(job.apply_url, '_blank', 'noopener,noreferrer')
-      // Show profile selector for marking as applied
-      setShowProfileSelector(true)
-    } else {
-      // For premium jobs, show profile selector first
-      setShowProfileSelector(true)
-    }
-  }
-
-  const handleProfileSelected = async (profileId: string) => {
-    if (!job) return
+  const fetchJob = async () => {
+    setLoading(true)
+    setError(null)
 
     try {
-      const response = await fetch('/api/jobs/mark-applied', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId: job.id,
-          jobTitle: job.title,
-          companyName: job.company_name,
-          applicationUrl: job.apply_url,
-          jobSource: job.source || 'premium',
-          profileId: profileId,
-        }),
-      })
+      const { data, error: fetchError } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          companies (
+            name,
+            logo_url,
+            description,
+            website
+          )
+        `)
+        .eq('id', jobId)
+        .single()
 
-      const data = await response.json()
-
-      if (data.success) {
-        setIsApplied(true)
-        setShowProfileSelector(false)
+      if (fetchError) {
+        throw fetchError
       }
-    } catch (error) {
-      console.error('Error marking job as applied:', error)
+
+      if (data) {
+        setJob(data as Job)
+      } else {
+        setError('Job not found')
+      }
+    } catch (err: any) {
+      console.error('Error fetching job:', err)
+      setError(err.message || 'Failed to fetch job details')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleBookmark = async () => {
-    if (!job) return
-
-    try {
-      const response = await fetch('/api/jobs/bookmark', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId: job.id,
-          jobSnapshot: job,
-          source: job.source || 'indeed',
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setIsBookmarked(!isBookmarked)
-      }
-    } catch (error) {
-      console.error('Error bookmarking job:', error)
-    }
-  }
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: job?.title,
-          text: `Check out this job: ${job?.title} at ${job?.company_name}`,
-          url: window.location.href,
-        })
-      } catch (err) {
-        console.log('Error sharing:', err)
-      }
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href)
-    }
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading job details...</p>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-2 text-gray-600">Loading job details...</p>
         </div>
       </div>
     )
@@ -196,33 +111,43 @@ export default function JobDetailPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
-          <p className="text-gray-600 mb-6">The job you're looking for doesn't exist or has expired.</p>
-          <Button asChild type="button">
-            <Link href="/jobs">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Jobs
-            </Link>
-          </Button>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <div className="flex items-center text-red-800">
+                <AlertCircle className="mr-2 h-5 w-5" />
+                <span>{error || 'Job not found'}</span>
+              </div>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => router.push('/jobs')}
+                type="button"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Jobs
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-50 pb-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4" type="button">
-            <Link href="/jobs">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Jobs
-            </Link>
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => router.push('/jobs')}
+          className="mb-6"
+          type="button"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Jobs
+        </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -230,356 +155,258 @@ export default function JobDetailPage() {
             {/* Job Header */}
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-                      {job.source === 'premium' && (
-                        <Badge variant="featured">Featured</Badge>
+                    <div className="flex items-center gap-3 mb-2">
+                      <CardTitle className="text-2xl">{job.title}</CardTitle>
+                      {job.is_featured && (
+                        <Badge className="bg-primary text-white">Featured</Badge>
                       )}
                     </div>
-                    <p className="text-xl text-primary font-medium">{job.company_name}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleBookmark}
-                      className={isBookmarked ? 'text-accent' : 'text-gray-400'}
-                      type="button"
-                    >
-                      <Bookmark className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleShare}
-                      type="button"
-                    >
-                      <Share2 className="h-5 w-5" />
-                    </Button>
+                    {job.company && (
+                      <p className="text-lg text-gray-700 mb-4">{job.company.name}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span>{job.location}</span>
+                      </div>
+                      {job.job_type && (
+                        <div className="flex items-center gap-1">
+                          <Briefcase className="h-4 w-4" />
+                          <span>{job.job_type}</span>
+                        </div>
+                      )}
+                      {job.salary_range && (
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4" />
+                          <span>{job.salary_range}</span>
+                        </div>
+                      )}
+                      {job.created_at && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>Posted {formatDate(job.created_at)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <MapPin className="h-5 w-5" />
-                    <span>{job.location}</span>
-                    {jobDetails?.remote_type && (
-                      <Badge variant="outline" className="ml-2">
-                        {jobDetails.remote_type === 'remote' ? 'Remote' : jobDetails.remote_type === 'hybrid' ? 'Hybrid' : 'On-site'}
-                      </Badge>
-                    )}
-                  </div>
-                  {jobDetails?.min_salary && jobDetails?.max_salary ? (
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <DollarSign className="h-5 w-5" />
-                      <span>
-                        ${jobDetails.min_salary.toLocaleString()} - ${jobDetails.max_salary.toLocaleString()} {jobDetails.salary_currency || 'USD'}
-                        {jobDetails.work_schedule && ` (${jobDetails.work_schedule})`}
-                      </span>
-                    </div>
-                  ) : job.salary_range ? (
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <DollarSign className="h-5 w-5" />
-                      <span>{formatSalary(job.salary_range)}</span>
-                    </div>
-                  ) : null}
-                  {job.scraped_at && (
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Clock className="h-5 w-5" />
-                      <span>Posted {formatRelativeTime(job.scraped_at)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {job.job_type && (
-                  <Badge variant="outline" className="mb-6">
-                    {job.job_type}
-                  </Badge>
-                )}
-
-                {isApplied ? (
-                  <Button size="lg" className="w-full md:w-auto bg-green-50 border-green-200 text-green-700 hover:bg-green-100" disabled type="button">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Applied
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleApply}
-                    size="lg"
-                    className="w-full md:w-auto"
-                    type="button"
-                  >
-                    {job.source === 'indeed' ? (
-                      <>
-                        Apply on Indeed
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </>
-                    ) : (
-                      'Apply Now'
-                    )}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Job Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Description</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="prose max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">{job.description}</p>
+                  <div className="whitespace-pre-wrap text-gray-700">{job.description}</div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Detailed Information */}
-            {jobDetails && (
-              <>
-                {jobDetails.requirements && jobDetails.requirements.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Requirements
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {jobDetails.requirements.map((req: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span className="text-gray-700">{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {jobDetails.benefits && jobDetails.benefits.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Benefits & Perks
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {jobDetails.benefits.map((benefit: string, index: number) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="text-gray-700">{benefit}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {(jobDetails.experience_required || jobDetails.education_required) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5" />
-                        Qualifications
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {jobDetails.experience_required && (
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Experience Required</h4>
-                          <p className="text-gray-700">{jobDetails.experience_required}</p>
-                        </div>
-                      )}
-                      {jobDetails.education_required && (
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Education Required</h4>
-                          <p className="text-gray-700">{jobDetails.education_required}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {jobDetails.application_instructions && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Briefcase className="h-5 w-5" />
-                        How to Apply
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 whitespace-pre-wrap">{jobDetails.application_instructions}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {(jobDetails.contact_email || jobDetails.contact_phone) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Contact Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {jobDetails.contact_email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-gray-500" />
-                          <a href={`mailto:${jobDetails.contact_email}`} className="text-primary hover:underline">
-                            {jobDetails.contact_email}
-                          </a>
-                        </div>
-                      )}
-                      {jobDetails.contact_phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-500" />
-                          <a href={`tel:${jobDetails.contact_phone}`} className="text-primary hover:underline">
-                            {jobDetails.contact_phone}
-                          </a>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </>
+            {/* Requirements */}
+            {job.requirements && job.requirements.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Requirements</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc list-inside space-y-2 text-gray-700">
+                    {job.requirements.map((req, index) => (
+                      <li key={index}>{req}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
             )}
 
-            {/* AI Resume Suggestion */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-blue-900">AI Resume Suggestion</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-blue-800 mb-4">
-                  Which of your resumes fits this job best? Our AI can analyze your resumes
-                  and match them to this job description.
-                </p>
-                <Button
-                  variant="outline"
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                  onClick={() => router.push('/resume-optimizer')}
-                  type="button"
-                >
-                  Analyze My Resumes
-                </Button>
-              </CardContent>
-            </Card>
+            {/* Benefits */}
+            {job.benefits && job.benefits.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Benefits</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc list-inside space-y-2 text-gray-700">
+                    {job.benefits.map((benefit, index) => (
+                      <li key={index}>{benefit}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Application Instructions */}
+            {job.application_instructions && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to Apply</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="whitespace-pre-wrap text-gray-700">
+                    {job.application_instructions}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Company Info */}
+            {/* Apply Card */}
             <Card>
               <CardHeader>
-                <CardTitle>About {job.company_name}</CardTitle>
+                <CardTitle>Apply for this Job</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {jobDetails?.companies?.description && (
-                  <p className="text-gray-600 text-sm">
-                    {jobDetails.companies.description}
-                  </p>
+                {job.contact_email && (
+                  <Button
+                    asChild
+                    className="w-full"
+                    type="button"
+                  >
+                    <a href={`mailto:${job.contact_email}`}>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Email Application
+                    </a>
+                  </Button>
                 )}
-                <div className="space-y-2 text-sm">
-                  {jobDetails?.companies?.industry && (
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{jobDetails.companies.industry}</span>
-                    </div>
+                {job.company?.website && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full"
+                    type="button"
+                  >
+                    <a href={job.company.website} target="_blank" rel="noopener noreferrer">
+                      Visit Company Website
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.push('/jobs')}
+                  type="button"
+                >
+                  Save for Later
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Job Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Job Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {job.work_schedule && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Work Schedule</p>
+                    <p className="text-gray-900">{job.work_schedule}</p>
+                  </div>
+                )}
+                {job.remote_type && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Remote Type</p>
+                    <p className="text-gray-900 capitalize">{job.remote_type}</p>
+                  </div>
+                )}
+                {job.experience_required && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Experience Required</p>
+                    <p className="text-gray-900">{job.experience_required}</p>
+                  </div>
+                )}
+                {job.education_required && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Education Required</p>
+                    <p className="text-gray-900">{job.education_required}</p>
+                  </div>
+                )}
+                {job.application_deadline && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Application Deadline</p>
+                    <p className="text-gray-900">{formatDate(job.application_deadline)}</p>
+                  </div>
+                )}
+                {job.expires_at && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Job Expires</p>
+                    <p className="text-gray-900">{formatDate(job.expires_at)}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Company Info */}
+            {job.company && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>About the Company</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-lg font-semibold text-gray-900 mb-2">{job.company.name}</p>
+                  {job.company.description && (
+                    <p className="text-gray-700 mb-4">{job.company.description}</p>
                   )}
-                  {jobDetails?.companies?.size && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{jobDetails.companies.size} employees</span>
-                    </div>
+                  {job.company.website && (
+                    <a
+                      href={job.company.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm"
+                    >
+                      Visit Website →
+                    </a>
                   )}
-                  {jobDetails?.companies?.website && (
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Contact Info */}
+            {(job.contact_email || job.contact_phone) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Contact Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {job.contact_email && (
                     <div className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4 text-gray-500" />
-                      <a href={jobDetails.companies.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        Visit Website
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <a href={`mailto:${job.contact_email}`} className="text-primary hover:underline">
+                        {job.contact_email}
                       </a>
                     </div>
                   )}
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
-                  type="button"
-                >
-                  View Company Profile
-                </Button>
-              </CardContent>
-            </Card>
+                  {job.contact_phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <a href={`tel:${job.contact_phone}`} className="text-primary hover:underline">
+                        {job.contact_phone}
+                      </a>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Similar Jobs */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Similar Jobs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <h4 className="font-medium text-gray-900">Frontend Developer</h4>
-                    <p className="text-sm text-gray-600">Tech Startup</p>
-                    <p className="text-sm text-gray-500">San Francisco, CA</p>
+            {/* Tags */}
+            {job.tags && job.tags.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tags</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {job.tags.map((tag, index) => (
+                      <Badge key={index} variant="outline">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
-                  <div className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <h4 className="font-medium text-gray-900">Full Stack Engineer</h4>
-                    <p className="text-sm text-gray-600">Digital Agency</p>
-                    <p className="text-sm text-gray-500">Remote</p>
-                  </div>
-                  <div className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <h4 className="font-medium text-gray-900">Software Developer</h4>
-                    <p className="text-sm text-gray-600">Enterprise Corp</p>
-                    <p className="text-sm text-gray-500">New York, NY</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push(`/jobs?q=${encodeURIComponent(job.title)}`)}
-                  type="button"
-                >
-                  View All Similar Jobs
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Job Alerts */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Get Job Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">
-                  Get notified when similar jobs are posted.
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => router.push('/job-alerts')}
-                  type="button"
-                >
-                  Create Job Alert
-                </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
-      <ProfileSelector
-        isOpen={showProfileSelector}
-        onClose={() => setShowProfileSelector(false)}
-        onSelect={handleProfileSelected}
-        jobTitle={job?.title}
-        companyName={job?.company_name}
-      />
     </div>
   )
 }

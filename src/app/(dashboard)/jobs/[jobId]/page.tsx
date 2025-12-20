@@ -144,7 +144,7 @@ export default function JobDetailPage() {
 
   const handleBookmark = async () => {
     if (!job) return
-    
+
     try {
       const response = await fetch('/api/jobs/bookmark', {
         method: 'POST',
@@ -212,7 +212,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 pb-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
@@ -250,9 +250,9 @@ export default function JobDetailPage() {
                     >
                       <Bookmark className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={handleShare}
                       type="button"
                     >
@@ -306,9 +306,9 @@ export default function JobDetailPage() {
                     Applied
                   </Button>
                 ) : (
-                  <Button 
-                    onClick={handleApply} 
-                    size="lg" 
+                  <Button
+                    onClick={handleApply}
+                    size="lg"
                     className="w-full md:w-auto"
                     type="button"
                   >
@@ -456,11 +456,11 @@ export default function JobDetailPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-blue-800 mb-4">
-                  Which of your resumes fits this job best? Our AI can analyze your resumes 
+                  Which of your resumes fits this job best? Our AI can analyze your resumes
                   and match them to this job description.
                 </p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   onClick={() => router.push('/resume-optimizer')}
                   type="button"
@@ -506,8 +506,8 @@ export default function JobDetailPage() {
                     </div>
                   )}
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
                   type="button"
@@ -540,8 +540,8 @@ export default function JobDetailPage() {
                     <p className="text-sm text-gray-500">New York, NY</p>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-4"
                   onClick={() => router.push(`/jobs?q=${encodeURIComponent(job.title)}`)}
                   type="button"
@@ -560,8 +560,8 @@ export default function JobDetailPage() {
                 <p className="text-gray-600 mb-4">
                   Get notified when similar jobs are posted.
                 </p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => router.push('/job-alerts')}
                   type="button"

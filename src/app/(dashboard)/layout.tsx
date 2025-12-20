@@ -8,13 +8,13 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageLoader } from '@/components/ui/page-loader'
-import { 
-  User, 
-  FileText, 
-  Bookmark, 
-  Bell, 
-  Mic, 
-  Settings, 
+import {
+  User,
+  FileText,
+  Bookmark,
+  Bell,
+  Mic,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -73,7 +73,7 @@ export default function DashboardLayout({
     const timeout = setTimeout(() => {
       setInitialLoad(false)
     }, 3000) // Show page after 3 seconds max, even if user state not loaded
-    
+
     return () => clearTimeout(timeout)
   }, [])
 
@@ -85,57 +85,57 @@ export default function DashboardLayout({
       try {
         // Get session first - this reads from cookies set by middleware
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
+
         if (!mounted) return
 
         if (session?.user && !sessionError) {
           setUser(session.user)
           setInitialLoad(false)
-          
-          // Fetch user profile in background
-          ;(async () => {
-            try {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('full_name, avatar_url')
-                .eq('id', session.user.id)
-                .single()
-              
-              if (profile && mounted) {
-                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+
+            // Fetch user profile in background
+            ; (async () => {
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('full_name, avatar_url')
+                  .eq('id', session.user.id)
+                  .single()
+
+                if (profile && mounted) {
+                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                }
+              } catch {
+                // Non-critical error, continue without profile
               }
-            } catch {
-              // Non-critical error, continue without profile
-            }
-          })()
+            })()
           return
         }
 
         // If no session, try getUser as fallback
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
+
         if (!mounted) return
 
         if (user && !userError) {
           setUser(user)
           setInitialLoad(false)
-          
-          // Fetch user profile in background
-          ;(async () => {
-            try {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('full_name, avatar_url')
-                .eq('id', user.id)
-                .single()
-              
-              if (profile && mounted) {
-                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+
+            // Fetch user profile in background
+            ; (async () => {
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('full_name, avatar_url')
+                  .eq('id', user.id)
+                  .single()
+
+                if (profile && mounted) {
+                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                }
+              } catch {
+                // Non-critical error, continue without profile
               }
-            } catch {
-              // Non-critical error, continue without profile
-            }
-          })()
+            })()
         } else {
           // No user found - middleware will handle redirect
           setInitialLoad(false)
@@ -153,7 +153,7 @@ export default function DashboardLayout({
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
-      
+
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setUserProfile(null)
@@ -162,14 +162,14 @@ export default function DashboardLayout({
         if (session?.user) {
           setUser(session.user)
           setInitialLoad(false)
-          
+
           // Fetch user profile
           const { data: profile } = await supabase
             .from('users')
             .select('full_name, avatar_url')
             .eq('id', session.user.id)
             .single()
-          
+
           if (profile && mounted) {
             setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
           }
@@ -209,7 +209,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <PageLoader>
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
@@ -237,11 +236,10 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${isActive
+                    ? 'bg-primary text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon className="mr-3 h-5 w-5 flex-shrink-0 pointer-events-none" />
@@ -265,9 +263,8 @@ export default function DashboardLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${
-        sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
-      }`}>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
+        }`}>
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">
           <div className="flex h-16 items-center px-4 justify-between relative">
             {!sidebarCollapsed ? (
@@ -315,11 +312,10 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${
-                    isActive
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${isActive
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
                   <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
@@ -371,12 +367,12 @@ export default function DashboardLayout({
                 </span>
                 <ChevronDown className="h-4 w-4 text-gray-500 hidden xl:block" />
               </button>
-              
+
               {/* Dropdown menu */}
               {profileMenuOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-10" 
+                  <div
+                    className="fixed inset-0 z-10"
                     onClick={() => setProfileMenuOpen(false)}
                   />
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
@@ -449,10 +445,11 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <main className="flex-1">
-          {children}
+          <PageLoader>
+            {children}
+          </PageLoader>
         </main>
       </div>
     </div>
-    </PageLoader>
   )
 }

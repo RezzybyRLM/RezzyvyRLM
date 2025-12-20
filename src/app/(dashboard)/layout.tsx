@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageLoader } from '@/components/ui/page-loader'
 import { 
   User, 
   FileText, 
@@ -183,8 +184,14 @@ export default function DashboardLayout({
   }, [router, supabase])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    try {
+      await supabase.auth.signOut()
+      router.push('/auth/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      // Still redirect even if there's an error
+      router.push('/auth/login')
+    }
   }
 
   // Show loading only during initial load
@@ -202,6 +209,7 @@ export default function DashboardLayout({
   }
 
   return (
+    <PageLoader>
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
@@ -224,7 +232,7 @@ export default function DashboardLayout({
           <nav className="flex-1 px-4 py-4 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
                 <Link
                   key={item.name}
@@ -301,7 +309,7 @@ export default function DashboardLayout({
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
                 <Link
                   key={item.name}
@@ -443,5 +451,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </PageLoader>
   )
 }

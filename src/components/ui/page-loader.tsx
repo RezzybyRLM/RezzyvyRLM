@@ -15,10 +15,10 @@ export function PageLoader({ isLoading = false, children }: PageLoaderProps) {
 
   useEffect(() => {
     setMounted(true)
-    // Initial page load animation
+    // Initial page load animation - longer duration for better visibility
     const timer = setTimeout(() => {
       setShowLoader(false)
-    }, 800)
+    }, 2000) // Increased from 800ms to 2000ms
 
     return () => clearTimeout(timer)
   }, [])
@@ -27,7 +27,7 @@ export function PageLoader({ isLoading = false, children }: PageLoaderProps) {
     if (isLoading) {
       setShowLoader(true)
     } else {
-      const timer = setTimeout(() => setShowLoader(false), 300)
+      const timer = setTimeout(() => setShowLoader(false), 500) // Increased from 300ms to 500ms
       return () => clearTimeout(timer)
     }
   }, [isLoading])

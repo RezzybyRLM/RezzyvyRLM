@@ -66,7 +66,7 @@ export default function JobsPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
-
+  
   useEffect(() => {
     fetchJobs()
   }, [])
@@ -91,19 +91,19 @@ export default function JobsPage() {
 
     try {
       let query = supabase
-        .from('jobs')
-        .select(`
-          *,
-          companies (
+          .from('jobs')
+          .select(`
+            *,
+            companies (
             name,
             logo_url,
             description,
             website
-          )
-        `)
-        .gte('expires_at', new Date().toISOString())
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false })
+            )
+          `)
+          .gte('expires_at', new Date().toISOString())
+          .order('is_featured', { ascending: false })
+          .order('created_at', { ascending: false })
 
       if (searchQuery.trim()) {
         query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
@@ -171,34 +171,34 @@ export default function JobsPage() {
           <form onSubmit={handleSearch} className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Job title, keywords, or company"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                    <Input
+                      type="text"
+                      placeholder="Job title, keywords, or company"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-12 text-base"
-              />
-            </div>
+                    />
+                  </div>
             <div className="w-64 relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Location"
+                    <Input
+                      type="text"
+                      placeholder="Location"
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="pl-10 h-12 text-base"
-              />
-            </div>
+                    />
+                  </div>
             <Button type="submit" disabled={loading} className="h-12 px-8">
-              {loading ? (
+                {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
+                ) : (
                 'Find jobs'
-              )}
-            </Button>
-          </form>
-        </div>
-      </div>
+                )}
+              </Button>
+            </form>
+              </div>
+              </div>
 
       <div className="flex max-w-full">
         {/* Jobs List - Left Side */}
@@ -214,22 +214,22 @@ export default function JobsPage() {
             )}
 
             {/* Error Message */}
-            {error && (
+          {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center text-red-800">
                   <AlertCircle className="mr-2 h-5 w-5" />
                   <span>{error}</span>
                 </div>
               </div>
-            )}
+          )}
 
             {/* Loading State */}
-            {loading && (
-              <div className="text-center py-12">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          {loading && (
+            <div className="text-center py-12">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <p className="mt-2 text-gray-600">Loading jobs...</p>
-              </div>
-            )}
+            </div>
+          )}
 
             {/* Jobs List */}
             {!loading && !error && (
@@ -328,7 +328,7 @@ export default function JobsPage() {
         {selectedJob && (
           <div
             ref={detailPanelRef}
-            className="hidden lg:block fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-screen lg:h-auto bg-white border-l border-gray-200 overflow-y-auto z-30 animate-slideInRight"
+            className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-screen lg:h-auto bg-white border-l border-gray-200 overflow-y-auto z-30 animate-slideInRight shadow-xl lg:shadow-none"
           >
             {/* Sticky Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 z-10 shadow-sm">
@@ -427,7 +427,7 @@ export default function JobsPage() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <Users className="h-5 w-5" />
                     Benefits
-                  </h3>
+                </h3>
                   <ul className="list-disc list-inside space-y-2 text-gray-700">
                     {selectedJob.benefits.map((benefit, index) => (
                       <li key={index}>{benefit}</li>
@@ -463,9 +463,9 @@ export default function JobsPage() {
                       <p className="text-gray-500 mb-1">Application Deadline</p>
                       <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
                     </div>
-                  )}
-                </div>
-              </div>
+          )}
+        </div>
+      </div>
 
               {/* Application Instructions */}
               {selectedJob.application_instructions && (

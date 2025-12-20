@@ -56,10 +56,14 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onBookmark(job.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onBookmark(job.id)
+                }}
                 className={isBookmarked ? 'text-accent' : 'text-gray-400'}
+                type="button"
               >
-                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''} pointer-events-none`} />
               </Button>
             )}
           </div>
@@ -112,20 +116,25 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
                 variant="outline"
                 className="w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                 disabled
+                type="button"
               >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Applied
+                <CheckCircle className="mr-2 h-4 w-4 pointer-events-none" />
+                <span className="pointer-events-none">Applied</span>
               </Button>
             ) : (
               <Button 
-                onClick={handleApply}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleApply()
+                }}
                 className="w-full"
                 variant={job.source === 'indeed' ? 'default' : 'secondary'}
+                type="button"
               >
                 {job.source === 'indeed' ? (
                   <>
                     Apply on Indeed
-                    <ExternalLink className="ml-2 h-4 w-4" />
+                    <ExternalLink className="ml-2 h-4 w-4 pointer-events-none" />
                   </>
                 ) : (
                   'Apply Now'
@@ -134,9 +143,13 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
             )}
             {onMarkApplied && !isApplied && (
               <Button 
-                onClick={() => setShowProfileSelector(true)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowProfileSelector(true)
+                }}
                 variant="outline"
                 className="w-full"
+                type="button"
               >
                 Mark as Applied
               </Button>

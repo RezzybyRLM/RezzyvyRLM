@@ -254,10 +254,11 @@ export default function DashboardLayout({
             <Button
               variant="ghost"
               onClick={handleSignOut}
-              className="w-full justify-start text-red-600 hover:text-red-700"
+              className="w-full justify-start text-red-600 hover:text-red-700 relative z-10"
+              type="button"
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Sign Out
+              <LogOut className="mr-3 h-5 w-5 pointer-events-none" />
+              <span className="pointer-events-none">Sign Out</span>
             </Button>
           </div>
         </div>
@@ -331,11 +332,12 @@ export default function DashboardLayout({
             <Button
               variant="ghost"
               onClick={handleSignOut}
-              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
+              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all z-10 relative ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
               title={sidebarCollapsed ? 'Sign Out' : ''}
+              type="button"
             >
-              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-              {!sidebarCollapsed && <span className="truncate whitespace-nowrap">Sign Out</span>}
+              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} pointer-events-none`} />
+              {!sidebarCollapsed && <span className="truncate whitespace-nowrap pointer-events-none">Sign Out</span>}
             </Button>
           </div>
         </div>

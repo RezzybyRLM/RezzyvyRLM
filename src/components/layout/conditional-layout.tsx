@@ -8,7 +8,8 @@ import { User } from '@supabase/supabase-js'
 export function ConditionalLayout({ children, user }: { children: React.ReactNode, user?: User | null }) {
   const pathname = usePathname()
 
-  // Dashboard routes that should not show navbar/footer
+  // Dashboard routes that should not show navbar/footer (use sidebar instead)
+  // These routes are in the (dashboard) folder group and use DashboardLayout
   const dashboardRoutes = [
     '/dashboard',
     '/profile',
@@ -21,10 +22,13 @@ export function ConditionalLayout({ children, user }: { children: React.ReactNod
     '/messages',
     '/applications',
     '/profiles',
-    '/jobs',
   ]
 
-  const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route))
+  // Check if it's exactly /jobs (listing page) or /jobs/[jobId] (detail page)
+  // Both are in (dashboard) folder and should use sidebar
+  const isJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
+  
+  const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route)) || isJobsPage
 
   if (isDashboardRoute) {
     // Return only children for dashboard routes

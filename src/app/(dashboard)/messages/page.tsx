@@ -379,6 +379,11 @@ export default function MessagesPage() {
             return [...prev, message]
           })
           
+          // Scroll to bottom when new message arrives
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }, 100)
+          
           // Update conversations list
           await fetchConversations()
           
@@ -864,7 +869,23 @@ export default function MessagesPage() {
         })
       )
 
-      setMessages(messagesWithReplies || [])
+      // Reverse to show oldest first, newest last
+      const sortedMessages = (messagesWithReplies || []).reverse()
+      
+      if (beforeDate) {
+        // Loading older messages - prepend to existing
+        setMessages(prev => [...sortedMessages, ...prev])
+      } else {
+        // Initial load - replace all
+        setMessages(sortedMessages)
+        // Scroll to bottom after initial load
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        }, 100)
+      }
+      
+      // Check if there are more messages
+      setHasMoreMessages((count || 0) > (data?.length || 0))
 
       // Mark messages as read and add to read_by array
       const { data: { user } } = await supabase.auth.getUser()

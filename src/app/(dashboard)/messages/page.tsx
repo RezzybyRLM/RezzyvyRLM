@@ -352,7 +352,14 @@ export default function MessagesPage() {
         }, async (payload) => {
           if (!mounted) return
           
-          console.log('📨 Realtime message INSERT received:', payload)
+          console.log('🔔 Realtime INSERT event triggered:', payload)
+          console.log('📋 Payload details:', {
+            new: payload.new,
+            old: payload.old,
+            eventType: payload.eventType,
+            table: payload.table
+          })
+          
           const newMessage = payload.new as any
           
           // Verify this message is for the current conversation
@@ -360,6 +367,8 @@ export default function MessagesPage() {
             console.log('⚠️ Message is for different conversation, ignoring')
             return
           }
+          
+          console.log('✅ Processing new message for current conversation:', newMessage.id)
           
           const { data: { user } } = await supabase.auth.getUser()
           

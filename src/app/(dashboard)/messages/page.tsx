@@ -321,353 +321,374 @@ export default function MessagesPage() {
     }
   }, [searchParams, loading])
 
-  useEffect(() => {
-    if (!selectedConversation || !currentUserId) return
+  // Enhanced message handler - memoized to prevent recreation
+  // Use ref to access current selectedConversation without recreating callback
+  const selectedConversationRef = useRef<string | null>(null)
+  selectedConversationRef.current = selectedConversation
 
-    let mounted = true
-
-    const setupRealtime = async () => {
-      // Clean up any existing channels first
-      if (messagesChannelRef.current) {
-        supabase.removeChannel(messagesChannelRef.current)
-        messagesChannelRef.current = null
+  const handleRealtimeMessage = useCallback(async (payload: any) => {
+    console.log('🔔 Realtime event triggered:', payload.eventType, payload)
+    
+    // Handle different event types
+    if (payload.eventType === 'INSERT') {
+      const newMessage = payload.new as any
+      
+      // Verify this message is for the current conversation
+      if (newMessage.conversation_id !== selectedConversationRef.current) {
+        console.log('⚠️ Message is for different conversation, ignoring')
+        return
       }
-      if (typingChannelRef.current) {
-        supabase.removeChannel(typingChannelRef.current)
-        typingChannelRef.current = null
-      }
-      if (conversationChannelRef.current) {
-        supabase.removeChannel(conversationChannelRef.current)
-        conversationChannelRef.current = null
-      }
-
-      // Fetch initial messages first
-      await fetchMessages(selectedConversation)
       
-      // Small delay to ensure initial fetch completes before setting up realtime
-      await new Promise(resolve => setTimeout(resolve, 200))
+      console.log('✅ Processing new INSERT message for current conversation:', newMessage.id)
       
-      if (!mounted) return // Check if component unmounted during delay
+      const { data: { user } } = await supabase.auth.getUser()
       
-      console.log('🔌 Setting up realtime subscription for conversation:', selectedConversation)
+      // Fetch sender data for the new message
+      const { data: senderData } = await supabase
+        .from('users')
+        .select('id, full_name, email, phone_number')
+        .eq('id', newMessage.sender_id)
+        .single()
       
-      // Set up realtime subscription for messages with optimized updates
-      // Based on reference implementation from Stem-Spark
-      // Create a unique channel for this conversation (like a specific radio frequency)
-      messagesChannelRef.current = supabase
-        .channel(`messages:${selectedConversation}:${currentUserId}`, {
-          config: {
-            broadcast: { ack: true },
-            presence: { key: currentUserId }
-          }
-        })
-        // Listen for ALL events (INSERT, UPDATE, DELETE) with filter for this conversation
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${selectedConversation}`
-        }, async (payload) => {
-          if (!mounted) return
-          
-          console.log('🔔 Realtime event triggered:', payload.eventType, payload)
-          
-          // Handle different event types
-          if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as any
-            
-            // Verify this message is for the current conversation
-            if (newMessage.conversation_id !== selectedConversation) {
-              console.log('⚠️ Message is for different conversation, ignoring')
-              return
-            }
-            
-            console.log('✅ Processing new INSERT message for current conversation:', newMessage.id)
-          
-          const { data: { user } } = await supabase.auth.getUser()
-          
-          // Fetch sender data for the new message
-          const { data: senderData } = await supabase
-            .from('users')
-            .select('id, full_name, email, phone_number')
-            .eq('id', newMessage.sender_id)
-            .single()
-          
-          // Fetch attachments if any
-          const { data: attachments } = await supabase
-            .from('message_attachments')
-            .select('id, file_url, file_type, file_name')
-            .eq('message_id', newMessage.id)
-          
-          // Add new message to state immediately
-          setMessages(prev => {
-            const exists = prev.find(m => m.id === newMessage.id)
-            if (exists) return prev
-            
-            const message: Message = {
-              id: newMessage.id,
-              sender_id: newMessage.sender_id,
-              content: newMessage.content || '',
-              is_read: newMessage.is_read || false,
-              created_at: newMessage.created_at,
-              reply_to_message_id: newMessage.reply_to_message_id,
-              attachment_url: newMessage.attachment_url,
-              attachment_type: newMessage.attachment_type,
-              is_edited: newMessage.is_edited || false,
-              edited_at: newMessage.edited_at,
-              is_deleted: newMessage.is_deleted || false,
-              deleted_at: newMessage.deleted_at,
-              reactions: newMessage.reactions || {},
-              image_caption: newMessage.image_caption,
-              file_caption: newMessage.file_caption,
-              forwarded_from_id: newMessage.forwarded_from_id,
-              read_by: newMessage.read_by || [],
-              sender: senderData ? {
-                full_name: senderData.full_name || null,
-                email: senderData.email || '',
-                phone_number: senderData.phone_number || null
-              } : {
-                full_name: null,
-                email: '',
-                phone_number: null
+      // Fetch attachments if any
+      const { data: attachments } = await supabase
+        .from('message_attachments')
+        .select('id, file_url, file_type, file_name')
+        .eq('message_id', newMessage.id)
+      
+      // Add new message to state immediately
+      setMessages(prev => {
+        const exists = prev.find(m => m.id === newMessage.id)
+        if (exists) return prev
+        
+        const message: Message = {
+          id: newMessage.id,
+          sender_id: newMessage.sender_id,
+          content: newMessage.content || '',
+          is_read: newMessage.is_read || false,
+          created_at: newMessage.created_at,
+          reply_to_message_id: newMessage.reply_to_message_id,
+          attachment_url: newMessage.attachment_url,
+          attachment_type: newMessage.attachment_type,
+          is_edited: newMessage.is_edited || false,
+          edited_at: newMessage.edited_at,
+          is_deleted: newMessage.is_deleted || false,
+          deleted_at: newMessage.deleted_at,
+          reactions: newMessage.reactions || {},
+          image_caption: newMessage.image_caption,
+          file_caption: newMessage.file_caption,
+          forwarded_from_id: newMessage.forwarded_from_id,
+          read_by: newMessage.read_by || [],
+          sender: senderData ? {
+            full_name: senderData.full_name || null,
+            email: senderData.email || '',
+            phone_number: senderData.phone_number || null
+          } : {
+            full_name: null,
+            email: '',
+            phone_number: null
+          },
+          reply_to: null, // Will be fetched if needed
+          attachments: attachments || []
+        }
+        
+        return [...prev, message]
+      })
+      
+      // Scroll to bottom when new message arrives
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+      
+      // Update conversations list (optimized - only update this conversation)
+      setConversations(prev => prev.map(conv => 
+        conv.id === newMessage.conversation_id
+          ? {
+              ...conv,
+              last_message: {
+                content: newMessage.content,
+                sender_id: newMessage.sender_id,
+                created_at: newMessage.created_at,
+                is_read: newMessage.is_read
               },
-              reply_to: null, // Will be fetched if needed
-              attachments: attachments || []
+              last_message_at: newMessage.created_at,
+              unread_count: conv.id === selectedConversationRef.current ? conv.unread_count : conv.unread_count + 1
             }
-            
-            return [...prev, message]
+          : conv
+      ))
+      
+      // Mark as read if it's not from current user
+      if (user && newMessage.sender_id !== user.id) {
+        const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
+        if (!readBy.includes(user.id)) {
+          readBy.push(user.id)
+        }
+        
+        await supabase
+          .from('messages')
+          .update({ 
+            is_read: true,
+            read_by: readBy
           })
-          
-          // Scroll to bottom when new message arrives
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }, 100)
-          
-          // Update conversations list (optimized - only update this conversation)
-          setConversations(prev => prev.map(conv => 
-            conv.id === newMessage.conversation_id
-              ? {
-                  ...conv,
-                  last_message: {
-                    content: newMessage.content,
-                    sender_id: newMessage.sender_id,
-                    created_at: newMessage.created_at,
-                    is_read: newMessage.is_read
-                  },
-                  last_message_at: newMessage.created_at,
-                  unread_count: conv.id === selectedConversation ? conv.unread_count : conv.unread_count + 1
-                }
-              : conv
-          ))
-          
-            // Mark as read if it's not from current user
-            if (user && newMessage.sender_id !== user.id) {
-              const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
-              if (!readBy.includes(user.id)) {
-                readBy.push(user.id)
+          .eq('id', newMessage.id)
+      }
+    } else if (payload.eventType === 'UPDATE') {
+      const updatedMessage = payload.new as any
+      
+      console.log('🔄 Processing UPDATE event for message:', updatedMessage.id)
+      
+      // Update message in state
+      setMessages(prev => prev.map(msg =>
+        msg.id === updatedMessage.id
+          ? { ...msg, ...updatedMessage }
+          : msg
+      ))
+      
+      // Update conversations list (optimized)
+      setConversations(prev => prev.map(conv => 
+        conv.id === updatedMessage.conversation_id && conv.last_message?.sender_id === updatedMessage.sender_id
+          ? {
+              ...conv,
+              last_message: {
+                content: updatedMessage.content,
+                sender_id: updatedMessage.sender_id,
+                created_at: updatedMessage.created_at,
+                is_read: updatedMessage.is_read
               }
-              
-              await supabase
-                .from('messages')
-                .update({ 
-                  is_read: true,
-                  read_by: readBy
-                })
-                .eq('id', newMessage.id)
             }
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedMessage = payload.new as any
-            
-            console.log('🔄 Processing UPDATE event for message:', updatedMessage.id)
-            
-            // Update message in state
-            setMessages(prev => prev.map(msg =>
-              msg.id === updatedMessage.id
-                ? { ...msg, ...updatedMessage }
-                : msg
-            ))
-            
-            // Update conversations list (optimized)
-            setConversations(prev => prev.map(conv => 
-              conv.id === updatedMessage.conversation_id && conv.last_message?.sender_id === updatedMessage.sender_id
-                ? {
-                    ...conv,
-                    last_message: {
-                      content: updatedMessage.content,
-                      sender_id: updatedMessage.sender_id,
-                      created_at: updatedMessage.created_at,
-                      is_read: updatedMessage.is_read
-                    }
+          : conv
+      ))
+    } else if (payload.eventType === 'DELETE') {
+      const deletedMessage = payload.old as any
+      
+      console.log('🗑️ Processing DELETE event for message:', deletedMessage.id)
+      
+      // Remove deleted message from state
+      setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id))
+    }
+  }, []) // No dependencies - uses ref to access current conversation
+
+  // Enhanced realtime subscription setup - memoized like reference code
+  const setupRealtimeSubscription = useCallback(async (conversationId: string) => {
+    if (!conversationId || !currentUserId) return
+
+    console.log(`🔌 Setting up subscription for conversation: ${conversationId}`)
+
+    // Clean up any existing channels first
+    if (messagesChannelRef.current) {
+      console.log('🧹 Cleaning up existing messages channel')
+      supabase.removeChannel(messagesChannelRef.current)
+      messagesChannelRef.current = null
+    }
+    if (typingChannelRef.current) {
+      supabase.removeChannel(typingChannelRef.current)
+      typingChannelRef.current = null
+    }
+    if (conversationChannelRef.current) {
+      supabase.removeChannel(conversationChannelRef.current)
+      conversationChannelRef.current = null
+    }
+
+    // Fetch initial messages first
+    await fetchMessages(conversationId)
+    
+    // Small delay to ensure initial fetch completes
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    console.log('🔌 Creating realtime subscription for conversation:', conversationId)
+      
+    // Set up realtime subscription for messages with optimized updates
+    // Based on reference implementation from Stem-Spark
+    // Create a unique channel for this conversation (like a specific radio frequency)
+    messagesChannelRef.current = supabase
+      .channel(`messages:${conversationId}:${currentUserId}`, {
+        config: {
+          broadcast: { ack: true },
+          presence: { key: currentUserId }
+        }
+      })
+      // Listen for ALL events (INSERT, UPDATE, DELETE) with filter for this conversation
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversationId}`
+      }, handleRealtimeMessage)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_attachments',
+        filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
+      }, async (payload) => {
+        const newAttachment = payload.new as any
+        
+        // Update message with new attachment
+        setMessages(prev => prev.map(msg => 
+          msg.id === newAttachment.message_id
+            ? {
+                ...msg,
+                attachments: [
+                  ...(msg.attachments || []),
+                  {
+                    id: newAttachment.id,
+                    file_url: newAttachment.file_url,
+                    file_type: newAttachment.file_type,
+                    file_name: newAttachment.file_name
                   }
-                : conv
-            ))
-          } else if (payload.eventType === 'DELETE') {
-            const deletedMessage = payload.old as any
-            
-            console.log('🗑️ Processing DELETE event for message:', deletedMessage.id)
-            
-            // Remove deleted message from state
-            setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id))
-          }
-        })
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_attachments',
-          filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${selectedConversation})`
-        }, async (payload) => {
-          if (!mounted) return
-          
-          const newAttachment = payload.new as any
-          
-          // Update message with new attachment
-          setMessages(prev => prev.map(msg => 
-            msg.id === newAttachment.message_id
-              ? {
-                  ...msg,
-                  attachments: [
-                    ...(msg.attachments || []),
-                    {
-                      id: newAttachment.id,
-                      file_url: newAttachment.file_url,
-                      file_type: newAttachment.file_type,
-                      file_name: newAttachment.file_name
-                    }
-                  ]
-                }
-              : msg
-          ))
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'message_attachments',
-          filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${selectedConversation})`
-        }, async (payload) => {
-          if (!mounted) return
-          
-          const updatedAttachment = payload.new as any
-          
-          // Update attachment in message
-          setMessages(prev => prev.map(msg => 
-            msg.id === updatedAttachment.message_id
-              ? {
-                  ...msg,
-                  attachments: (msg.attachments || []).map(att =>
-                    att.id === updatedAttachment.id
-                      ? {
-                          ...att,
-                          file_url: updatedAttachment.file_url,
-                          file_type: updatedAttachment.file_type,
-                          file_name: updatedAttachment.file_name
-                        }
-                      : att
-                  )
-                }
-              : msg
-          ))
-        })
-        .subscribe((status, err) => {
-          // Handle subscription status
-          console.log(`📡 Realtime subscription status: ${status}`, err || '')
-          if (status === 'SUBSCRIBED') {
-            console.log(`✅ Realtime subscription active for conversation ${selectedConversation}`)
+                ]
+              }
+            : msg
+        ))
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'message_attachments',
+        filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
+      }, async (payload) => {
+        const updatedAttachment = payload.new as any
+        
+        // Update attachment in message
+        setMessages(prev => prev.map(msg => 
+          msg.id === updatedAttachment.message_id
+            ? {
+                ...msg,
+                attachments: (msg.attachments || []).map(att =>
+                  att.id === updatedAttachment.id
+                    ? {
+                        ...att,
+                        file_url: updatedAttachment.file_url,
+                        file_type: updatedAttachment.file_type,
+                        file_name: updatedAttachment.file_name
+                      }
+                    : att
+                )
+              }
+            : msg
+        ))
+      })
+      .on('presence', { event: 'sync' }, () => {
+        console.log('👥 Presence synced')
+      })
+      .subscribe((status, err) => {
+        console.log(`📡 Realtime subscription status: ${status}`, err || '')
+        
+        switch (status) {
+          case 'SUBSCRIBED':
+            console.log(`✅ Realtime subscription active for conversation ${conversationId}`)
             console.log('📋 Channel details:', {
-              channel: `messages:${selectedConversation}:${currentUserId}`,
-              conversation: selectedConversation,
+              channel: `messages:${conversationId}:${currentUserId}`,
+              conversation: conversationId,
               userId: currentUserId
             })
-          } else if (status === 'CHANNEL_ERROR') {
+            break
+          case 'CHANNEL_ERROR':
             console.error('❌ Realtime channel error:', err)
             // Try to resubscribe on error
-            if (mounted && messagesChannelRef.current) {
+            if (messagesChannelRef.current) {
               setTimeout(() => {
                 console.log('🔄 Attempting to resubscribe...')
                 messagesChannelRef.current?.subscribe()
               }, 2000)
             }
-          } else if (status === 'TIMED_OUT') {
+            break
+          case 'TIMED_OUT':
             console.warn('⏱️ Realtime subscription timed out, retrying...')
             // Channel will auto-retry, but we can also manually retry
-            if (mounted && messagesChannelRef.current) {
+            if (messagesChannelRef.current) {
               setTimeout(() => {
                 console.log('🔄 Retrying subscription after timeout...')
                 messagesChannelRef.current?.subscribe()
               }, 3000)
             }
-          } else if (status === 'CLOSED') {
+            break
+          case 'CLOSED':
             console.log('🔒 Realtime channel closed')
-            // Reconnect if still mounted and conversation hasn't changed
-            if (mounted && selectedConversation && messagesChannelRef.current) {
+            // Reconnect if conversation hasn't changed
+            if (conversationId === selectedConversationRef.current && messagesChannelRef.current) {
               setTimeout(() => {
-                if (mounted && messagesChannelRef.current) {
+                if (messagesChannelRef.current) {
                   console.log('🔄 Reconnecting closed channel...')
                   messagesChannelRef.current.subscribe()
                 }
               }, 1000)
             }
-          }
-        })
+            break
+        }
+      })
 
-      // Set up typing indicator subscription
-      typingChannelRef.current = supabase
-        .channel(`typing:${selectedConversation}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'typing_indicators',
-          filter: `conversation_id=eq.${selectedConversation}`
-        }, async (payload) => {
-          if (!mounted) return
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user && payload.new && (payload.new as any).user_id !== user.id) {
-            setOtherUserTyping((payload.new as any).is_typing || false)
-            
-            // Auto-hide typing indicator after 3 seconds
-            if ((payload.new as any).is_typing) {
-              setTimeout(() => {
-                if (mounted) setOtherUserTyping(false)
-              }, 3000)
-            }
+    // Set up typing indicator subscription
+    typingChannelRef.current = supabase
+      .channel(`typing:${conversationId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'typing_indicators',
+        filter: `conversation_id=eq.${conversationId}`
+      }, async (payload) => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && payload.new && (payload.new as any).user_id !== user.id) {
+          setOtherUserTyping((payload.new as any).is_typing || false)
+          
+          // Auto-hide typing indicator after 3 seconds
+          if ((payload.new as any).is_typing) {
+            setTimeout(() => {
+              setOtherUserTyping(false)
+            }, 3000)
           }
-        })
-        .subscribe()
+        }
+      })
+      .subscribe()
 
-      // Set up conversation updates subscription
-      conversationChannelRef.current = supabase
-        .channel(`conversation:${selectedConversation}:${currentUserId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversations',
-          filter: `id=eq.${selectedConversation}`
-        }, async (payload) => {
-          if (!mounted) return
-          
-          const updatedConv = payload.new as any
-          
-          // Update conversation in state
-          setConversations(prev => prev.map(conv => 
-            conv.id === updatedConv.id
-              ? { ...conv, last_message_at: updatedConv.last_message_at }
-              : conv
-          ))
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log(`✅ Conversation updates subscription active`)
-          }
-        })
+    // Set up conversation updates subscription
+    conversationChannelRef.current = supabase
+      .channel(`conversation:${conversationId}:${currentUserId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversations',
+        filter: `id=eq.${conversationId}`
+      }, async (payload) => {
+        const updatedConv = payload.new as any
+        
+        // Update conversation in state
+        setConversations(prev => prev.map(conv => 
+          conv.id === updatedConv.id
+            ? { ...conv, last_message_at: updatedConv.last_message_at }
+            : conv
+        ))
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Conversation updates subscription active`)
+        }
+      })
+  }, [currentUserId, handleRealtimeMessage])
+
+  useEffect(() => {
+    if (!selectedConversation || !currentUserId) {
+      // Clean up channels if no conversation selected
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current)
+        messagesChannelRef.current = null
+      }
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current)
+        typingChannelRef.current = null
+      }
+      if (conversationChannelRef.current) {
+        supabase.removeChannel(conversationChannelRef.current)
+        conversationChannelRef.current = null
+      }
+      return
     }
 
-    setupRealtime()
+    setupRealtimeSubscription(selectedConversation)
 
     return () => {
-      mounted = false
       // Cleanup: Always unsubscribe when component unmounts or conversation changes
-      // This saves on performance and connection limits
+      console.log(`🧹 Cleaning up channels for conversation ${selectedConversation}`)
       if (messagesChannelRef.current) {
-        console.log(`🔌 Cleaning up messages channel for conversation ${selectedConversation}`)
         supabase.removeChannel(messagesChannelRef.current)
         messagesChannelRef.current = null
       }
@@ -680,8 +701,7 @@ export default function MessagesPage() {
         conversationChannelRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedConversation, currentUserId])
+  }, [selectedConversation, currentUserId, setupRealtimeSubscription])
 
   // Fetch conversation details if it's not in the list yet (newly created)
   useEffect(() => {

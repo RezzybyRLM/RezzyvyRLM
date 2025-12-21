@@ -89,6 +89,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [messageContent, setMessageContent] = useState('')
   const [loading, setLoading] = useState(true)
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -297,98 +298,111 @@ export default function MessagesPage() {
 
     return () => {
       mounted = false
-      if (messagesChannel) supabase.removeChannel(messagesChannel)
-      if (typingChannel) supabase.removeChannel(typingChannel)
+      if (messagesChannel) {
+        supabase.removeChannel(messagesChannel)
+      }
+      if (typingChannel) {
+        supabase.removeChannel(typingChannel)
+      }
     }
-  }, [selectedConversation, currentUserId, supabase])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation, currentUserId])
 
   // Fetch conversation details if it's not in the list yet (newly created)
   useEffect(() => {
-    if (selectedConversation && !loading && currentUserId) {
-      const conv = conversations.find(c => c.id === selectedConversation)
-      if (!conv) {
-        // Conversation not in list, fetch it directly and refresh list
-        const fetchMissingConversation = async () => {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) return
-          
-          try {
-            const { data: convData, error } = await supabase
-              .from('conversations')
-              .select(`
-                *,
-                participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
-                participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
-              `)
-              .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-              .eq('id', selectedConversation)
-              .single()
-            
-            if (error) {
-              console.error('Error fetching missing conversation:', error)
-              return
-            }
-            
-            if (convData) {
-              // Format the conversation and add it to the list
-              const otherUser = convData.participant1_id === user.id 
-                ? convData.participant2 
-                : convData.participant1
-              
-              // Get last message
-              const { data: lastMsg } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', convData.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
-              
-              // Get unread count
-              const { count } = await supabase
-                .from('messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('conversation_id', convData.id)
-                .eq('is_read', false)
-                .neq('sender_id', user.id)
-              
-              const formattedConv = {
-                id: convData.id,
-                participant1_id: convData.participant1_id,
-                participant2_id: convData.participant2_id,
-                last_message_at: convData.last_message_at,
-                other_user: {
-                  id: otherUser.id,
-                  full_name: otherUser.full_name,
-                  email: otherUser.email,
-                  phone_number: otherUser.phone_number || null,
-                  avatar_url: otherUser.avatar_url || null
-                },
-                last_message: lastMsg || null,
-                unread_count: count || 0
-              }
-              
-              // Add to conversations list
-              setConversations(prev => {
-                const exists = prev.find(c => c.id === formattedConv.id)
-                if (exists) return prev
-                return [formattedConv, ...prev]
-              })
-              
-              // Also fetch messages for this conversation
-              await fetchMessages(selectedConversation)
-            }
-          } catch (err) {
-            console.error('Error in fetchMissingConversation:', err)
-          }
+    if (!selectedConversation || !currentUserId || loading) return
+    
+    const conv = conversations.find(c => c.id === selectedConversation)
+    if (conv) {
+      // Conversation is in list, messages will be fetched by the realtime effect
+      return
+    }
+    
+    // Conversation not in list, fetch it directly (only once per conversation ID)
+    let isMounted = true
+    let hasFetched = false
+    
+    const fetchMissingConversation = async () => {
+      if (hasFetched || !isMounted) return
+      hasFetched = true
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !isMounted) return
+      
+      try {
+        const { data: convData, error } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
+            participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
+          `)
+          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+          .eq('id', selectedConversation)
+          .single()
+        
+        if (error) {
+          console.error('Error fetching missing conversation:', error)
+          return
         }
-        fetchMissingConversation()
-      } else if (conv) {
-        // Conversation is in list, just fetch messages
-        fetchMessages(selectedConversation)
+        
+        if (convData && isMounted) {
+          // Format the conversation and add it to the list
+          const otherUser = convData.participant1_id === user.id 
+            ? convData.participant2 
+            : convData.participant1
+          
+          // Get last message
+          const { data: lastMsg } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', convData.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          
+          // Get unread count
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', convData.id)
+            .eq('is_read', false)
+            .neq('sender_id', user.id)
+          
+          const formattedConv = {
+            id: convData.id,
+            participant1_id: convData.participant1_id,
+            participant2_id: convData.participant2_id,
+            last_message_at: convData.last_message_at,
+            other_user: {
+              id: otherUser.id,
+              full_name: otherUser.full_name,
+              email: otherUser.email,
+              phone_number: otherUser.phone_number || null,
+              avatar_url: otherUser.avatar_url || null
+            },
+            last_message: lastMsg || null,
+            unread_count: count || 0
+          }
+          
+          // Add to conversations list only if not already there
+          setConversations(prev => {
+            const exists = prev.find(c => c.id === formattedConv.id)
+            if (exists) return prev
+            return [formattedConv, ...prev]
+          })
+        }
+      } catch (err) {
+        console.error('Error in fetchMissingConversation:', err)
       }
     }
-  }, [selectedConversation, conversations, loading, currentUserId, supabase])
+    fetchMissingConversation()
+    
+    return () => {
+      isMounted = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation, currentUserId, loading])
 
   const fetchConversations = async () => {
     try {
@@ -465,6 +479,9 @@ export default function MessagesPage() {
   }
 
   const fetchMessages = async (conversationId: string) => {
+    if (!conversationId) return
+    
+    setMessagesLoading(true)
     try {
       const { data, error } = await supabase
         .from('messages')
@@ -476,7 +493,10 @@ export default function MessagesPage() {
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching messages:', error)
+        throw error
+      }
 
           // Fetch reply_to messages for messages that have replies
           const messagesWithReplies = await Promise.all(
@@ -506,6 +526,9 @@ export default function MessagesPage() {
                 }
               }
 
+          // Handle sender data (could be array or object)
+          const senderData = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender
+          
           return {
             id: msg.id,
             sender_id: msg.sender_id,
@@ -524,18 +547,22 @@ export default function MessagesPage() {
             file_caption: msg.file_caption,
             forwarded_from_id: msg.forwarded_from_id,
             read_by: msg.read_by || [],
-            sender: {
-              full_name: msg.sender.full_name,
-              email: msg.sender.email,
-              phone_number: msg.sender.phone_number || null
+            sender: senderData ? {
+              full_name: senderData.full_name || null,
+              email: senderData.email || '',
+              phone_number: senderData.phone_number || null
+            } : {
+              full_name: null,
+              email: '',
+              phone_number: null
             },
             reply_to: replyTo,
-            attachments: msg.attachments || []
+            attachments: Array.isArray(msg.attachments) ? msg.attachments : []
           }
         })
       )
 
-      setMessages(messagesWithReplies)
+      setMessages(messagesWithReplies || [])
 
       // Mark messages as read
       const { data: { user } } = await supabase.auth.getUser()
@@ -549,6 +576,9 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Error fetching messages:', error)
+      setMessages([])
+    } finally {
+      setMessagesLoading(false)
     }
   }
 
@@ -1033,7 +1063,12 @@ export default function MessagesPage() {
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col p-0">
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {messages.length === 0 ? (
+                    {messagesLoading ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                        <p className="text-gray-600">Loading messages...</p>
+                      </div>
+                    ) : messages.length === 0 ? (
                       <div className="text-center py-8">
                         <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-600">No messages yet</p>

@@ -62,6 +62,13 @@ interface Message {
   attachment_type?: string | null
   is_edited?: boolean
   edited_at?: string | null
+  is_deleted?: boolean
+  deleted_at?: string | null
+  reactions?: Record<string, string[]>
+  image_caption?: string | null
+  file_caption?: string | null
+  forwarded_from_id?: string | null
+  read_by?: string[]
   sender: {
     full_name: string | null
     email: string
@@ -133,32 +140,129 @@ export default function MessagesPage() {
         setTimeout(checkAndSetConversation, 200)
       }
 
-      // Set up realtime subscription for conversations list
+      // Set up realtime subscription for conversations list with optimized updates
       if (mounted) {
         conversationsChannel = supabase
           .channel('conversations_list')
           .on('postgres_changes', {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'conversations',
-            filter: `participant1_id=eq.${user.id}`
-          }, () => {
-            if (mounted) fetchConversations()
+            filter: `or(participant1_id.eq.${user.id},participant2_id.eq.${user.id})`
+          }, async (payload) => {
+            if (!mounted) return
+            
+            const newConv = payload.new as any
+            const otherUserId = newConv.participant1_id === user.id 
+              ? newConv.participant2_id 
+              : newConv.participant1_id
+            
+            // Fetch other user data
+            const { data: otherUserData } = await supabase
+              .from('users')
+              .select('id, full_name, email, phone_number, avatar_url')
+              .eq('id', otherUserId)
+              .single()
+            
+            // Fetch last message
+            const { data: lastMsg } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('conversation_id', newConv.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            
+            // Get unread count
+            const { count } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', newConv.id)
+              .eq('is_read', false)
+              .neq('sender_id', user.id)
+            
+            const formattedConv: Conversation = {
+              id: newConv.id,
+              participant1_id: newConv.participant1_id,
+              participant2_id: newConv.participant2_id,
+              last_message_at: newConv.last_message_at,
+              other_user: {
+                id: otherUserData?.id || otherUserId,
+                full_name: otherUserData?.full_name || null,
+                email: otherUserData?.email || '',
+                phone_number: otherUserData?.phone_number || null,
+                avatar_url: otherUserData?.avatar_url || null
+              },
+              last_message: lastMsg ? {
+                content: lastMsg.content,
+                sender_id: lastMsg.sender_id,
+                created_at: lastMsg.created_at,
+                is_read: lastMsg.is_read
+              } : null,
+              unread_count: count || 0
+            }
+            
+            setConversations(prev => {
+              const exists = prev.find(c => c.id === formattedConv.id)
+              if (exists) return prev
+              return [formattedConv, ...prev]
+            })
           })
           .on('postgres_changes', {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'conversations',
-            filter: `participant2_id=eq.${user.id}`
-          }, () => {
-            if (mounted) fetchConversations()
+            filter: `or(participant1_id.eq.${user.id},participant2_id.eq.${user.id})`
+          }, async (payload) => {
+            if (!mounted) return
+            
+            const updatedConv = payload.new as any
+            
+            // Update conversation in state
+            setConversations(prev => prev.map(conv => 
+              conv.id === updatedConv.id
+                ? { ...conv, last_message_at: updatedConv.last_message_at }
+                : conv
+            ))
           })
           .on('postgres_changes', {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'messages'
-          }, () => {
-            if (mounted) fetchConversations()
+          }, async (payload) => {
+            if (!mounted) return
+            
+            const newMessage = payload.new as any
+            
+            // Update conversation's last message if it's in our conversations
+            const conv = conversations.find(c => c.id === newMessage.conversation_id)
+            if (conv) {
+              const { data: { user: currentUser } } = await supabase.auth.getUser()
+              
+              // Get unread count
+              const { count } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('conversation_id', newMessage.conversation_id)
+                .eq('is_read', false)
+                .neq('sender_id', currentUser?.id)
+              
+              setConversations(prev => prev.map(c => 
+                c.id === newMessage.conversation_id
+                  ? {
+                      ...c,
+                      last_message: {
+                        content: newMessage.content,
+                        sender_id: newMessage.sender_id,
+                        created_at: newMessage.created_at,
+                        is_read: newMessage.is_read
+                      },
+                      last_message_at: newMessage.created_at,
+                      unread_count: count || 0
+                    }
+                  : c
+              ))
+            }
           })
           .subscribe()
       }
@@ -205,7 +309,7 @@ export default function MessagesPage() {
       // Fetch initial messages
       await fetchMessages(selectedConversation)
       
-      // Set up realtime subscription for messages
+      // Set up realtime subscription for messages with optimized updates
       messagesChannel = supabase
         .channel(`messages:${selectedConversation}`)
         .on('postgres_changes', {
@@ -215,30 +319,168 @@ export default function MessagesPage() {
           filter: `conversation_id=eq.${selectedConversation}`
         }, async (payload) => {
           if (!mounted) return
-          await fetchMessages(selectedConversation)
+          
+          const newMessage = payload.new as any
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          // Fetch sender data for the new message
+          const { data: senderData } = await supabase
+            .from('users')
+            .select('id, full_name, email, phone_number')
+            .eq('id', newMessage.sender_id)
+            .single()
+          
+          // Fetch attachments if any
+          const { data: attachments } = await supabase
+            .from('message_attachments')
+            .select('id, file_url, file_type, file_name')
+            .eq('message_id', newMessage.id)
+          
+          // Add new message to state immediately
+          setMessages(prev => {
+            const exists = prev.find(m => m.id === newMessage.id)
+            if (exists) return prev
+            
+            const message: Message = {
+              id: newMessage.id,
+              sender_id: newMessage.sender_id,
+              content: newMessage.content || '',
+              is_read: newMessage.is_read || false,
+              created_at: newMessage.created_at,
+              reply_to_message_id: newMessage.reply_to_message_id,
+              attachment_url: newMessage.attachment_url,
+              attachment_type: newMessage.attachment_type,
+              is_edited: newMessage.is_edited || false,
+              edited_at: newMessage.edited_at,
+              is_deleted: newMessage.is_deleted || false,
+              deleted_at: newMessage.deleted_at,
+              reactions: newMessage.reactions || {},
+              image_caption: newMessage.image_caption,
+              file_caption: newMessage.file_caption,
+              forwarded_from_id: newMessage.forwarded_from_id,
+              read_by: newMessage.read_by || [],
+              sender: senderData ? {
+                full_name: senderData.full_name || null,
+                email: senderData.email || '',
+                phone_number: senderData.phone_number || null
+              } : {
+                full_name: null,
+                email: '',
+                phone_number: null
+              },
+              reply_to: null, // Will be fetched if needed
+              attachments: attachments || []
+            }
+            
+            return [...prev, message]
+          })
+          
+          // Update conversations list
           await fetchConversations()
           
-          // Mark as read if it's not from current user (this happens when viewing the conversation)
-          // The read_by will be updated when fetchMessages is called
+          // Mark as read if it's not from current user
+          if (user && newMessage.sender_id !== user.id) {
+            const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
+            if (!readBy.includes(user.id)) {
+              readBy.push(user.id)
+            }
+            
+            await supabase
+              .from('messages')
+              .update({ 
+                is_read: true,
+                read_by: readBy
+              })
+              .eq('id', newMessage.id)
+          }
         })
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${selectedConversation}`
-        }, () => {
-          if (mounted) {
-            fetchMessages(selectedConversation)
-            fetchConversations()
-          }
+        }, async (payload) => {
+          if (!mounted) return
+          
+          const updatedMessage = payload.new as any
+          
+          // Update message in state
+          setMessages(prev => prev.map(msg => 
+            msg.id === updatedMessage.id 
+              ? { ...msg, ...updatedMessage }
+              : msg
+          ))
+          
+          // Update conversations list
+          await fetchConversations()
         })
         .on('postgres_changes', {
-          event: '*',
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${selectedConversation}`
+        }, (payload) => {
+          if (!mounted) return
+          
+          // Remove deleted message from state
+          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id))
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
           schema: 'public',
           table: 'message_attachments',
-          filter: `message_id=in.(${selectedConversation})`
-        }, () => {
-          if (mounted) fetchMessages(selectedConversation)
+          filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${selectedConversation})`
+        }, async (payload) => {
+          if (!mounted) return
+          
+          const newAttachment = payload.new as any
+          
+          // Update message with new attachment
+          setMessages(prev => prev.map(msg => 
+            msg.id === newAttachment.message_id
+              ? {
+                  ...msg,
+                  attachments: [
+                    ...(msg.attachments || []),
+                    {
+                      id: newAttachment.id,
+                      file_url: newAttachment.file_url,
+                      file_type: newAttachment.file_type,
+                      file_name: newAttachment.file_name
+                    }
+                  ]
+                }
+              : msg
+          ))
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'message_attachments',
+          filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${selectedConversation})`
+        }, async (payload) => {
+          if (!mounted) return
+          
+          const updatedAttachment = payload.new as any
+          
+          // Update attachment in message
+          setMessages(prev => prev.map(msg => 
+            msg.id === updatedAttachment.message_id
+              ? {
+                  ...msg,
+                  attachments: (msg.attachments || []).map(att =>
+                    att.id === updatedAttachment.id
+                      ? {
+                          ...att,
+                          file_url: updatedAttachment.file_url,
+                          file_type: updatedAttachment.file_type,
+                          file_name: updatedAttachment.file_name
+                        }
+                      : att
+                  )
+                }
+              : msg
+          ))
         })
         .subscribe()
 
@@ -274,10 +516,17 @@ export default function MessagesPage() {
           schema: 'public',
           table: 'conversations',
           filter: `id=eq.${selectedConversation}`
-        }, () => {
-          if (mounted) {
-            fetchConversations()
-          }
+        }, async (payload) => {
+          if (!mounted) return
+          
+          const updatedConv = payload.new as any
+          
+          // Update conversation in state
+          setConversations(prev => prev.map(conv => 
+            conv.id === updatedConv.id
+              ? { ...conv, last_message_at: updatedConv.last_message_at }
+              : conv
+          ))
         })
         .subscribe()
 

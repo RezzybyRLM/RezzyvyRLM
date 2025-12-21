@@ -112,6 +112,9 @@ export default function MessagesPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const messagesChannelRef = useRef<any>(null)
+  const typingChannelRef = useRef<any>(null)
+  const conversationChannelRef = useRef<any>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null)
   const [forwardingToConversation, setForwardingToConversation] = useState<string | null>(null)
@@ -322,22 +325,36 @@ export default function MessagesPage() {
     if (!selectedConversation || !currentUserId) return
 
     let mounted = true
-    let messagesChannel: any = null
-    let typingChannel: any = null
 
     const setupRealtime = async () => {
+      // Clean up any existing channels first
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current)
+        messagesChannelRef.current = null
+      }
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current)
+        typingChannelRef.current = null
+      }
+      if (conversationChannelRef.current) {
+        supabase.removeChannel(conversationChannelRef.current)
+        conversationChannelRef.current = null
+      }
+
       // Fetch initial messages first
       await fetchMessages(selectedConversation)
       
       // Small delay to ensure initial fetch completes before setting up realtime
       await new Promise(resolve => setTimeout(resolve, 200))
       
+      if (!mounted) return // Check if component unmounted during delay
+      
       console.log('🔌 Setting up realtime subscription for conversation:', selectedConversation)
       
       // Set up realtime subscription for messages with optimized updates
       // Based on reference implementation from Stem-Spark
       // Create a unique channel for this conversation (like a specific radio frequency)
-      messagesChannel = supabase
+      messagesChannelRef.current = supabase
         .channel(`messages:${selectedConversation}:${currentUserId}`, {
           config: {
             broadcast: { ack: true },
@@ -563,29 +580,29 @@ export default function MessagesPage() {
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ Realtime channel error:', err)
             // Try to resubscribe on error
-            if (mounted && messagesChannel) {
+            if (mounted && messagesChannelRef.current) {
               setTimeout(() => {
                 console.log('🔄 Attempting to resubscribe...')
-                messagesChannel.subscribe()
+                messagesChannelRef.current?.subscribe()
               }, 2000)
             }
           } else if (status === 'TIMED_OUT') {
             console.warn('⏱️ Realtime subscription timed out, retrying...')
             // Channel will auto-retry, but we can also manually retry
-            if (mounted && messagesChannel) {
+            if (mounted && messagesChannelRef.current) {
               setTimeout(() => {
                 console.log('🔄 Retrying subscription after timeout...')
-                messagesChannel.subscribe()
+                messagesChannelRef.current?.subscribe()
               }, 3000)
             }
           } else if (status === 'CLOSED') {
             console.log('🔒 Realtime channel closed')
-            // Reconnect if still mounted
-            if (mounted && selectedConversation) {
+            // Reconnect if still mounted and conversation hasn't changed
+            if (mounted && selectedConversation && messagesChannelRef.current) {
               setTimeout(() => {
-                if (messagesChannel) {
+                if (mounted && messagesChannelRef.current) {
                   console.log('🔄 Reconnecting closed channel...')
-                  messagesChannel.subscribe()
+                  messagesChannelRef.current.subscribe()
                 }
               }, 1000)
             }
@@ -593,7 +610,7 @@ export default function MessagesPage() {
         })
 
       // Set up typing indicator subscription
-      typingChannel = supabase
+      typingChannelRef.current = supabase
         .channel(`typing:${selectedConversation}`)
         .on('postgres_changes', {
           event: '*',
@@ -617,7 +634,7 @@ export default function MessagesPage() {
         .subscribe()
 
       // Set up conversation updates subscription
-      const conversationChannel = supabase
+      conversationChannelRef.current = supabase
         .channel(`conversation:${selectedConversation}:${currentUserId}`)
         .on('postgres_changes', {
           event: 'UPDATE',
@@ -641,12 +658,6 @@ export default function MessagesPage() {
             console.log(`✅ Conversation updates subscription active`)
           }
         })
-
-      return () => {
-        if (messagesChannel) supabase.removeChannel(messagesChannel)
-        if (typingChannel) supabase.removeChannel(typingChannel)
-        if (conversationChannel) supabase.removeChannel(conversationChannel)
-      }
     }
 
     setupRealtime()
@@ -655,14 +666,19 @@ export default function MessagesPage() {
       mounted = false
       // Cleanup: Always unsubscribe when component unmounts or conversation changes
       // This saves on performance and connection limits
-      if (messagesChannel) {
-        supabase.removeChannel(messagesChannel)
-        console.log(`🔌 Unsubscribed from messages channel for conversation ${selectedConversation}`)
+      if (messagesChannelRef.current) {
+        console.log(`🔌 Cleaning up messages channel for conversation ${selectedConversation}`)
+        supabase.removeChannel(messagesChannelRef.current)
+        messagesChannelRef.current = null
       }
-      if (typingChannel) {
-        supabase.removeChannel(typingChannel)
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current)
+        typingChannelRef.current = null
       }
-      // Note: conversationChannel cleanup is handled in setupRealtime return
+      if (conversationChannelRef.current) {
+        supabase.removeChannel(conversationChannelRef.current)
+        conversationChannelRef.current = null
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, currentUserId])

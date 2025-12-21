@@ -43,22 +43,33 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
   const searchUsers = async (query: string) => {
     setLoading(true)
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      if (!currentUser) return
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !currentUser) {
+        console.error('Authentication error:', authError)
+        setUsers([])
+        return
+      }
 
-      // Search users by name or email
+      // Search users by name or email (case-insensitive)
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, email, avatar_url')
         .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
         .neq('id', currentUser.id)
-        .limit(10)
+        .order('full_name', { ascending: true, nullsFirst: false })
+        .limit(20)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error searching users:', error)
+        setUsers([])
+        return
+      }
 
       setUsers(data || [])
     } catch (error) {
       console.error('Error searching users:', error)
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -67,8 +78,13 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
   const startConversation = async (recipientId: string) => {
     setStarting(recipientId)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        console.error('Authentication error:', authError)
+        alert('Please sign in to start a conversation')
+        return
+      }
 
       // Check if conversation already exists
       const { data: existingConversations, error: fetchError } = await supabase
@@ -77,7 +93,10 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
         .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${recipientId}),and(participant1_id.eq.${recipientId},participant2_id.eq.${user.id})`)
         .limit(1)
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error('Error fetching existing conversation:', fetchError)
+        throw fetchError
+      }
 
       let conversationId: string
 
@@ -94,8 +113,14 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
           .select('id')
           .single()
 
-        if (createError) throw createError
-        if (!newConversation) throw new Error('Failed to create conversation')
+        if (createError) {
+          console.error('Error creating conversation:', createError)
+          throw createError
+        }
+        
+        if (!newConversation) {
+          throw new Error('Failed to create conversation')
+        }
 
         conversationId = newConversation.id
       }
@@ -105,6 +130,7 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
       onClose()
     } catch (error) {
       console.error('Error starting conversation:', error)
+      alert('Failed to start conversation. Please try again.')
     } finally {
       setStarting(null)
     }

@@ -644,10 +644,10 @@ export default function JobsPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className={`text-lg font-semibold line-clamp-2 transition-colors ${
-                                    isVisited && !isSelected
+                                    isSelected
                                       ? 'text-blue-600'
-                                      : 'text-gray-900'
-                                  } hover:text-blue-600`}>
+                                      : 'text-black'
+                                  }`}>
                                     {job.title}
                                   </h3>
                                   {job.is_featured && (

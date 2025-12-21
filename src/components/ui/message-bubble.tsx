@@ -158,7 +158,10 @@ export function MessageBubble({
   }, [showContextMenu])
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 relative`}>
+    <div 
+      data-message-id={message.id}
+      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 relative`}
+    >
       <div 
         className={`max-w-[40%] rounded-lg p-1.5 text-sm ${
           isOwn

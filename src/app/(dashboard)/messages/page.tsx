@@ -330,7 +330,9 @@ export default function MessagesPage() {
       await fetchMessages(selectedConversation)
       
       // Small delay to ensure initial fetch completes before setting up realtime
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      console.log('🔌 Setting up realtime subscription for conversation:', selectedConversation)
       
       // Set up realtime subscription for messages with optimized updates
       // Create a unique channel for this conversation (like a specific radio frequency)
@@ -541,15 +543,43 @@ export default function MessagesPage() {
         })
         .subscribe((status, err) => {
           // Handle subscription status
+          console.log(`📡 Realtime subscription status: ${status}`, err || '')
           if (status === 'SUBSCRIBED') {
             console.log(`✅ Realtime subscription active for conversation ${selectedConversation}`)
+            console.log('📋 Channel details:', {
+              channel: `messages:${selectedConversation}:${currentUserId}`,
+              conversation: selectedConversation,
+              userId: currentUserId
+            })
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ Realtime channel error:', err)
+            // Try to resubscribe on error
+            if (mounted && messagesChannel) {
+              setTimeout(() => {
+                console.log('🔄 Attempting to resubscribe...')
+                messagesChannel.subscribe()
+              }, 2000)
+            }
           } else if (status === 'TIMED_OUT') {
             console.warn('⏱️ Realtime subscription timed out, retrying...')
-            // Channel will auto-retry
+            // Channel will auto-retry, but we can also manually retry
+            if (mounted && messagesChannel) {
+              setTimeout(() => {
+                console.log('🔄 Retrying subscription after timeout...')
+                messagesChannel.subscribe()
+              }, 3000)
+            }
           } else if (status === 'CLOSED') {
             console.log('🔒 Realtime channel closed')
+            // Reconnect if still mounted
+            if (mounted && selectedConversation) {
+              setTimeout(() => {
+                if (messagesChannel) {
+                  console.log('🔄 Reconnecting closed channel...')
+                  messagesChannel.subscribe()
+                }
+              }, 1000)
+            }
           }
         })
 
@@ -1024,10 +1054,48 @@ export default function MessagesPage() {
       } else {
         // Initial load - replace all
         setMessages(sortedMessages)
-        // Scroll to bottom after initial load
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-        }, 100)
+        
+        // Find the latest read message and scroll to it
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && sortedMessages.length > 0) {
+          // Find the last message that was read by the current user
+          let lastReadIndex = -1
+          for (let i = sortedMessages.length - 1; i >= 0; i--) {
+            const msg = sortedMessages[i]
+            const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
+            if (msg.sender_id !== user.id && (msg.is_read || readBy.includes(user.id))) {
+              lastReadIndex = i
+              break
+            }
+          }
+          
+          // If no read messages found, scroll to bottom
+          // Otherwise scroll to the last read message
+          setTimeout(() => {
+            if (lastReadIndex >= 0 && messagesContainerRef.current) {
+              // Find the message element and scroll to it
+              const messageElements = messagesContainerRef.current.querySelectorAll('[data-message-id]')
+              console.log(`📍 Found ${messageElements.length} message elements, scrolling to index ${lastReadIndex}`)
+              if (messageElements[lastReadIndex]) {
+                messageElements[lastReadIndex].scrollIntoView({ behavior: 'auto', block: 'center' })
+                console.log('✅ Scrolled to last read message')
+              } else {
+                // Fallback to bottom if element not found
+                console.log('⚠️ Message element not found, scrolling to bottom')
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+              }
+            } else {
+              // No read messages or all are unread - scroll to bottom
+              console.log('📍 No read messages found, scrolling to bottom')
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            }
+          }, 300)
+        } else {
+          // No user or no messages - scroll to bottom
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+          }, 100)
+        }
       }
       
       // Check if there are more messages

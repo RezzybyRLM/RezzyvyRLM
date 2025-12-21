@@ -433,21 +433,31 @@ export default function MessagesPage() {
       }, 100)
 
       // Update conversations list (optimized - only update this conversation)
-      setConversations(prev => prev.map(conv =>
-        conv.id === newMessage.conversation_id
-          ? {
-            ...conv,
-            last_message: {
-              content: newMessage.content,
-              sender_id: newMessage.sender_id,
-              created_at: newMessage.created_at,
-              is_read: newMessage.is_read
-            },
-            last_message_at: newMessage.created_at,
-            unread_count: conv.id === selectedConversationRef.current ? conv.unread_count : conv.unread_count + 1
-          }
-          : conv
-      ))
+      // Update conversations list - move to top
+      setConversations(prev => {
+        const updatedConversations = prev.map(conv =>
+          conv.id === newMessage.conversation_id
+            ? {
+              ...conv,
+              last_message: {
+                content: newMessage.content,
+                sender_id: newMessage.sender_id,
+                created_at: newMessage.created_at,
+                is_read: newMessage.is_read
+              },
+              last_message_at: newMessage.created_at,
+              unread_count: conv.id === selectedConversationRef.current ? conv.unread_count : conv.unread_count + 1
+            }
+            : conv
+        )
+
+        // Sort by last_message_at desc
+        return updatedConversations.sort((a, b) => {
+          const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+          const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+          return bTime - aTime
+        })
+      })
 
       // Mark as read if it's not from current user
       if (user && newMessage.sender_id !== user.id) {

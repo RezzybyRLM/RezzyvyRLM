@@ -51,22 +51,59 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
         return
       }
 
+      console.log('Searching for users with query:', query)
+      console.log('Current user ID:', currentUser.id)
+
       // Search users by name or email (case-insensitive)
-      const { data, error } = await supabase
+      // Use separate queries and combine results for better reliability
+      const searchPattern = `%${query}%`
+      
+      // Search by name (only if full_name is not null)
+      const nameResult = await supabase
         .from('users')
         .select('id, full_name, email, avatar_url')
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .not('full_name', 'is', null)
+        .ilike('full_name', searchPattern)
         .neq('id', currentUser.id)
-        .order('full_name', { ascending: true, nullsFirst: false })
         .limit(20)
 
-      if (error) {
-        console.error('Error searching users:', error)
-        setUsers([])
-        return
+      // Search by email
+      const emailResult = await supabase
+        .from('users')
+        .select('id, full_name, email, avatar_url')
+        .ilike('email', searchPattern)
+        .neq('id', currentUser.id)
+        .limit(20)
+
+      console.log('Name search result:', nameResult)
+      console.log('Email search result:', emailResult)
+
+      if (nameResult.error) {
+        console.error('Error searching by name:', nameResult.error)
+      }
+      if (emailResult.error) {
+        console.error('Error searching by email:', emailResult.error)
       }
 
-      setUsers(data || [])
+      // Combine results and remove duplicates
+      const combined = [
+        ...(nameResult.data || []),
+        ...(emailResult.data || [])
+      ]
+      
+      const uniqueUsers = combined.filter((user, index, self) => 
+        index === self.findIndex((u) => u.id === user.id)
+      )
+
+      // Sort by full_name
+      uniqueUsers.sort((a, b) => {
+        const nameA = a.full_name || a.email || ''
+        const nameB = b.full_name || b.email || ''
+        return nameA.localeCompare(nameB)
+      })
+
+      console.log('Final users found:', uniqueUsers.length, uniqueUsers)
+      setUsers(uniqueUsers)
     } catch (error) {
       console.error('Error searching users:', error)
       setUsers([])

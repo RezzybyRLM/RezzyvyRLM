@@ -1,0 +1,971 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Novakinetix Brand Colors */
+  --novakinetix-primary: #0088cc;
+  --novakinetix-secondary: #00a0e3;
+  --novakinetix-accent: #005580;
+  --novakinetix-light: #e6f7ff;
+  --novakinetix-dark: #003366;
+  
+  /* Gradient Variables */
+  --gradient-primary: linear-gradient(135deg, var(--novakinetix-primary), var(--novakinetix-secondary));
+  --gradient-accent: linear-gradient(135deg, var(--novakinetix-accent), var(--novakinetix-dark));
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 201 100% 40%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 199 100% 44%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 199 100% 25%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 201 100% 40%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 201 100% 40%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 199 100% 44%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 199 100% 25%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 201 100% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html { height: -webkit-fill-available; }
+  body {
+    @apply bg-background text-foreground overscroll-y-none;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Custom utility classes */
+.container-responsive {
+  @apply w-full max-w-screen-xl mx-auto px-3 sm:px-4 md:px-6;
+}
+
+.section-padding {
+  @apply py-6 sm:py-8 md:py-12;
+}
+
+.card-responsive {
+  @apply rounded-lg md:rounded-xl shadow-sm;
+}
+
+.grid-responsive {
+  @apply grid gap-4 sm:gap-6;
+}
+
+.grid-cols-auto {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Mobile scrolling helpers */
+.touch-scroll { -webkit-overflow-scrolling: touch; }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.vh-fix { min-height: 100vh; min-height: -webkit-fill-available; }
+
+/* Media elements scale down on small screens */
+img, video, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Responsive tables */
+.table-responsive { overflow-x: auto; }
+
+/* Mobile-only enhancements */
+@media (max-width: 640px) {
+  body {
+    @apply break-words scroll-smooth;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* WhatsApp-like chat theme utilities (mobile only) */
+  .wa-header {
+    background: #075E54;
+    color: #ffffff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+  }
+
+  .wa-accent {
+    background: #128C7E;
+    color: #ffffff;
+  }
+
+  .whatsapp-chat-bg {
+    background-color: #ECE5DD;
+    background-image:
+      radial-gradient(rgba(0,0,0,0.04) 2px, transparent 2px),
+      radial-gradient(rgba(0,0,0,0.04) 2px, transparent 2px);
+    background-position: 0 0, 25px 25px;
+    background-size: 50px 50px;
+  }
+
+  /* WhatsApp mobile chat container */
+  .wa-mobile-chat {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 80px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* WhatsApp mobile messages area */
+  .wa-mobile-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* WhatsApp mobile input area */
+  .wa-mobile-input {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: #f0f0f0;
+    border-top: 1px solid #e0e0e0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* WhatsApp mobile input field */
+  .wa-mobile-input input {
+    flex: 1;
+    border: none;
+    border-radius: 20px;
+    padding: 12px 16px;
+    background: white;
+    font-size: 16px;
+    outline: none;
+  }
+
+  /* WhatsApp mobile send button */
+  .wa-mobile-send {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #25D366;
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* WhatsApp mobile attachment button */
+  .wa-mobile-attach {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    border: none;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* WhatsApp mobile channel list overlay */
+  .wa-mobile-channels {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    z-index: 100;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* WhatsApp mobile channel item */
+  .wa-mobile-channel-item {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+
+  .wa-mobile-channel-item:hover {
+    background: #f8f8f8;
+  }
+
+  .wa-mobile-channel-item.selected {
+    background: #e8f5e8;
+  }
+
+  /* WhatsApp mobile channel icon */
+  .wa-mobile-channel-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+  }
+
+  /* WhatsApp mobile channel info */
+  .wa-mobile-channel-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .wa-mobile-channel-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+
+  .wa-mobile-channel-type {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 2px;
+  }
+
+  .wa-mobile-channel-members {
+    font-size: 12px;
+    color: #999;
+  }
+
+  /* WhatsApp mobile back button */
+  .wa-mobile-back {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 8px;
+  }
+
+  /* WhatsApp mobile header title */
+  .wa-mobile-header-title {
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Ensure text stays in bubbles */
+  .bubble-own, .bubble-other {
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 85%;
+    white-space: pre-wrap;
+  }
+
+  /* Mobile message bubble improvements */
+  .bubble-own {
+    background: #DCF8C6;
+    border: 1px solid #cdebb5;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 18px 18px 4px 18px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    align-self: flex-end;
+  }
+
+  .bubble-other {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 18px 18px 18px 4px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    align-self: flex-start;
+  }
+
+  /* Mobile message container */
+  .wa-mobile-message-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  /* Mobile message sender name */
+  .wa-mobile-sender-name {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 2px;
+    font-weight: 500;
+  }
+
+  /* Mobile message time */
+  .wa-mobile-message-time {
+    font-size: 10px;
+    color: #999;
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  /* Hide desktop elements on mobile */
+  .hidden-mobile {
+    display: none !important;
+  }
+
+  /* Mobile-specific spacing */
+  .mobile-padding {
+    padding: 16px;
+  }
+
+  /* Mobile-safe area */
+  .mobile-safe-area {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Custom animations for mobile hero section */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+  }
+}
+
+@keyframes spin-slow {
+  from { 
+    transform: rotate(0deg); 
+  }
+  to { 
+    transform: rotate(360deg); 
+  }
+}
+
+@keyframes slide-up {
+  0% { 
+    transform: translateY(100%); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes slide-down {
+  0% { 
+    transform: translateY(-100%); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes scale-in {
+  0% { 
+    transform: scale(0.95); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { 
+    transform: translateY(0); 
+  }
+  50% { 
+    transform: translateY(-5px); 
+  }
+}
+
+/* Animation classes */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+.animate-bounce-gentle {
+  animation: bounce-gentle 2s ease-in-out infinite;
+}
+
+/* Mobile hero section specific styles */
+.mobile-hero-gradient {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #1e40af 100%);
+}
+
+.mobile-hero-overlay {
+  background: linear-gradient(to bottom, rgba(37, 99, 235, 0.9), rgba(124, 58, 237, 0.85), rgba(30, 64, 175, 0.9));
+}
+
+.mobile-hero-text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-hero-glow {
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+}
+
+/* Mobile navigation specific styles */
+.mobile-nav-transparent {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.mobile-nav-solid {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile menu overlay styles */
+.mobile-menu-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.mobile-menu-slide {
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-menu-slide.open {
+  transform: translateX(0);
+}
+
+/* Mobile button styles */
+.mobile-btn-primary {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: #000;
+  font-weight: 700;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -3px rgba(245, 158, 11, 0.4);
+  transition: all 0.3s ease;
+}
+
+.mobile-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(245, 158, 11, 0.5);
+}
+
+.mobile-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.mobile-btn-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.mobile-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.mobile-btn-secondary:active {
+  transform: scale(0.98);
+}
+
+/* Mobile feature highlight styles */
+.mobile-feature-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.mobile-feature-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Mobile scroll indicator styles */
+.mobile-scroll-indicator {
+  width: 1.5rem;
+  height: 2.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.mobile-scroll-indicator::after {
+  content: '';
+  width: 0.25rem;
+  height: 0.75rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 9999px;
+  margin-top: 0.5rem;
+  animation: scroll-bounce 2s infinite;
+}
+
+@keyframes scroll-bounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(0.5rem);
+    opacity: 1;
+  }
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, var(--novakinetix-light) 0%, #ffffff 100%);
+}
+
+.card-hover-effect {
+  transition: transform 0.2s ease-in-out;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+}
+
+.stats-card {
+  @apply relative overflow-hidden rounded-xl border p-6;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+  backdrop-filter: blur(10px);
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-primary);
+  opacity: 0.05;
+  z-index: 0;
+}
+
+.stats-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.quick-action-card {
+  @apply relative overflow-hidden rounded-xl border p-6 transition-all duration-300;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+  backdrop-filter: blur(10px);
+}
+
+.quick-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -8px rgba(0, 136, 204, 0.15);
+}
+
+.quick-action-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.quick-action-card:hover::before {
+  opacity: 0.05;
+}
+
+.quick-action-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* WhatsApp-style chat bubble styles - Desktop */
+/* Chat container for proper bubble layout */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Message wrapper for proper positioning */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+}
+
+/* Message bubble base styles */
+.message-bubble {
+  padding: 10px 15px;
+  border-radius: 18px;
+  max-width: 70%;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 4px 0;
+  display: inline-block;
+}
+
+/* Own message bubble (WhatsApp green) */
+.my-bubble {
+  background-color: #DCF8C6;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  color: #0f172a;
+  border: 1px solid #cdebb5;
+}
+
+/* Other message bubble (Light grey) */
+.other-bubble {
+  background-color: #E5E5EA;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+
+/* Bubble meta information (timestamp) */
+.bubble-meta {
+  font-size: 10px;
+  line-height: 1;
+  color: #6b7280;
+  margin-top: 2px;
+  text-align: right;
+  opacity: 0.8;
+}
+
+/* Admin sidebar hover-to-expand */
+.admin-layout {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 64px; /* collapsed width to logo */
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  z-index: 50;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Desktop hover functionality */
+@media (min-width: 1024px) {
+  .admin-sidebar-container {
+    width: 64px;
+  }
+  
+  .admin-sidebar-container:hover {
+    width: 260px !important; /* expanded width */
+  }
+  
+  .admin-sidebar-container:hover .admin-nav-text {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(0);
+  }
+  
+  /* Ensure content area adjusts on hover */
+  .admin-sidebar-container:hover ~ .admin-content-area {
+    margin-left: 260px;
+  }
+  
+  /* Improve hover detection */
+  .admin-sidebar-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -10px;
+    width: 10px;
+    height: 100%;
+    background: transparent;
+  }
+  
+  .admin-sidebar-container:hover::before {
+    background: transparent;
+  }
+}
+
+.admin-nav-text {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Ensure logo transitions smoothly */
+.admin-sidebar-container .admin-nav-text img {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Improve navigation item hover states */
+.admin-sidebar-container nav a {
+  transition: all 0.2s ease-in-out;
+}
+
+.admin-sidebar-container nav a:hover {
+  transform: translateX(2px);
+}
+
+/* Mobile sidebar functionality */
+@media (max-width: 1023px) {
+  .admin-sidebar-container {
+    width: 64px;
+  }
+  
+  .sidebar-open .admin-nav-text {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(0);
+  }
+  
+  .sidebar-open .admin-sidebar-container {
+    width: 260px !important;
+  }
+  
+  .sidebar-open + .admin-content-area {
+    margin-left: 260px;
+  }
+}
+
+.admin-content-area {
+  margin-left: 64px; /* match collapsed width */
+  min-height: 100vh;
+  flex: 1;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: calc(100% - 64px);
+}
+
+.admin-main-content-full {
+  width: 100%;
+  min-height: calc(100vh - 2rem);
+}
+
+/* Ensure sidebars in comm hubs look tidy */
+.channel-sidebar {
+  border-right: 1px solid #e5e7eb;
+}
+
+/* WhatsApp-style channel selection */
+.channel-item {
+  @apply p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4;
+  border-left-color: transparent;
+}
+
+.channel-item:hover {
+  @apply bg-gray-50;
+}
+
+.channel-item.selected {
+  @apply bg-green-50 border-green-500;
+  border-left-color: #10b981;
+}
+
+.channel-item.selected:hover {
+  @apply bg-green-100;
+}
+
+.channel-icon {
+  @apply w-8 h-8 rounded-full flex items-center justify-center border;
+}
+
+.channel-icon.announcements {
+  @apply bg-green-100 border-green-200;
+}
+
+.channel-icon.private {
+  @apply bg-gray-100 border-gray-200;
+}
+
+.channel-icon.general {
+  @apply bg-blue-100 border-blue-200;
+}
+
+.channel-icon.student_lounge {
+  @apply bg-purple-100 border-purple-200;
+}
+
+.channel-icon.parent_teacher {
+  @apply bg-orange-100 border-orange-200;
+}
+
+.channel-icon.admin_only {
+  @apply bg-red-100 border-red-200;
+}
+
+.channel-icon.group {
+  @apply bg-indigo-100 border-indigo-200;
+}
+
+.channel-icon.individual {
+  @apply bg-pink-100 border-pink-200;
+}
+
+/* Channel search styling */
+.channel-search {
+  @apply mb-3;
+}
+
+.channel-search input {
+  @apply h-9 border-gray-200 focus:border-green-500 focus:ring-green-500;
+}
+
+/* Channel list container */
+.channel-list {
+  @apply space-y-1 max-h-[60vh] overflow-y-auto;
+}
+
+/* Channel name and type styling */
+.channel-name {
+  @apply font-medium text-gray-900 truncate;
+}
+
+.channel-type-badge {
+  @apply text-[10px] px-2 py-1 rounded-full;
+}
+
+.channel-member-count {
+  @apply flex items-center text-[10px] text-gray-500;
+}
+
+/* Mobile channel dialog styling */
+.mobile-channels-dialog {
+  @apply sm:hidden;
+}
+
+.mobile-channels-dialog .channel-item {
+  @apply p-4 border-l-4;
+}
+
+.mobile-channels-dialog .channel-name {
+  @apply text-base;
+}
+
+.mobile-channels-dialog .channel-type-badge {
+  @apply text-xs;
+}
+
+.mobile-channels-dialog .channel-member-count {
+  @apply text-xs;
+}

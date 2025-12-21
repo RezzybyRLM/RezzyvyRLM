@@ -473,6 +473,13 @@ export default function MessagesPage() {
             attachment_type: msg.attachment_type,
             is_edited: msg.is_edited || false,
             edited_at: msg.edited_at,
+            is_deleted: msg.is_deleted || false,
+            deleted_at: msg.deleted_at,
+            reactions: msg.reactions || {},
+            image_caption: msg.image_caption,
+            file_caption: msg.file_caption,
+            forwarded_from_id: msg.forwarded_from_id,
+            read_by: msg.read_by || [],
             sender: {
               full_name: msg.sender.full_name,
               email: msg.sender.email,
@@ -516,7 +523,7 @@ export default function MessagesPage() {
       const messageData: any = {
         conversation_id: selectedConversation,
         sender_id: user.id,
-        content: messageContent.trim() || '', // This serves as caption when image is attached
+        content: messageContent.trim() || '',
       }
 
       if (replyingTo) {
@@ -548,13 +555,24 @@ export default function MessagesPage() {
 
         if (uploadResponse.ok) {
           const { url } = await uploadResponse.json()
-          // Update message with attachment URL (content field already has the caption)
+          // Update message with attachment URL and caption
+          const updateData: any = {
+            attachment_url: url,
+            attachment_type: selectedImage.type
+          }
+          
+          // If there's content and it's an image, use it as caption
+          if (messageContent.trim() && selectedImage.type.startsWith('image/')) {
+            updateData.image_caption = messageContent.trim()
+            updateData.content = '' // Clear content if it's just a caption
+          } else if (messageContent.trim() && !selectedImage.type.startsWith('image/')) {
+            updateData.file_caption = messageContent.trim()
+            updateData.content = '' // Clear content if it's just a caption
+          }
+
           const { error: updateError } = await supabase
             .from('messages')
-            .update({
-              attachment_url: url,
-              attachment_type: selectedImage.type
-            })
+            .update(updateData)
             .eq('id', newMessage.id)
 
           if (updateError) {
@@ -630,6 +648,61 @@ export default function MessagesPage() {
       // Open conversation selector or use current conversation
       // For now, we'll forward to the same conversation with a note
       // In a full implementation, you'd open a dialog to select destination
+    }
+  }
+
+  const handleReaction = async (messageId: string, reaction: string) => {
+    try {
+      const response = await fetch(`/api/messages/${messageId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reaction })
+      })
+
+      if (response.ok) {
+        // Refresh messages to show updated reactions
+        if (selectedConversation) {
+          await fetchMessages(selectedConversation)
+        }
+      }
+    } catch (error) {
+      console.error('Error adding reaction:', error)
+    }
+  }
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    try {
+      const response = await fetch(`/api/messages/${messageId}/edit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent })
+      })
+
+      if (response.ok) {
+        // Refresh messages to show updated content
+        if (selectedConversation) {
+          await fetchMessages(selectedConversation)
+        }
+      }
+    } catch (error) {
+      console.error('Error editing message:', error)
+    }
+  }
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const response = await fetch(`/api/messages/${messageId}/delete`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Refresh messages to show deleted state
+        if (selectedConversation) {
+          await fetchMessages(selectedConversation)
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error)
     }
   }
 
@@ -906,8 +979,12 @@ export default function MessagesPage() {
                               <MessageBubble
                                 message={message}
                                 isOwn={isOwn}
+                                currentUserId={currentUserId || ''}
                                 onReply={handleReply}
                                 onForward={handleForward}
+                                onEdit={handleEditMessage}
+                                onDelete={handleDeleteMessage}
+                                onReaction={handleReaction}
                                 formatTime={formatTime}
                               />
                             </ScrollAnimate>

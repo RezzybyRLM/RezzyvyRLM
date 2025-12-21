@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
-import { Upload, FileText, Trash2, Download, Eye, Loader2, Plus, Mail } from 'lucide-react'
+import { Upload, FileText, Trash2, Download, Eye, Loader2, Plus, Mail, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { canPerformAction } from '@/lib/plans/usage-tracking'
+import { AIResumeBuilder } from '@/components/ui/ai-resume-builder'
+import { AICoverLetterBuilder } from '@/components/ui/ai-cover-letter-builder'
 
 interface Resume {
   id: string
@@ -41,6 +43,8 @@ export default function ResumeManagerPage() {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState('')
   const [currentPlan, setCurrentPlan] = useState('Free')
+  const [showAIResumeBuilder, setShowAIResumeBuilder] = useState(false)
+  const [showAICoverLetterBuilder, setShowAICoverLetterBuilder] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -479,10 +483,21 @@ export default function ResumeManagerPage() {
         {/* Upload Section */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Upload className="mr-2 h-5 w-5" />
-              Upload New Resume
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <Upload className="mr-2 h-5 w-5" />
+                Upload New Resume
+              </CardTitle>
+              <Button
+                variant="outline"
+                onClick={() => setShowAIResumeBuilder(true)}
+                className="flex items-center gap-2"
+                type="button"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Builder
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {error && (
@@ -602,10 +617,21 @@ export default function ResumeManagerPage() {
         {/* Cover Letters Section */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Mail className="mr-2 h-5 w-5" />
-              Upload New Cover Letter
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <Mail className="mr-2 h-5 w-5" />
+                Upload New Cover Letter
+              </CardTitle>
+              <Button
+                variant="outline"
+                onClick={() => setShowAICoverLetterBuilder(true)}
+                className="flex items-center gap-2"
+                type="button"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Builder
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {error && (
@@ -731,6 +757,29 @@ export default function ResumeManagerPage() {
         feature="Resume Uploads"
         currentPlan={currentPlan}
       />
+
+      {/* AI Resume Builder Modal */}
+      {showAIResumeBuilder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl my-8">
+            <AIResumeBuilder
+              jobDescription=""
+              onClose={() => setShowAIResumeBuilder(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* AI Cover Letter Builder Modal */}
+      {showAICoverLetterBuilder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl my-8">
+            <AICoverLetterBuilder
+              onClose={() => setShowAICoverLetterBuilder(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

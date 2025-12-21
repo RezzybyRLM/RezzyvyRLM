@@ -570,13 +570,14 @@ export default function JobsPage() {
                         <div
                           key={job.id}
                           onClick={() => handleJobClick(job)}
-                          className={`relative bg-white border-l-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
+                          className={`relative bg-white border-l-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 ${
                             isSelected
-                              ? 'border-l-blue-600 bg-blue-50 shadow-md'
+                              ? 'border-l-blue-600 bg-blue-50 shadow-md scale-[1.02]'
                               : 'border-l-transparent border-b border-gray-200'
-                          } ${isVisited && !isSelected ? 'opacity-90' : ''}`}
+                          } ${isVisited && !isSelected ? 'opacity-90' : ''} animate-fadeInUp`}
                           style={{
-                            animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`
+                            animationDelay: `${index * 0.05}s`,
+                            animationFillMode: 'both'
                           }}
                         >
                           <div className="p-5">
@@ -672,7 +673,7 @@ export default function JobsPage() {
             
             <div
               ref={detailPanelRef}
-              className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none"
+              className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none animate-slideInRight"
               style={{ zIndex: 30 }}
             >
               {/* Sticky Header with Apply Button */}
@@ -971,6 +972,51 @@ export default function JobsPage() {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+        @keyframes shimmer {
+          0% {
+            background-position: -1000px 0;
+          }
+          100% {
+            background-position: 1000px 0;
+          }
+        }
+        .animate-fadeInUp {
+          animation: fadeInUp 0.5s ease-out;
+        }
+        .animate-slideInRight {
+          animation: slideInRight 0.4s ease-out;
+        }
+        .animate-pulse-slow {
+          animation: pulse 3s ease-in-out infinite;
+        }
+        .shimmer {
+          background: linear-gradient(
+            90deg,
+            #f0f0f0 0%,
+            #e0e0e0 50%,
+            #f0f0f0 100%
+          );
+          background-size: 1000px 100%;
+          animation: shimmer 2s infinite;
         }
       `}</style>
     </div>

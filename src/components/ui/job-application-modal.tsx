@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { X, Loader2, CheckCircle, AlertCircle, FileText, Mail, Phone } from 'lucide-react'
+import { X, Loader2, CheckCircle, AlertCircle, FileText, Mail, Phone, Sparkles, Wand2, Lightbulb } from 'lucide-react'
 import { ProfileSelector } from './profile-selector'
 import { createClient } from '@/lib/supabase/client'
+import { generateCoverLetter, generateApplicationTips } from '@/lib/ai/helpers'
+import { AICoverLetterBuilder } from './ai-cover-letter-builder'
 
 interface JobApplicationModalProps {
   isOpen: boolean
@@ -32,6 +34,11 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showAICoverLetter, setShowAICoverLetter] = useState(false)
+  const [showAITips, setShowAITips] = useState(false)
+  const [aiTips, setAiTips] = useState<string | null>(null)
+  const [loadingTips, setLoadingTips] = useState(false)
+  const [usedFallback, setUsedFallback] = useState(false)
   
   // Application form fields
   const [formData, setFormData] = useState({
@@ -68,6 +75,38 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleAIGenerateCoverLetter = () => {
+    setShowAICoverLetter(true)
+  }
+
+  const handleAICoverLetterGenerated = (letter: string) => {
+    setFormData(prev => ({ ...prev, coverLetter: letter }))
+    setShowAICoverLetter(false)
+  }
+
+  const handleLoadAITips = async () => {
+    if (aiTips) {
+      setShowAITips(true)
+      return
+    }
+
+    setLoadingTips(true)
+    try {
+      const result = await generateApplicationTips(
+        job.title,
+        job.company?.name || 'Company',
+        job.application_instructions || ''
+      )
+      setAiTips(result.text)
+      setUsedFallback(result.usedFallback)
+      setShowAITips(true)
+    } catch (err: any) {
+      console.error('Error loading AI tips:', err)
+    } finally {
+      setLoadingTips(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -159,8 +198,23 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
         />
       )}
 
+      {/* AI Cover Letter Builder Modal */}
+      {showAICoverLetter && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <AICoverLetterBuilder
+              jobTitle={job.title}
+              companyName={job.company?.name || ''}
+              jobDescription={job.application_instructions || ''}
+              onClose={() => setShowAICoverLetter(false)}
+              onGenerated={handleAICoverLetterGenerated}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Application Details Modal */}
-      {step === 'details' && (
+      {step === 'details' && !showAICoverLetter && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose}>
           <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white" onClick={(e) => e.stopPropagation()}>
             <CardHeader className="border-b sticky top-0 bg-white z-10">
@@ -198,10 +252,22 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
 
               {/* Cover Letter */}
               <div>
-                <Label htmlFor="coverLetter" className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4" />
-                  Cover Letter (Optional)
-                </Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="coverLetter" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Cover Letter (Optional)
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAIGenerateCoverLetter}
+                    className="text-xs"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI Generate
+                  </Button>
+                </div>
                 <Textarea
                   id="coverLetter"
                   placeholder="Write a brief cover letter explaining why you're a good fit for this position..."
@@ -213,6 +279,54 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
                 <p className="text-xs text-gray-500 mt-1">
                   This will be included in your application email
                 </p>
+              </div>
+
+              {/* AI Tips Section */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-yellow-500" />
+                    <h4 className="font-semibold text-gray-900">AI Application Tips</h4>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLoadAITips}
+                    disabled={loadingTips}
+                  >
+                    {loadingTips ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4 mr-1" />
+                        {aiTips ? 'Show Tips' : 'Get Tips'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {showAITips && aiTips && (
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    {usedFallback && (
+                      <p className="text-xs text-amber-600 mb-2 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Using template tips (AI service unavailable)
+                      </p>
+                    )}
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                      {aiTips}
+                    </pre>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAITips(false)}
+                      className="mt-2"
+                    >
+                      Hide Tips
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Availability */}

@@ -242,10 +242,17 @@ export default function MessagesPage() {
             event: 'INSERT',
             schema: 'public',
             table: 'messages'
-          }, async (payload) => {
-            if (!mounted) return
-            
-            const newMessage = payload.new as any
+        }, async (payload) => {
+          if (!mounted) return
+          
+          console.log('📨 Realtime message INSERT received:', payload)
+          const newMessage = payload.new as any
+          
+          // Verify this message is for the current conversation
+          if (newMessage.conversation_id !== selectedConversation) {
+            console.log('⚠️ Message is for different conversation, ignoring')
+            return
+          }
             
             // Update conversation's last message if it's in our conversations
             const conv = conversations.find(c => c.id === newMessage.conversation_id)
@@ -319,8 +326,11 @@ export default function MessagesPage() {
     let typingChannel: any = null
 
     const setupRealtime = async () => {
-      // Fetch initial messages
+      // Fetch initial messages first
       await fetchMessages(selectedConversation)
+      
+      // Small delay to ensure initial fetch completes before setting up realtime
+      await new Promise(resolve => setTimeout(resolve, 100))
       
       // Set up realtime subscription for messages with optimized updates
       // Create a unique channel for this conversation (like a specific radio frequency)
@@ -340,7 +350,15 @@ export default function MessagesPage() {
         }, async (payload) => {
           if (!mounted) return
           
+          console.log('📨 Realtime message INSERT received:', payload)
           const newMessage = payload.new as any
+          
+          // Verify this message is for the current conversation
+          if (newMessage.conversation_id !== selectedConversation) {
+            console.log('⚠️ Message is for different conversation, ignoring')
+            return
+          }
+          
           const { data: { user } } = await supabase.auth.getUser()
           
           // Fetch sender data for the new message
@@ -1395,23 +1413,25 @@ export default function MessagesPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
           {/* Conversations List */}
-          <Card className="card-professional overflow-hidden">
-            <CardHeader className="border-b space-y-3">
+          <Card className="card-professional overflow-hidden flex flex-col h-full">
+            <CardHeader className="border-b space-y-3 flex-shrink-0">
               <div className="flex gap-2">
                 <Button
                   onClick={() => setShowNewConversation(true)}
-                  className="flex-1 btn-primary"
+                  className="flex-1 btn-primary text-xs sm:text-sm"
                 >
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  New Message
+                  <span className="hidden sm:inline">New Message</span>
+                  <span className="sm:hidden">New</span>
                 </Button>
                 <Button
                   onClick={() => setShowNewGroup(true)}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-xs sm:text-sm"
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  New Group
+                  <span className="hidden sm:inline">New Group</span>
+                  <span className="sm:hidden">Group</span>
                 </Button>
               </div>
               <div className="relative">
@@ -1425,7 +1445,7 @@ export default function MessagesPage() {
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0 overflow-y-auto h-[calc(100vh-20rem)]">
+            <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
               {filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">
                   <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -1519,9 +1539,9 @@ export default function MessagesPage() {
           </Card>
 
           {/* Messages */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 flex flex-col min-h-0">
             {selectedConversation ? (
-              <Card className="card-professional h-full flex flex-col">
+              <Card className="card-professional h-full flex flex-col min-h-0">
                 <CardHeader className="border-b flex-shrink-0">
                   {(() => {
                     const conv = conversations.find(c => c.id === selectedConversation)
@@ -1588,10 +1608,10 @@ export default function MessagesPage() {
                     )
                   })()}
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
                   <div 
                     ref={messagesContainerRef}
-                    className="flex-1 overflow-y-auto p-6 space-y-4 h-full"
+                    className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
                     onScroll={(e) => {
                       const target = e.target as HTMLDivElement
                       // Load older messages when scrolling to top
@@ -1654,15 +1674,15 @@ export default function MessagesPage() {
                       </>
                     )}
                   </div>
-                  <div className="border-t p-4 flex-shrink-0 space-y-3">
+                  <div className="border-t p-3 flex-shrink-0 space-y-2">
                     {/* Reply preview */}
                     {replyingTo && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-xs font-medium text-blue-900 mb-1">
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-2 rounded flex items-start justify-between text-xs">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-medium text-blue-900 mb-0.5">
                             Replying to {replyingTo.sender.full_name || replyingTo.sender.email.split('@')[0]}
                           </p>
-                          <p className="text-sm text-blue-800 truncate">{replyingTo.content}</p>
+                          <p className="text-xs text-blue-800 truncate">{replyingTo.content}</p>
                         </div>
                         <button
                           type="button"
@@ -1720,7 +1740,7 @@ export default function MessagesPage() {
                       }}
                       className="flex gap-2"
                     >
-                      <div className="flex-1 flex gap-2">
+                      <div className="flex-1 flex gap-2 items-end">
                       <Textarea
                         value={messageContent}
                         onChange={async (e) => {
@@ -1742,8 +1762,8 @@ export default function MessagesPage() {
                         onBlur={() => handleStopTyping()}
                         placeholder="Type a message..."
                         disabled={sending}
-                        className="flex-1 min-h-[60px] max-h-[120px] resize-none"
-                        rows={2}
+                        className="flex-1 min-h-[40px] max-h-[100px] resize-none text-sm"
+                        rows={1}
                       />
                         <Button
                           type="button"

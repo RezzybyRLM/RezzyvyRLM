@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { 
-  MessageSquare, 
-  Send, 
-  Search, 
-  User, 
+import {
+  MessageSquare,
+  Send,
+  Search,
+  User,
   Loader2,
   Clock,
   Check,
@@ -139,7 +139,7 @@ export default function MessagesPage() {
         return
       }
       if (!mounted) return
-      
+
       setCurrentUserId(user.id)
       await fetchConversations()
 
@@ -167,19 +167,19 @@ export default function MessagesPage() {
             filter: `or(participant1_id.eq.${user.id},participant2_id.eq.${user.id})`
           }, async (payload) => {
             if (!mounted) return
-            
+
             const newConv = payload.new as any
-            const otherUserId = newConv.participant1_id === user.id 
-              ? newConv.participant2_id 
+            const otherUserId = newConv.participant1_id === user.id
+              ? newConv.participant2_id
               : newConv.participant1_id
-            
+
             // Fetch other user data
             const { data: otherUserData } = await supabase
               .from('users')
               .select('id, full_name, email, phone_number, avatar_url')
               .eq('id', otherUserId)
               .single()
-            
+
             // Fetch last message
             const { data: lastMsg } = await supabase
               .from('messages')
@@ -188,7 +188,7 @@ export default function MessagesPage() {
               .order('created_at', { ascending: false })
               .limit(1)
               .maybeSingle()
-            
+
             // Get unread count
             const { count } = await supabase
               .from('messages')
@@ -196,7 +196,7 @@ export default function MessagesPage() {
               .eq('conversation_id', newConv.id)
               .eq('is_read', false)
               .neq('sender_id', user.id)
-            
+
             const formattedConv: Conversation = {
               id: newConv.id,
               participant1_id: newConv.participant1_id,
@@ -217,7 +217,7 @@ export default function MessagesPage() {
               } : null,
               unread_count: count || 0
             }
-            
+
             setConversations(prev => {
               const exists = prev.find(c => c.id === formattedConv.id)
               if (exists) return prev
@@ -231,11 +231,11 @@ export default function MessagesPage() {
             filter: `or(participant1_id.eq.${user.id},participant2_id.eq.${user.id})`
           }, async (payload) => {
             if (!mounted) return
-            
+
             const updatedConv = payload.new as any
-            
+
             // Update conversation in state
-            setConversations(prev => prev.map(conv => 
+            setConversations(prev => prev.map(conv =>
               conv.id === updatedConv.id
                 ? { ...conv, last_message_at: updatedConv.last_message_at }
                 : conv
@@ -245,23 +245,23 @@ export default function MessagesPage() {
             event: 'INSERT',
             schema: 'public',
             table: 'messages'
-        }, async (payload) => {
-          if (!mounted) return
-          
-          console.log('📨 Realtime message INSERT received:', payload)
-          const newMessage = payload.new as any
-          
-          // Verify this message is for the current conversation
-          if (newMessage.conversation_id !== selectedConversation) {
-            console.log('⚠️ Message is for different conversation, ignoring')
-            return
-          }
-            
+          }, async (payload) => {
+            if (!mounted) return
+
+            console.log('📨 Realtime message INSERT received:', payload)
+            const newMessage = payload.new as any
+
+            // Verify this message is for the current conversation
+            if (newMessage.conversation_id !== selectedConversation) {
+              console.log('⚠️ Message is for different conversation, ignoring')
+              return
+            }
+
             // Update conversation's last message if it's in our conversations
             const conv = conversations.find(c => c.id === newMessage.conversation_id)
             if (conv) {
               const { data: { user: currentUser } } = await supabase.auth.getUser()
-              
+
               // Get unread count
               const { count } = await supabase
                 .from('messages')
@@ -269,20 +269,20 @@ export default function MessagesPage() {
                 .eq('conversation_id', newMessage.conversation_id)
                 .eq('is_read', false)
                 .neq('sender_id', currentUser?.id)
-              
-              setConversations(prev => prev.map(c => 
+
+              setConversations(prev => prev.map(c =>
                 c.id === newMessage.conversation_id
                   ? {
-                      ...c,
-                      last_message: {
-                        content: newMessage.content,
-                        sender_id: newMessage.sender_id,
-                        created_at: newMessage.created_at,
-                        is_read: newMessage.is_read
-                      },
-                      last_message_at: newMessage.created_at,
-                      unread_count: count || 0
-                    }
+                    ...c,
+                    last_message: {
+                      content: newMessage.content,
+                      sender_id: newMessage.sender_id,
+                      created_at: newMessage.created_at,
+                      is_read: newMessage.is_read
+                    },
+                    last_message_at: newMessage.created_at,
+                    unread_count: count || 0
+                  }
                   : c
               ))
             }
@@ -306,9 +306,9 @@ export default function MessagesPage() {
     if (conversationId && !loading) {
       // Set selected conversation immediately if it's in the URL
       if (selectedConversation !== conversationId) {
-      setSelectedConversation(conversationId)
-    }
-      
+        setSelectedConversation(conversationId)
+      }
+
       // Check if conversation exists in list, if not it will be fetched by the other useEffect
       const conversationExists = conversations.some(c => c.id === conversationId)
       if (!conversationExists && conversations.length > 0) {
@@ -333,63 +333,63 @@ export default function MessagesPage() {
     console.log('🔔 Realtime event triggered:', eventType, payload)
     console.log('📋 Current conversation ref:', selectedConversationRef.current)
     console.log('📋 Message conversation_id:', payload.new?.conversation_id || payload.old?.conversation_id)
-    
+
     // Handle different event types
     if (eventType === 'INSERT') {
       const newMessage = payload.new as any
-      
+
       // Verify this message is for the current conversation
       if (newMessage.conversation_id !== selectedConversationRef.current) {
         console.log('⚠️ Message is for different conversation, ignoring. Current:', selectedConversationRef.current, 'Message:', newMessage.conversation_id)
         return
       }
-      
+
       console.log('✅ Processing new INSERT message for current conversation:', newMessage.id)
-      
-          const { data: { user } } = await supabase.auth.getUser()
-      
+
+      const { data: { user } } = await supabase.auth.getUser()
+
       // Fetch sender data for the new message
       const { data: senderData } = await supabase
         .from('users')
         .select('id, full_name, email, phone_number')
         .eq('id', newMessage.sender_id)
         .single()
-      
+
       // Fetch attachments if any
       const { data: attachments } = await supabase
         .from('message_attachments')
         .select('id, file_url, file_type, file_name')
         .eq('message_id', newMessage.id)
-      
+
       // Add new message to state immediately
       setMessages(prev => {
         const exists = prev.find(m => m.id === newMessage.id)
         if (exists) {
           console.log('⚠️ Message already exists in state, updating instead')
           // Update existing message (might be from optimistic update)
-          return prev.map(msg => 
+          return prev.map(msg =>
             msg.id === newMessage.id
               ? {
-                  ...msg,
-                  id: newMessage.id,
-                  created_at: newMessage.created_at,
-                  is_read: newMessage.is_read,
-                  read_by: newMessage.read_by || [],
-                  content: newMessage.content,
-                  attachment_url: newMessage.attachment_url,
-                  attachment_type: newMessage.attachment_type,
-                  image_caption: newMessage.image_caption,
-                  file_caption: newMessage.file_caption,
-                  sender: senderData ? {
-                    full_name: senderData.full_name || null,
-                    email: senderData.email || '',
-                    phone_number: senderData.phone_number || null
-                  } : msg.sender
-                }
+                ...msg,
+                id: newMessage.id,
+                created_at: newMessage.created_at,
+                is_read: newMessage.is_read,
+                read_by: newMessage.read_by || [],
+                content: newMessage.content,
+                attachment_url: newMessage.attachment_url,
+                attachment_type: newMessage.attachment_type,
+                image_caption: newMessage.image_caption,
+                file_caption: newMessage.file_caption,
+                sender: senderData ? {
+                  full_name: senderData.full_name || null,
+                  email: senderData.email || '',
+                  phone_number: senderData.phone_number || null
+                } : msg.sender
+              }
               : msg
           )
         }
-        
+
         console.log('➕ Adding new message to state:', newMessage.id)
         const message: Message = {
           id: newMessage.id,
@@ -421,42 +421,42 @@ export default function MessagesPage() {
           reply_to: null, // Will be fetched if needed
           attachments: attachments || []
         }
-        
+
         return [...prev, message]
       })
-      
+
       // Scroll to bottom when new message arrives
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
       }, 100)
-      
+
       // Update conversations list (optimized - only update this conversation)
-      setConversations(prev => prev.map(conv => 
+      setConversations(prev => prev.map(conv =>
         conv.id === newMessage.conversation_id
           ? {
-              ...conv,
-              last_message: {
-                content: newMessage.content,
-                sender_id: newMessage.sender_id,
-                created_at: newMessage.created_at,
-                is_read: newMessage.is_read
-              },
-              last_message_at: newMessage.created_at,
-              unread_count: conv.id === selectedConversationRef.current ? conv.unread_count : conv.unread_count + 1
-            }
+            ...conv,
+            last_message: {
+              content: newMessage.content,
+              sender_id: newMessage.sender_id,
+              created_at: newMessage.created_at,
+              is_read: newMessage.is_read
+            },
+            last_message_at: newMessage.created_at,
+            unread_count: conv.id === selectedConversationRef.current ? conv.unread_count : conv.unread_count + 1
+          }
           : conv
       ))
-      
+
       // Mark as read if it's not from current user
       if (user && newMessage.sender_id !== user.id) {
         const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
         if (!readBy.includes(user.id)) {
           readBy.push(user.id)
         }
-        
-            await supabase
-              .from('messages')
-          .update({ 
+
+        await supabase
+          .from('messages')
+          .update({
             is_read: true,
             read_by: readBy
           })
@@ -464,35 +464,35 @@ export default function MessagesPage() {
       }
     } else if (eventType === 'UPDATE') {
       const updatedMessage = payload.new as any
-      
+
       console.log('🔄 Processing UPDATE event for message:', updatedMessage.id)
-      
+
       // Update message in state
       setMessages(prev => prev.map(msg =>
         msg.id === updatedMessage.id
           ? { ...msg, ...updatedMessage }
           : msg
       ))
-      
+
       // Update conversations list (optimized)
-      setConversations(prev => prev.map(conv => 
+      setConversations(prev => prev.map(conv =>
         conv.id === updatedMessage.conversation_id && conv.last_message?.sender_id === updatedMessage.sender_id
           ? {
-              ...conv,
-              last_message: {
-                content: updatedMessage.content,
-                sender_id: updatedMessage.sender_id,
-                created_at: updatedMessage.created_at,
-                is_read: updatedMessage.is_read
-              }
+            ...conv,
+            last_message: {
+              content: updatedMessage.content,
+              sender_id: updatedMessage.sender_id,
+              created_at: updatedMessage.created_at,
+              is_read: updatedMessage.is_read
             }
+          }
           : conv
       ))
     } else if (eventType === 'DELETE') {
       const deletedMessage = payload.old as any
-      
+
       console.log('🗑️ Processing DELETE event for message:', deletedMessage.id)
-      
+
       // Remove deleted message from state
       setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id))
     }
@@ -521,18 +521,18 @@ export default function MessagesPage() {
 
     // Fetch initial messages first
     await fetchMessages(conversationId)
-    
+
     // Small delay to ensure initial fetch completes
     await new Promise(resolve => setTimeout(resolve, 100))
-    
+
     console.log('🔌 Creating realtime subscription for conversation:', conversationId)
-      
+
     // Set up realtime subscription for messages
     // Following Supabase best practices: simple channel name pattern
     // This ensures reliable real-time delivery between all connected clients
     const channelName = `room-${conversationId}`
     console.log(`📡 Creating channel: ${channelName} for conversation: ${conversationId}`)
-    
+
     messagesChannelRef.current = supabase
       .channel(channelName)
       // Listen for INSERT events - following Supabase best practices
@@ -592,56 +592,54 @@ export default function MessagesPage() {
           handleRealtimeMessage(payload)
         }
       )
-        .on('postgres_changes', {
+      .on('postgres_changes', {
         event: 'INSERT',
-          schema: 'public',
-          table: 'message_attachments',
-        filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
+        schema: 'public',
+        table: 'message_attachments'
       }, async (payload) => {
         const newAttachment = payload.new as any
-        
+
         // Update message with new attachment
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === newAttachment.message_id
             ? {
-                ...msg,
-                attachments: [
-                  ...(msg.attachments || []),
-                  {
-                    id: newAttachment.id,
-                    file_url: newAttachment.file_url,
-                    file_type: newAttachment.file_type,
-                    file_name: newAttachment.file_name
-                  }
-                ]
-              }
+              ...msg,
+              attachments: [
+                ...(msg.attachments || []),
+                {
+                  id: newAttachment.id,
+                  file_url: newAttachment.file_url,
+                  file_type: newAttachment.file_type,
+                  file_name: newAttachment.file_name
+                }
+              ]
+            }
             : msg
         ))
-        })
-        .on('postgres_changes', {
+      })
+      .on('postgres_changes', {
         event: 'UPDATE',
-          schema: 'public',
-          table: 'message_attachments',
-        filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
+        schema: 'public',
+        table: 'message_attachments'
       }, async (payload) => {
         const updatedAttachment = payload.new as any
-        
+
         // Update attachment in message
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === updatedAttachment.message_id
             ? {
-                ...msg,
-                attachments: (msg.attachments || []).map(att =>
-                  att.id === updatedAttachment.id
-                    ? {
-                        ...att,
-                        file_url: updatedAttachment.file_url,
-                        file_type: updatedAttachment.file_type,
-                        file_name: updatedAttachment.file_name
-                      }
-                    : att
-                )
-              }
+              ...msg,
+              attachments: (msg.attachments || []).map(att =>
+                att.id === updatedAttachment.id
+                  ? {
+                    ...att,
+                    file_url: updatedAttachment.file_url,
+                    file_type: updatedAttachment.file_type,
+                    file_name: updatedAttachment.file_name
+                  }
+                  : att
+              )
+            }
             : msg
         ))
       })
@@ -650,7 +648,7 @@ export default function MessagesPage() {
       })
       .subscribe((status, err) => {
         console.log(`📡 Realtime subscription status: ${status}`, err || '')
-        
+
         switch (status) {
           case 'SUBSCRIBED':
             console.log(`✅ Realtime subscription ACTIVE for conversation ${conversationId}`)
@@ -697,42 +695,42 @@ export default function MessagesPage() {
         }
       })
 
-      // Set up typing indicator subscription
+    // Set up typing indicator subscription
     typingChannelRef.current = supabase
       .channel(`typing:${conversationId}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'typing_indicators',
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'typing_indicators',
         filter: `conversation_id=eq.${conversationId}`
-        }, async (payload) => {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user && payload.new && (payload.new as any).user_id !== user.id) {
-            setOtherUserTyping((payload.new as any).is_typing || false)
-            
-            // Auto-hide typing indicator after 3 seconds
-            if ((payload.new as any).is_typing) {
-              setTimeout(() => {
-              setOtherUserTyping(false)
-              }, 3000)
-            }
-          }
-        })
-        .subscribe()
+      }, async (payload) => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && payload.new && (payload.new as any).user_id !== user.id) {
+          setOtherUserTyping((payload.new as any).is_typing || false)
 
-      // Set up conversation updates subscription
+          // Auto-hide typing indicator after 3 seconds
+          if ((payload.new as any).is_typing) {
+            setTimeout(() => {
+              setOtherUserTyping(false)
+            }, 3000)
+          }
+        }
+      })
+      .subscribe()
+
+    // Set up conversation updates subscription
     conversationChannelRef.current = supabase
       .channel(`conversation:${conversationId}:${currentUserId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversations',
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversations',
         filter: `id=eq.${conversationId}`
       }, async (payload) => {
         const updatedConv = payload.new as any
-        
+
         // Update conversation in state
-        setConversations(prev => prev.map(conv => 
+        setConversations(prev => prev.map(conv =>
           conv.id === updatedConv.id
             ? { ...conv, last_message_at: updatedConv.last_message_at }
             : conv
@@ -765,7 +763,7 @@ export default function MessagesPage() {
 
     setupRealtimeSubscription(selectedConversation)
 
-      return () => {
+    return () => {
       // Cleanup: Always unsubscribe when component unmounts or conversation changes
       console.log(`🧹 Cleaning up channels for conversation ${selectedConversation}`)
       if (messagesChannelRef.current) {
@@ -786,54 +784,54 @@ export default function MessagesPage() {
   // Fetch conversation details if it's not in the list yet (newly created)
   useEffect(() => {
     if (!selectedConversation || !currentUserId || loading) return
-    
+
     const conv = conversations.find(c => c.id === selectedConversation)
     if (conv) {
       // Conversation is in list, messages will be fetched by the realtime effect
       return
     }
-    
+
     // Conversation not in list, fetch it directly (only once per conversation ID)
     let isMounted = true
     let hasFetched = false
-    
+
     const fetchMissingConversation = async () => {
       if (hasFetched || !isMounted) return
       hasFetched = true
-      
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !isMounted) return
-      
+
       try {
         const { data: convData, error } = await supabase
           .from('conversations')
           .select('*')
           .eq('id', selectedConversation)
           .single()
-        
+
         if (error) {
           console.error('Error fetching missing conversation:', error)
           return
         }
-        
+
         // Verify user is a participant
         if (convData && convData.participant1_id !== user.id && convData.participant2_id !== user.id) {
           console.error('User is not a participant in this conversation')
           return
         }
-        
+
         if (convData && isMounted) {
           // Fetch user data for the other participant
-          const otherUserId = convData.participant1_id === user.id 
-            ? convData.participant2_id 
+          const otherUserId = convData.participant1_id === user.id
+            ? convData.participant2_id
             : convData.participant1_id
-          
+
           const { data: otherUserData } = await supabase
             .from('users')
             .select('id, full_name, email, phone_number, avatar_url')
             .eq('id', otherUserId)
             .single()
-          
+
           const otherUser = otherUserData || {
             id: otherUserId,
             full_name: null,
@@ -841,7 +839,7 @@ export default function MessagesPage() {
             phone_number: null,
             avatar_url: null
           }
-          
+
           // Get last message
           const { data: lastMsg } = await supabase
             .from('messages')
@@ -850,7 +848,7 @@ export default function MessagesPage() {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
-          
+
           // Get unread count
           const { count } = await supabase
             .from('messages')
@@ -858,7 +856,7 @@ export default function MessagesPage() {
             .eq('conversation_id', convData.id)
             .eq('is_read', false)
             .neq('sender_id', user.id)
-          
+
           const formattedConv = {
             id: convData.id,
             participant1_id: convData.participant1_id,
@@ -874,7 +872,7 @@ export default function MessagesPage() {
             last_message: lastMsg || null,
             unread_count: count || 0
           }
-          
+
           // Add to conversations list only if not already there
           setConversations(prev => {
             const exists = prev.find(c => c.id === formattedConv.id)
@@ -908,38 +906,38 @@ export default function MessagesPage() {
         .select('*')
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .or('type.is.null,type.eq.direct')
-      
+
       // Get group conversations where user is a member
       const { data: groupMemberships } = await supabase
         .from('group_members')
         .select('conversation_id')
         .eq('user_id', user.id)
-      
+
       const groupConvIds = groupMemberships?.map(gm => gm.conversation_id) || []
-      
+
       const { data: groupConvs, error: groupError } = groupConvIds.length > 0
         ? await supabase
-            .from('conversations')
-            .select('*')
-            .in('id', groupConvIds)
-            .eq('type', 'group')
+          .from('conversations')
+          .select('*')
+          .in('id', groupConvIds)
+          .eq('type', 'group')
         : { data: [], error: null }
-      
+
       if (directError || groupError) {
         console.error('Error fetching conversations:', directError || groupError)
         throw directError || groupError
       }
-      
+
       // Combine and deduplicate
       const allConvs = [
         ...(directConvs || []),
         ...(groupConvs || [])
       ]
-      
+
       const uniqueConvs = allConvs.filter((conv, index, self) =>
         index === self.findIndex(c => c.id === conv.id)
       )
-      
+
       // Sort by last_message_at
       const data = uniqueConvs.sort((a, b) => {
         const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
@@ -954,16 +952,16 @@ export default function MessagesPage() {
         allParticipantIds.add(conv.participant1_id)
         allParticipantIds.add(conv.participant2_id)
       })
-      
+
       const { data: usersData } = allParticipantIds.size > 0
         ? await supabase
-            .from('users')
-            .select('id, full_name, email, phone_number, avatar_url')
-            .in('id', Array.from(allParticipantIds))
+          .from('users')
+          .select('id, full_name, email, phone_number, avatar_url')
+          .in('id', Array.from(allParticipantIds))
         : { data: [] }
-      
+
       const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
-      
+
       // Fetch member counts for group chats
       const groupConvsOnly = data.filter((c: any) => c.type === 'group')
       const memberCounts = new Map<string, number>()
@@ -972,22 +970,22 @@ export default function MessagesPage() {
           .from('group_members')
           .select('conversation_id')
           .in('conversation_id', groupConvsOnly.map((c: any) => c.id))
-        
+
         if (memberData) {
           memberData.forEach((m: any) => {
             memberCounts.set(m.conversation_id, (memberCounts.get(m.conversation_id) || 0) + 1)
           })
         }
       }
-      
+
       const formattedConversations = data.map((conv: any) => {
         if (conv.type === 'group') {
           // Group chat
-        return {
-          id: conv.id,
-          participant1_id: conv.participant1_id,
-          participant2_id: conv.participant2_id,
-          last_message_at: conv.last_message_at,
+          return {
+            id: conv.id,
+            participant1_id: conv.participant1_id,
+            participant2_id: conv.participant2_id,
+            last_message_at: conv.last_message_at,
             type: 'group' as const,
             name: conv.name,
             description: conv.description,
@@ -1004,10 +1002,10 @@ export default function MessagesPage() {
           }
         } else {
           // Direct chat
-          const otherUserId = conv.participant1_id === user.id 
-            ? conv.participant2_id 
+          const otherUserId = conv.participant1_id === user.id
+            ? conv.participant2_id
             : conv.participant1_id
-          
+
           const otherUser = usersMap.get(otherUserId) || {
             id: otherUserId,
             full_name: null,
@@ -1015,17 +1013,17 @@ export default function MessagesPage() {
             phone_number: null,
             avatar_url: null
           }
-          
+
           return {
             id: conv.id,
             participant1_id: conv.participant1_id,
             participant2_id: conv.participant2_id,
             last_message_at: conv.last_message_at,
             type: 'direct' as const,
-          other_user: {
-            id: otherUser.id,
-            full_name: otherUser.full_name,
-            email: otherUser.email,
+            other_user: {
+              id: otherUser.id,
+              full_name: otherUser.full_name,
+              email: otherUser.email,
               phone_number: otherUser.phone_number || null,
               avatar_url: otherUser.avatar_url || null
             }
@@ -1069,7 +1067,7 @@ export default function MessagesPage() {
 
   const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50) => {
     if (!conversationId) return
-    
+
     setMessagesLoading(true)
     try {
       let query = supabase
@@ -1081,11 +1079,11 @@ export default function MessagesPage() {
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(limit)
-      
+
       if (beforeDate) {
         query = query.lt('created_at', beforeDate)
       }
-      
+
       const { data, error, count } = await query
 
       if (error) {
@@ -1095,37 +1093,37 @@ export default function MessagesPage() {
 
       // Fetch sender data for all messages
       const senderIds = new Set<string>()
-      ;(data || []).forEach((msg: any) => {
-        senderIds.add(msg.sender_id)
-      })
-      
+        ; (data || []).forEach((msg: any) => {
+          senderIds.add(msg.sender_id)
+        })
+
       const { data: sendersData } = await supabase
         .from('users')
         .select('id, full_name, email, phone_number')
         .in('id', Array.from(senderIds))
-      
+
       const sendersMap = new Map((sendersData || []).map((u: any) => [u.id, u]))
 
-          // Fetch reply_to messages for messages that have replies
-          const messagesWithReplies = await Promise.all(
-            (data || []).map(async (msg: any) => {
-              let replyTo = null
-              if (msg.reply_to_message_id) {
-                const { data: replyData } = await supabase
-                  .from('messages')
+      // Fetch reply_to messages for messages that have replies
+      const messagesWithReplies = await Promise.all(
+        (data || []).map(async (msg: any) => {
+          let replyTo = null
+          if (msg.reply_to_message_id) {
+            const { data: replyData } = await supabase
+              .from('messages')
               .select('id, content, sender_id')
-                  .eq('id', msg.reply_to_message_id)
-                  .single()
-                
+              .eq('id', msg.reply_to_message_id)
+              .single()
+
             if (replyData) {
               const replySender = sendersMap.get(replyData.sender_id) || {
                 full_name: null,
                 email: ''
               }
-                  replyTo = {
-                    id: replyData.id,
-                    content: replyData.content,
-                    sender: {
+              replyTo = {
+                id: replyData.id,
+                content: replyData.content,
+                sender: {
                   full_name: replySender.full_name || null,
                   email: replySender.email || ''
                 }
@@ -1172,14 +1170,14 @@ export default function MessagesPage() {
 
       // Reverse to show oldest first, newest last
       const sortedMessages = (messagesWithReplies || []).reverse()
-      
+
       if (beforeDate) {
         // Loading older messages - prepend to existing
         setMessages(prev => [...sortedMessages, ...prev])
       } else {
         // Initial load - replace all
         setMessages(sortedMessages)
-        
+
         // Find the latest read message and scroll to it
         const { data: { user } } = await supabase.auth.getUser()
         if (user && sortedMessages.length > 0) {
@@ -1193,7 +1191,7 @@ export default function MessagesPage() {
               break
             }
           }
-          
+
           // If no read messages found, scroll to bottom
           // Otherwise scroll to the last read message
           setTimeout(() => {
@@ -1222,7 +1220,7 @@ export default function MessagesPage() {
           }, 100)
         }
       }
-      
+
       // Check if there are more messages
       setHasMoreMessages((count || 0) > (data?.length || 0))
 
@@ -1235,13 +1233,13 @@ export default function MessagesPage() {
           .select('id, read_by, is_read')
           .eq('conversation_id', conversationId)
           .neq('sender_id', user.id)
-        
+
         // Filter messages where user is not in read_by array
         const unreadMessages = (allMessages || []).filter(msg => {
           const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
           return !readBy.includes(user.id)
         })
-        
+
         if (unreadMessages && unreadMessages.length > 0) {
           console.log(`📖 Marking ${unreadMessages.length} messages as read for conversation ${conversationId}`)
           // Update each message to mark as read and add user to read_by
@@ -1250,15 +1248,15 @@ export default function MessagesPage() {
             if (!readBy.includes(user.id)) {
               readBy.push(user.id)
             }
-            
+
             const { error } = await supabase
               .from('messages')
-              .update({ 
+              .update({
                 is_read: true,
                 read_by: readBy
               })
               .eq('id', msg.id)
-            
+
             if (error) {
               console.error('Error marking message as read:', error)
             }
@@ -1277,7 +1275,7 @@ export default function MessagesPage() {
   const sendMessage = async () => {
     if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
 
-      const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       alert('Please sign in to send messages')
       return
@@ -1317,7 +1315,7 @@ export default function MessagesPage() {
 
     // Add optimistic message to state immediately
     setMessages(prev => [...prev, tempMessage])
-    
+
     // Scroll to bottom
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1360,41 +1358,41 @@ export default function MessagesPage() {
       }
 
       // Replace temp message with real message when it arrives
-      setMessages(prev => prev.map(msg => 
+      setMessages(prev => prev.map(msg =>
         msg.id === tempId
           ? {
-              ...msg,
-              id: newMessage.id,
-              created_at: newMessage.created_at,
-              is_read: newMessage.is_read,
-              read_by: newMessage.read_by || []
-            }
+            ...msg,
+            id: newMessage.id,
+            created_at: newMessage.created_at,
+            is_read: newMessage.is_read,
+            read_by: newMessage.read_by || []
+          }
           : msg
       ))
 
       // Upload image if selected (image with optional caption)
       if (originalImage && newMessage) {
         try {
-        const formData = new FormData()
+          const formData = new FormData()
           formData.append('file', originalImage)
-        formData.append('messageId', newMessage.id)
+          formData.append('messageId', newMessage.id)
 
-        const uploadResponse = await fetch('/api/messages/attachments/upload', {
-          method: 'POST',
-          body: formData
-        })
+          const uploadResponse = await fetch('/api/messages/attachments/upload', {
+            method: 'POST',
+            body: formData
+          })
 
-        if (uploadResponse.ok) {
+          if (uploadResponse.ok) {
             const result = await uploadResponse.json()
             const url = result.url
-            
+
             // The attachment should already be saved to message_attachments table by the upload function
             // But we also update the message with attachment_url for legacy support
             const updateData: any = {
               attachment_url: url,
               attachment_type: originalImage.type
             }
-            
+
             // If there's content and it's an image, use it as caption
             if (originalContent && originalImage.type.startsWith('image/')) {
               updateData.image_caption = originalContent
@@ -1405,22 +1403,22 @@ export default function MessagesPage() {
             const { error: updateError } = await supabase
               .from('messages')
               .update(updateData)
-            .eq('id', newMessage.id)
+              .eq('id', newMessage.id)
 
             if (updateError) {
               console.error('Error updating message with attachment:', updateError)
             }
 
             // Update the message in state with the real attachment URL
-            setMessages(prev => prev.map(msg => 
+            setMessages(prev => prev.map(msg =>
               msg.id === newMessage.id
                 ? {
-                    ...msg,
-                    attachment_url: url,
-                    attachment_type: originalImage.type,
-                    image_caption: originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.image_caption,
-                    file_caption: !originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.file_caption
-                  }
+                  ...msg,
+                  attachment_url: url,
+                  attachment_type: originalImage.type,
+                  image_caption: originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.image_caption,
+                  file_caption: !originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.file_caption
+                }
                 : msg
             ))
           } else {
@@ -1441,7 +1439,7 @@ export default function MessagesPage() {
       // Update conversation last_message_at for both participants
       const { error: convError } = await supabase
         .from('conversations')
-        .update({ 
+        .update({
           last_message_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -1452,18 +1450,18 @@ export default function MessagesPage() {
       }
 
       // Update conversation last_message_at
-      setConversations(prev => prev.map(conv => 
+      setConversations(prev => prev.map(conv =>
         conv.id === selectedConversation
           ? {
-              ...conv,
-              last_message: {
-                content: originalContent || '[Image]',
-                sender_id: user.id,
-                created_at: newMessage.created_at,
-                is_read: false
-              },
-              last_message_at: newMessage.created_at
-            }
+            ...conv,
+            last_message: {
+              content: originalContent || '[Image]',
+              sender_id: user.id,
+              created_at: newMessage.created_at,
+              is_read: false
+            },
+            last_message_at: newMessage.created_at
+          }
           : conv
       ))
 
@@ -1579,7 +1577,7 @@ export default function MessagesPage() {
       if (!user) return
 
       // Create forwarded message
-      const forwardedContent = forwardingMessage.content 
+      const forwardedContent = forwardingMessage.content
         ? `Forwarded: ${forwardingMessage.content}`
         : 'Forwarded message'
 
@@ -1664,7 +1662,7 @@ export default function MessagesPage() {
 
   const handleTyping = async () => {
     if (!selectedConversation || !currentUserId) return
-    
+
     setIsTyping(true)
     await supabase
       .from('typing_indicators')
@@ -1680,7 +1678,7 @@ export default function MessagesPage() {
 
   const handleStopTyping = async () => {
     if (!selectedConversation || !currentUserId) return
-    
+
     setIsTyping(false)
     await supabase
       .from('typing_indicators')
@@ -1697,10 +1695,10 @@ export default function MessagesPage() {
 
   const filteredConversations = conversations.filter(conv =>
     conv.type === 'group'
-      ? (conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-         conv.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+      ? (conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        conv.description?.toLowerCase().includes(searchQuery.toLowerCase()))
       : (conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   if (loading) {
@@ -1724,14 +1722,14 @@ export default function MessagesPage() {
           <Card className="card-professional overflow-hidden flex flex-col h-full">
             <CardHeader className="border-b space-y-3 flex-shrink-0">
               <div className="flex gap-2">
-              <Button
-                onClick={() => setShowNewConversation(true)}
+                <Button
+                  onClick={() => setShowNewConversation(true)}
                   className="flex-1 btn-primary text-xs sm:text-sm"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Message</span>
                   <span className="sm:hidden">New</span>
-              </Button>
+                </Button>
                 <Button
                   onClick={() => setShowNewGroup(true)}
                   variant="outline"
@@ -1772,9 +1770,8 @@ export default function MessagesPage() {
                           params.set('conversation', conv.id)
                           router.replace(`/messages?${params.toString()}`, { scroll: false })
                         }}
-                        className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                          selectedConversation === conv.id ? 'bg-blue-50' : ''
-                        }`}
+                        className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-blue-50' : ''
+                          }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -1805,11 +1802,11 @@ export default function MessagesPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                  {conv.type === 'group' 
+                                <h3 className="font-semibold text-gray-900 truncate">
+                                  {conv.type === 'group'
                                     ? conv.name || 'Group Chat'
                                     : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                              </h3>
+                                </h3>
                                 {conv.type === 'group' && conv.member_count !== undefined && (
                                   <Badge variant="outline" className="text-xs">
                                     <Users className="h-3 w-3 mr-1" />
@@ -1866,7 +1863,7 @@ export default function MessagesPage() {
                             ) : (
                               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
                                 <Users className="h-6 w-6" />
-                        </div>
+                              </div>
                             )
                           ) : conv.other_user.avatar_url ? (
                             <img
@@ -1882,7 +1879,7 @@ export default function MessagesPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg truncate">
-                            {conv.type === 'group' 
+                            {conv.type === 'group'
                               ? conv.name || 'Group Chat'
                               : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
                           </div>
@@ -1893,11 +1890,11 @@ export default function MessagesPage() {
                           ) : (
                             <>
                               <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
-                          {conv.other_user.phone_number && (
-                            <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
-                              <Phone className="h-3 w-3" />
-                              {conv.other_user.phone_number}
-                            </div>
+                              {conv.other_user.phone_number && (
+                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                                  <Phone className="h-3 w-3" />
+                                  {conv.other_user.phone_number}
+                                </div>
                               )}
                             </>
                           )}
@@ -1917,7 +1914,7 @@ export default function MessagesPage() {
                   })()}
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
-                  <div 
+                  <div
                     ref={messagesContainerRef}
                     className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
                     onScroll={(e) => {
@@ -1963,18 +1960,18 @@ export default function MessagesPage() {
                         {messages.map((message) => {
                           const isOwn = message.sender_id === currentUserId
                           return (
-                              <MessageBubble
+                            <MessageBubble
                               key={message.id}
-                                message={message}
-                                isOwn={isOwn}
+                              message={message}
+                              isOwn={isOwn}
                               currentUserId={currentUserId || ''}
-                                onReply={handleReply}
+                              onReply={handleReply}
                               onForward={handleForward}
                               onEdit={handleEditMessage}
                               onDelete={handleDeleteMessage}
                               onReaction={handleReaction}
-                                formatTime={formatTime}
-                              />
+                              formatTime={formatTime}
+                            />
                           )
                         })}
                         <div ref={messagesEndRef} />
@@ -2049,30 +2046,30 @@ export default function MessagesPage() {
                       className="flex gap-2"
                     >
                       <div className="flex-1 flex gap-2 items-end">
-                      <Textarea
-                        value={messageContent}
-                        onChange={async (e) => {
-                          setMessageContent(e.target.value)
-                          
-                          // Update typing indicator
-                          if (e.target.value.trim().length > 0) {
-                            await handleTyping()
-                          } else {
-                            await handleStopTyping()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            sendMessage()
-                          }
-                        }}
-                        onBlur={() => handleStopTyping()}
-                        placeholder="Type a message..."
-                        disabled={sending}
-                        className="flex-1 min-h-[40px] max-h-[100px] resize-none text-sm"
-                        rows={1}
-                      />
+                        <Textarea
+                          value={messageContent}
+                          onChange={async (e) => {
+                            setMessageContent(e.target.value)
+
+                            // Update typing indicator
+                            if (e.target.value.trim().length > 0) {
+                              await handleTyping()
+                            } else {
+                              await handleStopTyping()
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              sendMessage()
+                            }
+                          }}
+                          onBlur={() => handleStopTyping()}
+                          placeholder="Type a message..."
+                          disabled={sending}
+                          className="flex-1 min-h-[40px] max-h-[100px] resize-none text-sm"
+                          rows={1}
+                        />
                         <Button
                           type="button"
                           variant="outline"
@@ -2093,8 +2090,8 @@ export default function MessagesPage() {
                           className="hidden"
                         />
                       </div>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         disabled={sending || (!messageContent.trim() && !selectedImage && !forwardingMessage)}
                         onClick={(e) => {
                           if (forwardingMessage && !replyingTo) {
@@ -2130,7 +2127,7 @@ export default function MessagesPage() {
         isOpen={showNewConversation}
         onClose={() => setShowNewConversation(false)}
       />
-      
+
       <NewGroupDialog
         isOpen={showNewGroup}
         onClose={() => setShowNewGroup(false)}

@@ -89,44 +89,97 @@ export default function DashboardLayout({
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (!currentUser || !mounted) return
         
-        // Get all conversations user is part of
-        const { data: conversations } = await supabase
+        // Get all conversations user is part of (including group chats)
+        const { data: directConversations } = await supabase
           .from('conversations')
           .select('id')
           .or(`participant1_id.eq.${currentUser.id},participant2_id.eq.${currentUser.id}`)
         
-        if (!conversations || conversations.length === 0) {
+        // Get group conversations user is part of
+        const { data: groupMembers } = await supabase
+          .from('group_members')
+          .select('conversation_id')
+          .eq('user_id', currentUser.id)
+        
+        // Combine conversation IDs
+        const conversationIds = [
+          ...(directConversations?.map(c => c.id) || []),
+          ...(groupMembers?.map(gm => gm.conversation_id) || [])
+        ]
+        
+        if (conversationIds.length === 0) {
           if (mounted) setUnreadCount(0)
           return
         }
         
-        // Get unread messages count
-        const { count } = await supabase
+        // Get all messages in user's conversations that are not from the user
+        const { data: messages } = await supabase
           .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .in('conversation_id', conversations.map(c => c.id))
-          .eq('is_read', false)
+          .select('id, is_read, read_by, sender_id')
+          .in('conversation_id', conversationIds)
           .neq('sender_id', currentUser.id)
         
-        if (mounted) setUnreadCount(count || 0)
+        if (!messages) {
+          if (mounted) setUnreadCount(0)
+          return
+        }
+        
+        // Count messages that are unread by this user
+        // A message is unread if:
+        // 1. is_read is false AND user is not in read_by array, OR
+        // 2. is_read is true but user is not in read_by array (for backwards compatibility)
+        const unreadCount = messages.filter(msg => {
+          const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
+          const userHasRead = readBy.includes(currentUser.id)
+          // Message is unread if user hasn't read it (not in read_by array)
+          return !userHasRead
+        }).length
+        
+        if (mounted) {
+          console.log('📊 Unread count updated:', unreadCount)
+          setUnreadCount(unreadCount)
+        }
       } catch (error) {
         console.error('Error fetching unread count:', error)
+        if (mounted) setUnreadCount(0)
       }
     }
     
     fetchUnreadCount()
     
     // Set up realtime subscription for unread count
+    // Listen to INSERT (new messages) and UPDATE (read status changes) events
     const channel = supabase
       .channel('unread_count_updates')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
         table: 'messages'
       }, () => {
+        console.log('📨 New message inserted, updating unread count')
         if (mounted) fetchUnreadCount()
       })
-      .subscribe()
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        // Only update if read_by or is_read changed
+        const oldReadBy = Array.isArray(payload.old?.read_by) ? payload.old.read_by : []
+        const newReadBy = Array.isArray(payload.new?.read_by) ? payload.new.read_by : []
+        const readStatusChanged = payload.old?.is_read !== payload.new?.is_read || 
+                                  JSON.stringify(oldReadBy) !== JSON.stringify(newReadBy)
+        
+        if (readStatusChanged) {
+          console.log('👁️ Message read status changed, updating unread count')
+          if (mounted) fetchUnreadCount()
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Unread count realtime subscription active')
+        }
+      })
     
     // Refresh every 30 seconds as backup
     const interval = setInterval(() => {

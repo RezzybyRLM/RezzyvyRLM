@@ -592,10 +592,10 @@ export default function MessagesPage() {
           handleRealtimeMessage(payload)
         }
       )
-      .on('postgres_changes', {
+        .on('postgres_changes', {
         event: 'INSERT',
-        schema: 'public',
-        table: 'message_attachments',
+          schema: 'public',
+          table: 'message_attachments',
         filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
       }, async (payload) => {
         const newAttachment = payload.new as any
@@ -1229,15 +1229,21 @@ export default function MessagesPage() {
       // Mark messages as read and add to read_by array
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Get unread messages
-        const { data: unreadMessages } = await supabase
+        // Get unread messages - messages where user is not in read_by array
+        const { data: allMessages } = await supabase
           .from('messages')
-          .select('id, read_by')
+          .select('id, read_by, is_read')
           .eq('conversation_id', conversationId)
           .neq('sender_id', user.id)
-          .eq('is_read', false)
+        
+        // Filter messages where user is not in read_by array
+        const unreadMessages = (allMessages || []).filter(msg => {
+          const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
+          return !readBy.includes(user.id)
+        })
         
         if (unreadMessages && unreadMessages.length > 0) {
+          console.log(`📖 Marking ${unreadMessages.length} messages as read for conversation ${conversationId}`)
           // Update each message to mark as read and add user to read_by
           await Promise.all(unreadMessages.map(async (msg) => {
             const readBy = Array.isArray(msg.read_by) ? [...msg.read_by] : []
@@ -1245,14 +1251,19 @@ export default function MessagesPage() {
               readBy.push(user.id)
             }
             
-            await supabase
+            const { error } = await supabase
               .from('messages')
               .update({ 
                 is_read: true,
                 read_by: readBy
               })
               .eq('id', msg.id)
+            
+            if (error) {
+              console.error('Error marking message as read:', error)
+            }
           }))
+          console.log('✅ All messages marked as read')
         }
       }
     } catch (error) {

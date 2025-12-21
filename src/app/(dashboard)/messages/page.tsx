@@ -679,42 +679,52 @@ export default function MessagesPage() {
 
       // Upload image if selected (image with optional caption)
       if (selectedImage && newMessage) {
-        const formData = new FormData()
-        formData.append('file', selectedImage)
-        formData.append('messageId', newMessage.id)
+        try {
+          const formData = new FormData()
+          formData.append('file', selectedImage)
+          formData.append('messageId', newMessage.id)
 
-        const uploadResponse = await fetch('/api/messages/attachments/upload', {
-          method: 'POST',
-          body: formData
-        })
+          const uploadResponse = await fetch('/api/messages/attachments/upload', {
+            method: 'POST',
+            body: formData
+          })
 
-        if (uploadResponse.ok) {
-          const { url } = await uploadResponse.json()
-          // Update message with attachment URL and caption
-          const updateData: any = {
-            attachment_url: url,
-            attachment_type: selectedImage.type
+          if (uploadResponse.ok) {
+            const result = await uploadResponse.json()
+            const url = result.url
+            
+            // The attachment should already be saved to message_attachments table by the upload function
+            // But we also update the message with attachment_url for legacy support
+            const updateData: any = {
+              attachment_url: url,
+              attachment_type: selectedImage.type
+            }
+            
+            // If there's content and it's an image, use it as caption
+            if (messageContent.trim() && selectedImage.type.startsWith('image/')) {
+              updateData.image_caption = messageContent.trim()
+              // Keep content if it's not just a caption
+            } else if (messageContent.trim() && !selectedImage.type.startsWith('image/')) {
+              updateData.file_caption = messageContent.trim()
+              // Keep content if it's not just a caption
+            }
+
+            const { error: updateError } = await supabase
+              .from('messages')
+              .update(updateData)
+              .eq('id', newMessage.id)
+
+            if (updateError) {
+              console.error('Error updating message with attachment:', updateError)
+            }
+          } else {
+            const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
+            console.error('Error uploading attachment:', errorData.error || 'Upload failed')
+            alert('Failed to upload image. Please try again.')
           }
-          
-          // If there's content and it's an image, use it as caption
-          if (messageContent.trim() && selectedImage.type.startsWith('image/')) {
-            updateData.image_caption = messageContent.trim()
-            updateData.content = '' // Clear content if it's just a caption
-          } else if (messageContent.trim() && !selectedImage.type.startsWith('image/')) {
-            updateData.file_caption = messageContent.trim()
-            updateData.content = '' // Clear content if it's just a caption
-          }
-
-          const { error: updateError } = await supabase
-            .from('messages')
-            .update(updateData)
-            .eq('id', newMessage.id)
-
-          if (updateError) {
-            console.error('Error updating message with attachment:', updateError)
-          }
-        } else {
-          console.error('Error uploading attachment')
+        } catch (error) {
+          console.error('Error in image upload process:', error)
+          alert('Failed to upload image. Please try again.')
         }
       }
 

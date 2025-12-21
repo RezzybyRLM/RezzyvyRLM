@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { 
   Check, 
@@ -139,13 +139,34 @@ export function MessageBubble({
     )
   }
 
+  const [showContextMenu, setShowContextMenu] = useState(false)
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setContextMenuPosition({ x: e.clientX, y: e.clientY })
+    setShowContextMenu(true)
+  }
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    if (showContextMenu) {
+      const handleClickOutside = () => setShowContextMenu(false)
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showContextMenu])
+
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group mb-1`}>
-      <div className={`max-w-[60%] rounded-lg p-2 ${
-        isOwn
-          ? 'bg-primary text-white'
-          : 'bg-gray-100 text-gray-900'
-      }`}>
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 relative`}>
+      <div 
+        className={`max-w-[40%] rounded-lg p-1.5 text-sm ${
+          isOwn
+            ? 'bg-primary text-white'
+            : 'bg-gray-100 text-gray-900'
+        }`}
+        onContextMenu={handleContextMenu}
+      >
         {/* Reply context */}
         {message.reply_to && (
           <div className={`mb-2 pl-3 border-l-2 ${
@@ -175,7 +196,7 @@ export function MessageBubble({
 
         {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (
-          <div className="mb-2 space-y-2">
+          <div className="mb-1.5 space-y-1.5">
             {message.attachments.map((attachment) => (
               <div key={attachment.id}>
                 {attachment.file_type.startsWith('image/') ? (
@@ -183,11 +204,11 @@ export function MessageBubble({
                     <img
                       src={attachment.file_url}
                       alt={attachment.file_name}
-                      className="max-w-full max-h-64 rounded-lg object-cover cursor-pointer"
+                      className="max-w-full max-h-48 rounded object-cover cursor-pointer"
                       onClick={() => window.open(attachment.file_url, '_blank')}
                     />
                     {message.image_caption && (
-                      <p className={`text-xs mt-1 ${
+                      <p className={`text-xs mt-0.5 ${
                         isOwn ? 'text-white/80' : 'text-gray-600'
                       }`}>
                         {message.image_caption}
@@ -222,18 +243,18 @@ export function MessageBubble({
         )}
 
         {/* Legacy attachment_url support */}
-        {message.attachment_url && !message.attachments && (
-          <div className="mb-2">
+        {message.attachment_url && (!message.attachments || message.attachments.length === 0) && (
+          <div className="mb-1.5">
             {message.attachment_type?.startsWith('image/') ? (
               <div>
                 <img
                   src={message.attachment_url}
                   alt="Attachment"
-                  className="max-w-full max-h-64 rounded-lg object-cover cursor-pointer"
+                  className="max-w-full max-h-48 rounded object-cover cursor-pointer"
                   onClick={() => window.open(message.attachment_url!, '_blank')}
                 />
                 {message.image_caption && (
-                  <p className={`text-xs mt-1 ${
+                  <p className={`text-xs mt-0.5 ${
                     isOwn ? 'text-white/80' : 'text-gray-600'
                   }`}>
                     {message.image_caption}
@@ -299,7 +320,7 @@ export function MessageBubble({
             </div>
           </div>
         ) : (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="text-xs whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
         )}
 
         {/* Edit indicator */}
@@ -336,97 +357,112 @@ export function MessageBubble({
         )}
 
         {/* Footer with time and read receipt */}
-        <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+        <div className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] ${
           isOwn ? 'text-white/70' : 'text-gray-500'
         }`}>
           <span>{formatTime(message.created_at)}</span>
           {isOwn && (
             message.read_by && message.read_by.length > 0 ? (
-              <CheckCheck className="h-3 w-3 text-blue-400" />
+              <CheckCheck className="h-2.5 w-2.5 text-blue-400" />
             ) : message.is_read ? (
-              <CheckCheck className="h-3 w-3 text-gray-400" />
+              <CheckCheck className="h-2.5 w-2.5 text-gray-400" />
             ) : (
-              <Check className="h-3 w-3 text-gray-400" />
+              <Check className="h-2.5 w-2.5 text-gray-400" />
             )
           )}
         </div>
 
-        {/* Action buttons (on hover) */}
-        <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 flex-wrap">
-          {onReaction && (
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowReactionPicker(!showReactionPicker)}
-                className="h-6 px-2 text-xs"
+        {/* Context menu (right-click) */}
+        {showContextMenu && (
+          <div 
+            className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px]"
+            style={{ 
+              left: `${contextMenuPosition.x}px`, 
+              top: `${contextMenuPosition.y}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {onReaction && (
+              <button
+                onClick={() => {
+                  setShowReactionPicker(!showReactionPicker)
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
               >
-                <Smile className="h-3 w-3 mr-1" />
+                <Smile className="h-3.5 w-3.5" />
                 React
-              </Button>
-              {showReactionPicker && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg p-2 flex gap-1 z-10">
-                  {REACTIONS.map((reaction) => (
-                    <button
-                      key={reaction}
-                      onClick={() => handleReaction(reaction)}
-                      className="text-xl hover:scale-125 transition-transform p-1"
-                    >
-                      {reaction}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {onReply && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onReply(message.id)}
-              className="h-6 px-2 text-xs"
-            >
-              <Reply className="h-3 w-3 mr-1" />
-              Reply
-            </Button>
-          )}
-          {onForward && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onForward(message.id)}
-              className="h-6 px-2 text-xs"
-            >
-              <Forward className="h-3 w-3 mr-1" />
-              Forward
-            </Button>
-          )}
-          {isOwn && onEdit && !isEditing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setIsEditing(true)
-                setEditContent(message.content)
-              }}
-              className="h-6 px-2 text-xs"
-            >
-              <Edit className="h-3 w-3 mr-1" />
-              Edit
-            </Button>
-          )}
-          {isOwn && onDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Delete
-            </Button>
-          )}
-        </div>
+              </button>
+            )}
+            {showReactionPicker && (
+              <div className="absolute left-full top-0 ml-1 bg-white rounded-lg shadow-lg p-2 flex gap-1 z-10 border border-gray-200">
+                {REACTIONS.map((reaction) => (
+                  <button
+                    key={reaction}
+                    onClick={() => {
+                      handleReaction(reaction)
+                      setShowReactionPicker(false)
+                      setShowContextMenu(false)
+                    }}
+                    className="text-lg hover:scale-125 transition-transform p-1"
+                  >
+                    {reaction}
+                  </button>
+                ))}
+              </div>
+            )}
+            {onReply && (
+              <button
+                onClick={() => {
+                  onReply(message.id)
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <Reply className="h-3.5 w-3.5" />
+                Reply
+              </button>
+            )}
+            {onForward && (
+              <button
+                onClick={() => {
+                  onForward(message.id)
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <Forward className="h-3.5 w-3.5" />
+                Forward
+              </button>
+            )}
+            {isOwn && onEdit && !isEditing && (
+              <button
+                onClick={() => {
+                  setIsEditing(true)
+                  setEditContent(message.content)
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                Edit
+              </button>
+            )}
+            {isOwn && onDelete && (
+              <button
+                onClick={() => {
+                  handleDelete()
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

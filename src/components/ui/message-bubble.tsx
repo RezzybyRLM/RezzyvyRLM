@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
-  Check, 
-  CheckCheck, 
-  Reply, 
-  MoreVertical, 
-  Image as ImageIcon, 
+import {
+  Check,
+  CheckCheck,
+  Reply,
+  MoreVertical,
+  Image as ImageIcon,
   Forward,
   Edit,
   Trash2,
@@ -67,16 +67,16 @@ interface MessageBubbleProps {
   formatTime: (date: string) => string
 }
 
-export function MessageBubble({ 
-  message, 
-  isOwn, 
+export function MessageBubble({
+  message,
+  isOwn,
   currentUserId,
-  onReply, 
-  onForward, 
+  onReply,
+  onForward,
   onEdit,
   onDelete,
   onReaction,
-  formatTime 
+  formatTime
 }: MessageBubbleProps) {
   const [showActions, setShowActions] = useState(false)
   const [showReactions, setShowReactions] = useState(false)
@@ -105,10 +105,10 @@ export function MessageBubble({
   }
 
   // Get all reactions for this message
-  const allReactions = message.reactions 
-    ? Object.entries(message.reactions).flatMap(([userId, reactions]) => 
-        reactions.map(reaction => ({ userId, reaction }))
-      )
+  const allReactions = message.reactions
+    ? Object.entries(message.reactions).flatMap(([userId, reactions]) =>
+      reactions.map(reaction => ({ userId, reaction }))
+    )
     : []
 
   // Group reactions by emoji
@@ -123,15 +123,13 @@ export function MessageBubble({
   if (message.is_deleted) {
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
-        <div className={`max-w-[70%] rounded-lg p-3 ${
-          isOwn
+        <div className={`max-w-[70%] rounded-lg p-3 ${isOwn
             ? 'bg-gray-300 text-gray-500'
             : 'bg-gray-200 text-gray-500'
-        }`}>
-          <p className="text-sm italic">[Message deleted]</p>
-          <div className={`flex items-center gap-1 mt-1 text-xs ${
-            isOwn ? 'text-gray-400' : 'text-gray-500'
           }`}>
+          <p className="text-sm italic">[Message deleted]</p>
+          <div className={`flex items-center gap-1 mt-1 text-xs ${isOwn ? 'text-gray-400' : 'text-gray-500'
+            }`}>
             <span>{formatTime(message.deleted_at || message.created_at)}</span>
           </div>
         </div>
@@ -158,31 +156,27 @@ export function MessageBubble({
   }, [showContextMenu])
 
   return (
-    <div 
+    <div
       data-message-id={message.id}
       className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 relative`}
     >
-      <div 
-        className={`max-w-[40%] rounded-lg p-1.5 text-sm ${
-          isOwn
+      <div
+        className={`max-w-[40%] rounded-lg p-1.5 text-sm ${isOwn
             ? 'bg-primary text-white'
             : 'bg-gray-100 text-gray-900'
-        }`}
+          }`}
         onContextMenu={handleContextMenu}
       >
         {/* Reply context */}
         {message.reply_to && (
-          <div className={`mb-2 pl-3 border-l-2 ${
-            isOwn ? 'border-white/30' : 'border-gray-400'
-          }`}>
-            <p className={`text-xs font-medium mb-1 ${
-              isOwn ? 'text-white/80' : 'text-gray-600'
+          <div className={`mb-2 pl-3 border-l-2 ${isOwn ? 'border-white/30' : 'border-gray-400'
             }`}>
+            <p className={`text-xs font-medium mb-1 ${isOwn ? 'text-white/80' : 'text-gray-600'
+              }`}>
               Replying to {message.reply_to.sender.full_name || message.reply_to.sender.email.split('@')[0]}
             </p>
-            <p className={`text-xs truncate ${
-              isOwn ? 'text-white/70' : 'text-gray-500'
-            }`}>
+            <p className={`text-xs truncate ${isOwn ? 'text-white/70' : 'text-gray-500'
+              }`}>
               {message.reply_to.content}
             </p>
           </div>
@@ -190,9 +184,8 @@ export function MessageBubble({
 
         {/* Forwarded indicator */}
         {message.forwarded_from_id && (
-          <div className={`mb-2 text-xs ${
-            isOwn ? 'text-white/70' : 'text-gray-500'
-          }`}>
+          <div className={`mb-2 text-xs ${isOwn ? 'text-white/70' : 'text-gray-500'
+            }`}>
             ↪ Forwarded
           </div>
         )}
@@ -211,9 +204,8 @@ export function MessageBubble({
                       onClick={() => window.open(attachment.file_url, '_blank')}
                     />
                     {message.image_caption && (
-                      <p className={`text-xs mt-0.5 ${
-                        isOwn ? 'text-white/80' : 'text-gray-600'
-                      }`}>
+                      <p className={`text-xs mt-0.5 ${isOwn ? 'text-white/80' : 'text-gray-600'
+                        }`}>
                         {message.image_caption}
                       </p>
                     )}
@@ -224,17 +216,15 @@ export function MessageBubble({
                       href={attachment.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex items-center gap-2 p-2 rounded ${
-                        isOwn ? 'bg-white/20' : 'bg-gray-200'
-                      } hover:opacity-80 transition-opacity`}
+                      className={`flex items-center gap-2 p-2 rounded ${isOwn ? 'bg-white/20' : 'bg-gray-200'
+                        } hover:opacity-80 transition-opacity`}
                     >
                       <ImageIcon className="h-4 w-4" />
                       <span className="text-sm truncate">{attachment.file_name}</span>
                     </a>
                     {message.file_caption && (
-                      <p className={`text-xs mt-1 ${
-                        isOwn ? 'text-white/80' : 'text-gray-600'
-                      }`}>
+                      <p className={`text-xs mt-1 ${isOwn ? 'text-white/80' : 'text-gray-600'
+                        }`}>
                         {message.file_caption}
                       </p>
                     )}
@@ -257,9 +247,8 @@ export function MessageBubble({
                   onClick={() => window.open(message.attachment_url!, '_blank')}
                 />
                 {message.image_caption && (
-                  <p className={`text-xs mt-0.5 ${
-                    isOwn ? 'text-white/80' : 'text-gray-600'
-                  }`}>
+                  <p className={`text-xs mt-0.5 ${isOwn ? 'text-white/80' : 'text-gray-600'
+                    }`}>
                     {message.image_caption}
                   </p>
                 )}
@@ -270,17 +259,15 @@ export function MessageBubble({
                   href={message.attachment_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-center gap-2 p-2 rounded ${
-                    isOwn ? 'bg-white/20' : 'bg-gray-200'
-                  } hover:opacity-80 transition-opacity`}
+                  className={`flex items-center gap-2 p-2 rounded ${isOwn ? 'bg-white/20' : 'bg-gray-200'
+                    } hover:opacity-80 transition-opacity`}
                 >
                   <ImageIcon className="h-4 w-4" />
                   <span className="text-sm">View attachment</span>
                 </a>
                 {message.file_caption && (
-                  <p className={`text-xs mt-1 ${
-                    isOwn ? 'text-white/80' : 'text-gray-600'
-                  }`}>
+                  <p className={`text-xs mt-1 ${isOwn ? 'text-white/80' : 'text-gray-600'
+                    }`}>
                     {message.file_caption}
                   </p>
                 )}
@@ -295,9 +282,8 @@ export function MessageBubble({
             <textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className={`w-full p-2 rounded text-sm ${
-                isOwn ? 'bg-white/20 text-white' : 'bg-white text-gray-900'
-              }`}
+              className={`w-full p-2 rounded text-sm ${isOwn ? 'bg-white/20 text-white' : 'bg-white text-gray-900'
+                }`}
               rows={3}
               autoFocus
             />
@@ -328,9 +314,8 @@ export function MessageBubble({
 
         {/* Edit indicator */}
         {message.is_edited && !isEditing && (
-          <p className={`text-xs mt-1 ${
-            isOwn ? 'text-white/70' : 'text-gray-500'
-          }`}>
+          <p className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-gray-500'
+            }`}>
             (edited)
           </p>
         )}
@@ -342,15 +327,14 @@ export function MessageBubble({
               <button
                 key={reaction}
                 onClick={() => handleReaction(reaction)}
-                className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${
-                  userReactions.includes(reaction)
-                    ? isOwn 
-                      ? 'bg-white/30 text-white' 
+                className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${userReactions.includes(reaction)
+                    ? isOwn
+                      ? 'bg-white/30 text-white'
                       : 'bg-primary/20 text-primary'
                     : isOwn
                       ? 'bg-white/20 text-white/80'
                       : 'bg-gray-200 text-gray-700'
-                } hover:opacity-80 transition-opacity`}
+                  } hover:opacity-80 transition-opacity`}
               >
                 <span>{reaction}</span>
                 <span>{count}</span>
@@ -360,27 +344,26 @@ export function MessageBubble({
         )}
 
         {/* Footer with time and read receipt */}
-        <div className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] ${
-          isOwn ? 'text-white/70' : 'text-gray-500'
-        }`}>
+        <div className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] ${isOwn ? 'text-white/70' : 'text-gray-500'
+          }`}>
           <span>{formatTime(message.created_at)}</span>
           {isOwn && (
-            message.read_by && message.read_by.length > 0 ? (
-              <CheckCheck className="h-2.5 w-2.5 text-blue-400" />
-            ) : message.is_read ? (
-              <CheckCheck className="h-2.5 w-2.5 text-gray-400" />
+            message.id.startsWith('temp-') ? (
+              <Check className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
+            ) : (message.read_by && message.read_by.length > 0) || message.is_read ? (
+              <CheckCheck className="h-2.5 w-2.5 text-blue-300" />
             ) : (
-              <Check className="h-2.5 w-2.5 text-gray-400" />
+              <CheckCheck className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             )
           )}
         </div>
 
         {/* Context menu (right-click) */}
         {showContextMenu && (
-          <div 
+          <div
             className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px]"
-            style={{ 
-              left: `${contextMenuPosition.x}px`, 
+            style={{
+              left: `${contextMenuPosition.x}px`,
               top: `${contextMenuPosition.y}px`,
               transform: 'translate(-50%, -50%)'
             }}

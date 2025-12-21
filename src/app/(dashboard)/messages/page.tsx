@@ -18,7 +18,8 @@ import {
   Phone,
   Image as ImageIcon,
   X,
-  Reply
+  Reply,
+  ArrowDown
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -108,6 +109,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(false)
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1913,12 +1915,18 @@ export default function MessagesPage() {
                     )
                   })()}
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
+                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0 relative">
                   <div
                     ref={messagesContainerRef}
                     className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
                     onScroll={(e) => {
                       const target = e.target as HTMLDivElement
+
+                      // Check if at bottom
+                      const { scrollTop, scrollHeight, clientHeight } = target
+                      const atBottom = scrollHeight - scrollTop - clientHeight < 100
+                      setIsAtBottom(atBottom)
+
                       // Load older messages when scrolling to top
                       if (target.scrollTop === 0 && hasMoreMessages && !loadingOlderMessages) {
                         const oldestMessage = messages[0]
@@ -1979,6 +1987,18 @@ export default function MessagesPage() {
                       </>
                     )}
                   </div>
+                  {/* Scroll to bottom button */}
+                  {!isAtBottom && (
+                    <button
+                      onClick={() => {
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                        setIsAtBottom(true)
+                      }}
+                      className="absolute bottom-20 right-8 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-all z-10 animate-in fade-in zoom-in duration-200"
+                    >
+                      <ArrowDown className="h-5 w-5" />
+                    </button>
+                  )}
                   <div className="border-t p-3 flex-shrink-0 space-y-2">
                     {/* Reply preview */}
                     {replyingTo && (

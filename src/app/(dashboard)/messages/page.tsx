@@ -328,6 +328,8 @@ export default function MessagesPage() {
 
   const handleRealtimeMessage = useCallback(async (payload: any) => {
     console.log('🔔 Realtime event triggered:', payload.eventType, payload)
+    console.log('📋 Current conversation ref:', selectedConversationRef.current)
+    console.log('📋 Message conversation_id:', payload.new?.conversation_id || payload.old?.conversation_id)
     
     // Handle different event types
     if (payload.eventType === 'INSERT') {
@@ -335,7 +337,7 @@ export default function MessagesPage() {
       
       // Verify this message is for the current conversation
       if (newMessage.conversation_id !== selectedConversationRef.current) {
-        console.log('⚠️ Message is for different conversation, ignoring')
+        console.log('⚠️ Message is for different conversation, ignoring. Current:', selectedConversationRef.current, 'Message:', newMessage.conversation_id)
         return
       }
       
@@ -359,8 +361,33 @@ export default function MessagesPage() {
       // Add new message to state immediately
       setMessages(prev => {
         const exists = prev.find(m => m.id === newMessage.id)
-        if (exists) return prev
+        if (exists) {
+          console.log('⚠️ Message already exists in state, updating instead')
+          // Update existing message (might be from optimistic update)
+          return prev.map(msg => 
+            msg.id === newMessage.id
+              ? {
+                  ...msg,
+                  id: newMessage.id,
+                  created_at: newMessage.created_at,
+                  is_read: newMessage.is_read,
+                  read_by: newMessage.read_by || [],
+                  content: newMessage.content,
+                  attachment_url: newMessage.attachment_url,
+                  attachment_type: newMessage.attachment_type,
+                  image_caption: newMessage.image_caption,
+                  file_caption: newMessage.file_caption,
+                  sender: senderData ? {
+                    full_name: senderData.full_name || null,
+                    email: senderData.email || '',
+                    phone_number: senderData.phone_number || null
+                  } : msg.sender
+                }
+              : msg
+          )
+        }
         
+        console.log('➕ Adding new message to state:', newMessage.id)
         const message: Message = {
           id: newMessage.id,
           sender_id: newMessage.sender_id,

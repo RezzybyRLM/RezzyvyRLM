@@ -140,8 +140,8 @@ export function MessageBubble({
   }
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
-      <div className={`max-w-[70%] rounded-lg p-3 ${
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group mb-1`}>
+      <div className={`max-w-[60%] rounded-lg p-2 ${
         isOwn
           ? 'bg-primary text-white'
           : 'bg-gray-100 text-gray-900'
@@ -336,27 +336,20 @@ export function MessageBubble({
         )}
 
         {/* Footer with time and read receipt */}
-        <div className={`flex items-center gap-1 mt-1 text-xs ${
+        <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
           isOwn ? 'text-white/70' : 'text-gray-500'
         }`}>
           <span>{formatTime(message.created_at)}</span>
           {isOwn && (
-            message.is_read ? (
-              <CheckCheck className="h-3 w-3" />
+            message.read_by && message.read_by.length > 0 ? (
+              <CheckCheck className="h-3 w-3 text-blue-400" />
+            ) : message.is_read ? (
+              <CheckCheck className="h-3 w-3 text-gray-400" />
             ) : (
-              <Check className="h-3 w-3" />
+              <Check className="h-3 w-3 text-gray-400" />
             )
           )}
         </div>
-
-        {/* Read receipts */}
-        {message.read_by && message.read_by.length > 0 && isOwn && (
-          <div className={`text-xs mt-1 ${
-            isOwn ? 'text-white/60' : 'text-gray-400'
-          }`}>
-            Read by {message.read_by.length} {message.read_by.length === 1 ? 'person' : 'people'}
-          </div>
-        )}
 
         {/* Action buttons (on hover) */}
         <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 flex-wrap">

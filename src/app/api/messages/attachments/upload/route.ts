@@ -32,16 +32,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user owns the message
-    const { data: message, error: msgError } = await supabase
-      .from('messages')
-      .select('sender_id')
-      .eq('id', messageId)
-      .single()
+    // Verify message exists and user owns it (allow a small delay for message creation)
+    let message = null
+    let attempts = 0
+    while (attempts < 3 && !message) {
+      const { data: msgData, error: msgError } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('id', messageId)
+        .single()
 
-    if (msgError || !message) {
+      if (!msgError && msgData) {
+        message = msgData
+        break
+      }
+      
+      // Wait 200ms before retrying
+      await new Promise(resolve => setTimeout(resolve, 200))
+      attempts++
+    }
+
+    if (!message) {
       return NextResponse.json(
-        { error: 'Message not found' },
+        { error: 'Message not found. Please try again.' },
         { status: 404 }
       )
     }

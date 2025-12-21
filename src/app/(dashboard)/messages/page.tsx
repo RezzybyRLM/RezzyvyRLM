@@ -218,14 +218,8 @@ export default function MessagesPage() {
           await fetchMessages(selectedConversation)
           await fetchConversations()
           
-          // Mark as read if it's not from current user
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user && payload.new && (payload.new as any).sender_id !== user.id) {
-            await supabase
-              .from('messages')
-              .update({ is_read: true })
-              .eq('id', payload.new.id)
-          }
+          // Mark as read if it's not from current user (this happens when viewing the conversation)
+          // The read_by will be updated when fetchMessages is called
         })
         .on('postgres_changes', {
           event: 'UPDATE',
@@ -429,15 +423,14 @@ export default function MessagesPage() {
 
       const { data, error } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
-          participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
-        `)
+        .select('*')
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .order('last_message_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching conversations:', error)
+        throw error
+      }
 
       // Fetch user data for all participants
       const allParticipantIds = new Set<string>()
@@ -613,15 +606,34 @@ export default function MessagesPage() {
 
       setMessages(messagesWithReplies || [])
 
-      // Mark messages as read
+      // Mark messages as read and add to read_by array
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        await supabase
+        // Get unread messages
+        const { data: unreadMessages } = await supabase
           .from('messages')
-          .update({ is_read: true })
+          .select('id, read_by')
           .eq('conversation_id', conversationId)
           .neq('sender_id', user.id)
           .eq('is_read', false)
+        
+        if (unreadMessages && unreadMessages.length > 0) {
+          // Update each message to mark as read and add user to read_by
+          await Promise.all(unreadMessages.map(async (msg) => {
+            const readBy = Array.isArray(msg.read_by) ? [...msg.read_by] : []
+            if (!readBy.includes(user.id)) {
+              readBy.push(user.id)
+            }
+            
+            await supabase
+              .from('messages')
+              .update({ 
+                is_read: true,
+                read_by: readBy
+              })
+              .eq('id', msg.id)
+          }))
+        }
       }
     } catch (error) {
       console.error('Error fetching messages:', error)

@@ -418,8 +418,22 @@ export default function MessagesPage() {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
           }, 100)
           
-          // Update conversations list
-          await fetchConversations()
+          // Update conversations list (optimized - only update this conversation)
+          setConversations(prev => prev.map(conv => 
+            conv.id === newMessage.conversation_id
+              ? {
+                  ...conv,
+                  last_message: {
+                    content: newMessage.content,
+                    sender_id: newMessage.sender_id,
+                    created_at: newMessage.created_at,
+                    is_read: newMessage.is_read
+                  },
+                  last_message_at: newMessage.created_at,
+                  unread_count: conv.id === selectedConversation ? conv.unread_count : conv.unread_count + 1
+                }
+              : conv
+          ))
           
           // Mark as read if it's not from current user
           if (user && newMessage.sender_id !== user.id) {

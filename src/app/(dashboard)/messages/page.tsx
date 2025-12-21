@@ -142,7 +142,7 @@ export default function MessagesPage() {
       
       setCurrentUserId(user.id)
       await fetchConversations()
-      
+
       // After conversations are loaded, check if there's a conversation ID in URL
       const conversationId = searchParams.get('conversation')
       if (conversationId && mounted) {
@@ -306,8 +306,8 @@ export default function MessagesPage() {
     if (conversationId && !loading) {
       // Set selected conversation immediately if it's in the URL
       if (selectedConversation !== conversationId) {
-        setSelectedConversation(conversationId)
-      }
+      setSelectedConversation(conversationId)
+    }
       
       // Check if conversation exists in list, if not it will be fetched by the other useEffect
       const conversationExists = conversations.some(c => c.id === conversationId)
@@ -341,7 +341,7 @@ export default function MessagesPage() {
       
       console.log('✅ Processing new INSERT message for current conversation:', newMessage.id)
       
-      const { data: { user } } = await supabase.auth.getUser()
+          const { data: { user } } = await supabase.auth.getUser()
       
       // Fetch sender data for the new message
       const { data: senderData } = await supabase
@@ -424,8 +424,8 @@ export default function MessagesPage() {
           readBy.push(user.id)
         }
         
-        await supabase
-          .from('messages')
+            await supabase
+              .from('messages')
           .update({ 
             is_read: true,
             read_by: readBy
@@ -508,10 +508,10 @@ export default function MessagesPage() {
         }
       })
       // Listen for ALL events (INSERT, UPDATE, DELETE) with filter for this conversation
-      .on('postgres_changes', {
+        .on('postgres_changes', {
         event: '*',
-        schema: 'public',
-        table: 'messages',
+          schema: 'public',
+          table: 'messages',
         filter: `conversation_id=eq.${conversationId}`
       }, handleRealtimeMessage)
       .on('postgres_changes', {
@@ -539,11 +539,11 @@ export default function MessagesPage() {
               }
             : msg
         ))
-      })
-      .on('postgres_changes', {
+        })
+        .on('postgres_changes', {
         event: 'UPDATE',
-        schema: 'public',
-        table: 'message_attachments',
+          schema: 'public',
+          table: 'message_attachments',
         filter: `message_id=in.(SELECT id FROM messages WHERE conversation_id=eq.${conversationId})`
       }, async (payload) => {
         const updatedAttachment = payload.new as any
@@ -617,36 +617,36 @@ export default function MessagesPage() {
         }
       })
 
-    // Set up typing indicator subscription
+      // Set up typing indicator subscription
     typingChannelRef.current = supabase
       .channel(`typing:${conversationId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'typing_indicators',
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'typing_indicators',
         filter: `conversation_id=eq.${conversationId}`
-      }, async (payload) => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user && payload.new && (payload.new as any).user_id !== user.id) {
-          setOtherUserTyping((payload.new as any).is_typing || false)
-          
-          // Auto-hide typing indicator after 3 seconds
-          if ((payload.new as any).is_typing) {
-            setTimeout(() => {
+        }, async (payload) => {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && payload.new && (payload.new as any).user_id !== user.id) {
+            setOtherUserTyping((payload.new as any).is_typing || false)
+            
+            // Auto-hide typing indicator after 3 seconds
+            if ((payload.new as any).is_typing) {
+              setTimeout(() => {
               setOtherUserTyping(false)
-            }, 3000)
+              }, 3000)
+            }
           }
-        }
-      })
-      .subscribe()
+        })
+        .subscribe()
 
-    // Set up conversation updates subscription
+      // Set up conversation updates subscription
     conversationChannelRef.current = supabase
       .channel(`conversation:${conversationId}:${currentUserId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'conversations',
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
         filter: `id=eq.${conversationId}`
       }, async (payload) => {
         const updatedConv = payload.new as any
@@ -685,7 +685,7 @@ export default function MessagesPage() {
 
     setupRealtimeSubscription(selectedConversation)
 
-    return () => {
+      return () => {
       // Cleanup: Always unsubscribe when component unmounts or conversation changes
       console.log(`🧹 Cleaning up channels for conversation ${selectedConversation}`)
       if (messagesChannelRef.current) {
@@ -807,7 +807,7 @@ export default function MessagesPage() {
       }
     }
     fetchMissingConversation()
-    
+
     return () => {
       isMounted = false
     }
@@ -903,11 +903,11 @@ export default function MessagesPage() {
       const formattedConversations = data.map((conv: any) => {
         if (conv.type === 'group') {
           // Group chat
-          return {
-            id: conv.id,
-            participant1_id: conv.participant1_id,
-            participant2_id: conv.participant2_id,
-            last_message_at: conv.last_message_at,
+        return {
+          id: conv.id,
+          participant1_id: conv.participant1_id,
+          participant2_id: conv.participant2_id,
+          last_message_at: conv.last_message_at,
             type: 'group' as const,
             name: conv.name,
             description: conv.description,
@@ -942,10 +942,10 @@ export default function MessagesPage() {
             participant2_id: conv.participant2_id,
             last_message_at: conv.last_message_at,
             type: 'direct' as const,
-            other_user: {
-              id: otherUser.id,
-              full_name: otherUser.full_name,
-              email: otherUser.email,
+          other_user: {
+            id: otherUser.id,
+            full_name: otherUser.full_name,
+            email: otherUser.email,
               phone_number: otherUser.phone_number || null,
               avatar_url: otherUser.avatar_url || null
             }
@@ -1025,27 +1025,27 @@ export default function MessagesPage() {
         .in('id', Array.from(senderIds))
       
       const sendersMap = new Map((sendersData || []).map((u: any) => [u.id, u]))
-      
-      // Fetch reply_to messages for messages that have replies
-      const messagesWithReplies = await Promise.all(
-        (data || []).map(async (msg: any) => {
-          let replyTo = null
-          if (msg.reply_to_message_id) {
-            const { data: replyData } = await supabase
-              .from('messages')
+
+          // Fetch reply_to messages for messages that have replies
+          const messagesWithReplies = await Promise.all(
+            (data || []).map(async (msg: any) => {
+              let replyTo = null
+              if (msg.reply_to_message_id) {
+                const { data: replyData } = await supabase
+                  .from('messages')
               .select('id, content, sender_id')
-              .eq('id', msg.reply_to_message_id)
-              .single()
-            
+                  .eq('id', msg.reply_to_message_id)
+                  .single()
+                
             if (replyData) {
               const replySender = sendersMap.get(replyData.sender_id) || {
                 full_name: null,
                 email: ''
               }
-              replyTo = {
-                id: replyData.id,
-                content: replyData.content,
-                sender: {
+                  replyTo = {
+                    id: replyData.id,
+                    content: replyData.content,
+                    sender: {
                   full_name: replySender.full_name || null,
                   email: replySender.email || ''
                 }
@@ -1060,7 +1060,7 @@ export default function MessagesPage() {
             email: '',
             phone_number: null
           }
-          
+
           return {
             id: msg.id,
             sender_id: msg.sender_id,
@@ -1186,19 +1186,68 @@ export default function MessagesPage() {
   const sendMessage = async () => {
     if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
 
+      const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('Please sign in to send messages')
+      return
+    }
+
+    // Optimistic update - add message to UI immediately
+    const tempId = `temp-${Date.now()}`
+    const tempMessage: Message = {
+      id: tempId,
+      sender_id: user.id,
+      content: messageContent.trim() || '',
+      is_read: false,
+      created_at: new Date().toISOString(),
+      reply_to_message_id: replyingTo?.id || null,
+      attachment_url: selectedImage ? URL.createObjectURL(selectedImage) : null,
+      attachment_type: selectedImage?.type || null,
+      is_edited: false,
+      is_deleted: false,
+      reactions: {},
+      read_by: [],
+      sender: {
+        full_name: user.user_metadata?.full_name || null,
+        email: user.email || '',
+        phone_number: user.user_metadata?.phone_number || null
+      },
+      reply_to: replyingTo || null,
+      attachments: selectedImage ? [{
+        id: `temp-attach-${Date.now()}`,
+        file_url: URL.createObjectURL(selectedImage),
+        file_type: selectedImage.type,
+        file_name: selectedImage.name
+      }] : [],
+      image_caption: selectedImage && messageContent.trim() ? messageContent.trim() : null,
+      file_caption: null,
+      forwarded_from_id: null
+    }
+
+    // Add optimistic message to state immediately
+    setMessages(prev => [...prev, tempMessage])
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+
+    // Clear form immediately for better UX
+    const originalContent = messageContent.trim()
+    const originalImage = selectedImage
+    setMessageContent('')
+    setReplyingTo(null)
+    setForwardingMessage(null)
+    setSelectedImage(null)
+    setImagePreview(null)
+
     setSending(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        alert('Please sign in to send messages')
-        return
-      }
-
       // Create message with content (can be used as caption for images)
       const messageData: any = {
         conversation_id: selectedConversation,
         sender_id: user.id,
-        content: messageContent.trim() || '',
+        content: originalContent || '',
       }
 
       if (replyingTo) {
@@ -1214,22 +1263,37 @@ export default function MessagesPage() {
 
       if (msgError) {
         console.error('Error creating message:', msgError)
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(m => m.id !== tempId))
         throw msgError
       }
 
+      // Replace temp message with real message when it arrives
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempId
+          ? {
+              ...msg,
+              id: newMessage.id,
+              created_at: newMessage.created_at,
+              is_read: newMessage.is_read,
+              read_by: newMessage.read_by || []
+            }
+          : msg
+      ))
+
       // Upload image if selected (image with optional caption)
-      if (selectedImage && newMessage) {
+      if (originalImage && newMessage) {
         try {
-          const formData = new FormData()
-          formData.append('file', selectedImage)
-          formData.append('messageId', newMessage.id)
+        const formData = new FormData()
+          formData.append('file', originalImage)
+        formData.append('messageId', newMessage.id)
 
-          const uploadResponse = await fetch('/api/messages/attachments/upload', {
-            method: 'POST',
-            body: formData
-          })
+        const uploadResponse = await fetch('/api/messages/attachments/upload', {
+          method: 'POST',
+          body: formData
+        })
 
-          if (uploadResponse.ok) {
+        if (uploadResponse.ok) {
             const result = await uploadResponse.json()
             const url = result.url
             
@@ -1237,34 +1301,49 @@ export default function MessagesPage() {
             // But we also update the message with attachment_url for legacy support
             const updateData: any = {
               attachment_url: url,
-              attachment_type: selectedImage.type
+              attachment_type: originalImage.type
             }
             
             // If there's content and it's an image, use it as caption
-            if (messageContent.trim() && selectedImage.type.startsWith('image/')) {
-              updateData.image_caption = messageContent.trim()
-              // Keep content if it's not just a caption
-            } else if (messageContent.trim() && !selectedImage.type.startsWith('image/')) {
-              updateData.file_caption = messageContent.trim()
-              // Keep content if it's not just a caption
+            if (originalContent && originalImage.type.startsWith('image/')) {
+              updateData.image_caption = originalContent
+            } else if (originalContent && !originalImage.type.startsWith('image/')) {
+              updateData.file_caption = originalContent
             }
 
             const { error: updateError } = await supabase
               .from('messages')
               .update(updateData)
-              .eq('id', newMessage.id)
+            .eq('id', newMessage.id)
 
             if (updateError) {
               console.error('Error updating message with attachment:', updateError)
             }
+
+            // Update the message in state with the real attachment URL
+            setMessages(prev => prev.map(msg => 
+              msg.id === newMessage.id
+                ? {
+                    ...msg,
+                    attachment_url: url,
+                    attachment_type: originalImage.type,
+                    image_caption: originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.image_caption,
+                    file_caption: !originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.file_caption
+                  }
+                : msg
+            ))
           } else {
             const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
             console.error('Error uploading attachment:', errorData.error || 'Upload failed')
             alert('Failed to upload image. Please try again.')
+            // Remove optimistic message on upload error
+            setMessages(prev => prev.filter(m => m.id !== newMessage.id))
           }
         } catch (error) {
           console.error('Error in image upload process:', error)
           alert('Failed to upload image. Please try again.')
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(m => m.id !== newMessage.id))
         }
       }
 
@@ -1281,18 +1360,29 @@ export default function MessagesPage() {
         console.error('Error updating conversation:', convError)
       }
 
-      // Clear form
-      setMessageContent('')
-      setReplyingTo(null)
-      setForwardingMessage(null)
-      setSelectedImage(null)
-      setImagePreview(null)
+      // Update conversation last_message_at
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation
+          ? {
+              ...conv,
+              last_message: {
+                content: originalContent || '[Image]',
+                sender_id: user.id,
+                created_at: newMessage.created_at,
+                is_read: false
+              },
+              last_message_at: newMessage.created_at
+            }
+          : conv
+      ))
 
       // Stop typing indicator
       await handleStopTyping()
 
-      // Messages and conversations will update via realtime subscriptions
-      // No need to refetch - realtime will handle updates
+      // Scroll to bottom after message is sent
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
     } catch (error) {
       console.error('Error sending message:', error)
       alert('Failed to send message. Please try again.')
@@ -1543,14 +1633,14 @@ export default function MessagesPage() {
           <Card className="card-professional overflow-hidden flex flex-col h-full">
             <CardHeader className="border-b space-y-3 flex-shrink-0">
               <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowNewConversation(true)}
+              <Button
+                onClick={() => setShowNewConversation(true)}
                   className="flex-1 btn-primary text-xs sm:text-sm"
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Message</span>
                   <span className="sm:hidden">New</span>
-                </Button>
+              </Button>
                 <Button
                   onClick={() => setShowNewGroup(true)}
                   variant="outline"
@@ -1624,11 +1714,11 @@ export default function MessagesPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 truncate">
+                              <h3 className="font-semibold text-gray-900 truncate">
                                   {conv.type === 'group' 
                                     ? conv.name || 'Group Chat'
                                     : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                                </h3>
+                              </h3>
                                 {conv.type === 'group' && conv.member_count !== undefined && (
                                   <Badge variant="outline" className="text-xs">
                                     <Users className="h-3 w-3 mr-1" />
@@ -1685,7 +1775,7 @@ export default function MessagesPage() {
                             ) : (
                               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
                                 <Users className="h-6 w-6" />
-                              </div>
+                        </div>
                             )
                           ) : conv.other_user.avatar_url ? (
                             <img
@@ -1712,11 +1802,11 @@ export default function MessagesPage() {
                           ) : (
                             <>
                               <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
-                              {conv.other_user.phone_number && (
-                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
-                                  <Phone className="h-3 w-3" />
-                                  {conv.other_user.phone_number}
-                                </div>
+                          {conv.other_user.phone_number && (
+                            <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3" />
+                              {conv.other_user.phone_number}
+                            </div>
                               )}
                             </>
                           )}
@@ -1782,18 +1872,18 @@ export default function MessagesPage() {
                         {messages.map((message) => {
                           const isOwn = message.sender_id === currentUserId
                           return (
-                            <MessageBubble
+                              <MessageBubble
                               key={message.id}
-                              message={message}
-                              isOwn={isOwn}
+                                message={message}
+                                isOwn={isOwn}
                               currentUserId={currentUserId || ''}
-                              onReply={handleReply}
+                                onReply={handleReply}
                               onForward={handleForward}
                               onEdit={handleEditMessage}
                               onDelete={handleDeleteMessage}
                               onReaction={handleReaction}
-                              formatTime={formatTime}
-                            />
+                                formatTime={formatTime}
+                              />
                           )
                         })}
                         <div ref={messagesEndRef} />

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { JobApplicationModal } from '@/components/ui/job-application-modal'
+import { findBestMatchingProfile } from '@/lib/jobs/match-score'
 
 interface Job {
   id: string
@@ -82,6 +83,9 @@ export default function JobsPage() {
   const [showDateDropdown, setShowDateDropdown] = useState(false)
   const [showRemoteDropdown, setShowRemoteDropdown] = useState(false)
   const [showSalaryDropdown, setShowSalaryDropdown] = useState(false)
+  const [matchScore, setMatchScore] = useState<number | null>(null)
+  const [matchScoreLoading, setMatchScoreLoading] = useState(false)
+  const [matchedProfileName, setMatchedProfileName] = useState<string | null>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const jobsListRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -232,14 +236,69 @@ export default function JobsPage() {
     // Toggle selection: if clicking the same job, deselect it
     if (selectedJob?.id === job.id) {
       setSelectedJob(null)
+      setMatchScore(null)
+      setMatchedProfileName(null)
     } else {
       setDetailLoading(true)
+      setMatchScoreLoading(true)
+      setMatchScore(null)
+      setMatchedProfileName(null)
+      
       // Simulate loading for better UX
-      setTimeout(() => {
+      setTimeout(async () => {
         setSelectedJob(job)
         markAsVisited(job.id)
         setDetailLoading(false)
+        
+        // Calculate match score
+        await calculateJobMatchScore(job)
       }, 100)
+    }
+  }
+
+  const calculateJobMatchScore = async (job: Job) => {
+    try {
+      setMatchScoreLoading(true)
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setMatchScore(null)
+        setMatchedProfileName(null)
+        setMatchScoreLoading(false)
+        return
+      }
+
+      // Fetch user profiles
+      const { data: profiles, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+
+      if (error || !profiles || profiles.length === 0) {
+        setMatchScore(null)
+        setMatchedProfileName(null)
+        setMatchScoreLoading(false)
+        return
+      }
+
+      // Find best matching profile
+      const bestMatch = findBestMatchingProfile(profiles, job)
+      
+      if (bestMatch) {
+        setMatchScore(bestMatch.score)
+        setMatchedProfileName(bestMatch.profile.profile_name)
+      } else {
+        setMatchScore(null)
+        setMatchedProfileName(null)
+      }
+    } catch (error) {
+      console.error('Error calculating match score:', error)
+      setMatchScore(null)
+      setMatchedProfileName(null)
+    } finally {
+      setMatchScoreLoading(false)
     }
   }
 
@@ -734,6 +793,69 @@ export default function JobsPage() {
                         </Badge>
                       )}
                     </div>
+
+                    {/* Match Score Display */}
+                    {matchScoreLoading ? (
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Calculating match score...</span>
+                        </div>
+                      </div>
+                    ) : matchScore !== null ? (
+                      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Match Score</p>
+                            {matchedProfileName && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Based on profile: <span className="font-medium">{matchedProfileName}</span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {matchScore}%
+                            </div>
+                            <div className="w-16 h-16 relative">
+                              <svg className="transform -rotate-90 w-16 h-16">
+                                <circle
+                                  cx="32"
+                                  cy="32"
+                                  r="28"
+                                  stroke="currentColor"
+                                  strokeWidth="6"
+                                  fill="none"
+                                  className="text-gray-200"
+                                />
+                                <circle
+                                  cx="32"
+                                  cy="32"
+                                  r="28"
+                                  stroke="currentColor"
+                                  strokeWidth="6"
+                                  fill="none"
+                                  strokeDasharray={`${2 * Math.PI * 28}`}
+                                  strokeDashoffset={`${2 * Math.PI * 28 * (1 - matchScore / 100)}`}
+                                  className={`transition-all duration-500 ${
+                                    matchScore >= 80 ? 'text-green-500' :
+                                    matchScore >= 60 ? 'text-blue-500' :
+                                    matchScore >= 40 ? 'text-yellow-500' :
+                                    'text-orange-500'
+                                  }`}
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-sm text-gray-600">
+                          Not able to calculate match score because of no profile
+                        </p>
+                      </div>
+                    )}
 
                     <div className="flex gap-3">
                       <Button

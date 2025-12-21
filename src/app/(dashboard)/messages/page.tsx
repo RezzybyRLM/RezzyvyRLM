@@ -323,8 +323,15 @@ export default function MessagesPage() {
       await fetchMessages(selectedConversation)
       
       // Set up realtime subscription for messages with optimized updates
+      // Create a unique channel for this conversation (like a specific radio frequency)
       messagesChannel = supabase
-        .channel(`messages:${selectedConversation}`)
+        .channel(`messages:${selectedConversation}:${currentUserId}`, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: currentUserId }
+          }
+        })
+        // Listen for INSERT events (new messages) with filter for this conversation
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
@@ -500,7 +507,19 @@ export default function MessagesPage() {
               : msg
           ))
         })
-        .subscribe()
+        .subscribe((status, err) => {
+          // Handle subscription status
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Realtime subscription active for conversation ${selectedConversation}`)
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Realtime channel error:', err)
+          } else if (status === 'TIMED_OUT') {
+            console.warn('⏱️ Realtime subscription timed out, retrying...')
+            // Channel will auto-retry
+          } else if (status === 'CLOSED') {
+            console.log('🔒 Realtime channel closed')
+          }
+        })
 
       // Set up typing indicator subscription
       typingChannel = supabase
@@ -528,7 +547,7 @@ export default function MessagesPage() {
 
       // Set up conversation updates subscription
       const conversationChannel = supabase
-        .channel(`conversation:${selectedConversation}`)
+        .channel(`conversation:${selectedConversation}:${currentUserId}`)
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
@@ -546,7 +565,11 @@ export default function MessagesPage() {
               : conv
           ))
         })
-        .subscribe()
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Conversation updates subscription active`)
+          }
+        })
 
       return () => {
         if (messagesChannel) supabase.removeChannel(messagesChannel)
@@ -559,12 +582,16 @@ export default function MessagesPage() {
 
     return () => {
       mounted = false
+      // Cleanup: Always unsubscribe when component unmounts or conversation changes
+      // This saves on performance and connection limits
       if (messagesChannel) {
         supabase.removeChannel(messagesChannel)
+        console.log(`🔌 Unsubscribed from messages channel for conversation ${selectedConversation}`)
       }
       if (typingChannel) {
         supabase.removeChannel(typingChannel)
       }
+      // Note: conversationChannel cleanup is handled in setupRealtime return
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, currentUserId])
@@ -774,7 +801,7 @@ export default function MessagesPage() {
             participant1_id: conv.participant1_id,
             participant2_id: conv.participant2_id,
             last_message_at: conv.last_message_at,
-            type: 'group',
+            type: 'group' as const,
             name: conv.name,
             description: conv.description,
             avatar_url: conv.avatar_url,
@@ -807,7 +834,7 @@ export default function MessagesPage() {
             participant1_id: conv.participant1_id,
             participant2_id: conv.participant2_id,
             last_message_at: conv.last_message_at,
-            type: 'direct',
+            type: 'direct' as const,
             other_user: {
               id: otherUser.id,
               full_name: otherUser.full_name,

@@ -332,12 +332,7 @@ export default function MessagesPage() {
       try {
         const { data: convData, error } = await supabase
           .from('conversations')
-          .select(`
-            *,
-            participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
-            participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
-          `)
-          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+          .select('*')
           .eq('id', selectedConversation)
           .single()
         
@@ -346,11 +341,31 @@ export default function MessagesPage() {
           return
         }
         
+        // Verify user is a participant
+        if (convData && convData.participant1_id !== user.id && convData.participant2_id !== user.id) {
+          console.error('User is not a participant in this conversation')
+          return
+        }
+        
         if (convData && isMounted) {
-          // Format the conversation and add it to the list
-          const otherUser = convData.participant1_id === user.id 
-            ? convData.participant2 
-            : convData.participant1
+          // Fetch user data for the other participant
+          const otherUserId = convData.participant1_id === user.id 
+            ? convData.participant2_id 
+            : convData.participant1_id
+          
+          const { data: otherUserData } = await supabase
+            .from('users')
+            .select('id, full_name, email, phone_number, avatar_url')
+            .eq('id', otherUserId)
+            .single()
+          
+          const otherUser = otherUserData || {
+            id: otherUserId,
+            full_name: null,
+            email: '',
+            phone_number: null,
+            avatar_url: null
+          }
           
           // Get last message
           const { data: lastMsg } = await supabase
@@ -420,14 +435,36 @@ export default function MessagesPage() {
           participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
         `)
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .order('last_message_at', { ascending: false })
 
       if (error) throw error
 
+      // Fetch user data for all participants
+      const allParticipantIds = new Set<string>()
+      ;(data || []).forEach((conv: any) => {
+        allParticipantIds.add(conv.participant1_id)
+        allParticipantIds.add(conv.participant2_id)
+      })
+      
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, full_name, email, phone_number, avatar_url')
+        .in('id', Array.from(allParticipantIds))
+      
+      const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
+      
       const formattedConversations = (data || []).map((conv: any) => {
-        const otherUser = conv.participant1_id === user.id 
-          ? conv.participant2 
-          : conv.participant1
+        const otherUserId = conv.participant1_id === user.id 
+          ? conv.participant2_id 
+          : conv.participant1_id
+        
+        const otherUser = usersMap.get(otherUserId) || {
+          id: otherUserId,
+          full_name: null,
+          email: '',
+          phone_number: null,
+          avatar_url: null
+        }
         
         return {
           id: conv.id,
@@ -487,7 +524,6 @@ export default function MessagesPage() {
         .from('messages')
         .select(`
           *,
-          sender:users!messages_sender_id_fkey(id, full_name, email, phone_number),
           attachments:message_attachments(id, file_url, file_type, file_name)
         `)
         .eq('conversation_id', conversationId)
@@ -498,36 +534,53 @@ export default function MessagesPage() {
         throw error
       }
 
-          // Fetch reply_to messages for messages that have replies
-          const messagesWithReplies = await Promise.all(
-            (data || []).map(async (msg: any) => {
-              let replyTo = null
-              if (msg.reply_to_message_id) {
-                const { data: replyData } = await supabase
-                  .from('messages')
-                  .select(`
-                    id,
-                    content,
-                    sender:users!messages_sender_id_fkey(id, full_name, email)
-                  `)
-                  .eq('id', msg.reply_to_message_id)
-                  .single()
-                
-                if (replyData && replyData.sender) {
-                  const sender = Array.isArray(replyData.sender) ? replyData.sender[0] : replyData.sender
-                  replyTo = {
-                    id: replyData.id,
-                    content: replyData.content,
-                    sender: {
-                      full_name: sender?.full_name || null,
-                      email: sender?.email || ''
-                    }
-                  }
+      // Fetch sender data for all messages
+      const senderIds = new Set<string>()
+      ;(data || []).forEach((msg: any) => {
+        senderIds.add(msg.sender_id)
+      })
+      
+      const { data: sendersData } = await supabase
+        .from('users')
+        .select('id, full_name, email, phone_number')
+        .in('id', Array.from(senderIds))
+      
+      const sendersMap = new Map((sendersData || []).map((u: any) => [u.id, u]))
+      
+      // Fetch reply_to messages for messages that have replies
+      const messagesWithReplies = await Promise.all(
+        (data || []).map(async (msg: any) => {
+          let replyTo = null
+          if (msg.reply_to_message_id) {
+            const { data: replyData } = await supabase
+              .from('messages')
+              .select('id, content, sender_id')
+              .eq('id', msg.reply_to_message_id)
+              .single()
+            
+            if (replyData) {
+              const replySender = sendersMap.get(replyData.sender_id) || {
+                full_name: null,
+                email: ''
+              }
+              replyTo = {
+                id: replyData.id,
+                content: replyData.content,
+                sender: {
+                  full_name: replySender.full_name || null,
+                  email: replySender.email || ''
                 }
               }
+            }
+          }
 
-          // Handle sender data (could be array or object)
-          const senderData = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender
+          // Get sender data from map
+          const senderData = sendersMap.get(msg.sender_id) || {
+            id: msg.sender_id,
+            full_name: null,
+            email: '',
+            phone_number: null
+          }
           
           return {
             id: msg.id,
@@ -547,14 +600,10 @@ export default function MessagesPage() {
             file_caption: msg.file_caption,
             forwarded_from_id: msg.forwarded_from_id,
             read_by: msg.read_by || [],
-            sender: senderData ? {
+            sender: {
               full_name: senderData.full_name || null,
               email: senderData.email || '',
               phone_number: senderData.phone_number || null
-            } : {
-              full_name: null,
-              email: '',
-              phone_number: null
             },
             reply_to: replyTo,
             attachments: Array.isArray(msg.attachments) ? msg.attachments : []

@@ -335,40 +335,37 @@ export default function MessagesPage() {
       console.log('🔌 Setting up realtime subscription for conversation:', selectedConversation)
       
       // Set up realtime subscription for messages with optimized updates
+      // Based on reference implementation from Stem-Spark
       // Create a unique channel for this conversation (like a specific radio frequency)
       messagesChannel = supabase
         .channel(`messages:${selectedConversation}:${currentUserId}`, {
           config: {
-            broadcast: { self: false },
+            broadcast: { ack: true },
             presence: { key: currentUserId }
           }
         })
-        // Listen for INSERT events (new messages) with filter for this conversation
+        // Listen for ALL events (INSERT, UPDATE, DELETE) with filter for this conversation
         .on('postgres_changes', {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${selectedConversation}`
         }, async (payload) => {
           if (!mounted) return
           
-          console.log('🔔 Realtime INSERT event triggered:', payload)
-          console.log('📋 Payload details:', {
-            new: payload.new,
-            old: payload.old,
-            eventType: payload.eventType,
-            table: payload.table
-          })
+          console.log('🔔 Realtime event triggered:', payload.eventType, payload)
           
-          const newMessage = payload.new as any
-          
-          // Verify this message is for the current conversation
-          if (newMessage.conversation_id !== selectedConversation) {
-            console.log('⚠️ Message is for different conversation, ignoring')
-            return
-          }
-          
-          console.log('✅ Processing new message for current conversation:', newMessage.id)
+          // Handle different event types
+          if (payload.eventType === 'INSERT') {
+            const newMessage = payload.new as any
+            
+            // Verify this message is for the current conversation
+            if (newMessage.conversation_id !== selectedConversation) {
+              console.log('⚠️ Message is for different conversation, ignoring')
+              return
+            }
+            
+            console.log('✅ Processing new INSERT message for current conversation:', newMessage.id)
           
           const { data: { user } } = await supabase.auth.getUser()
           
@@ -446,52 +443,55 @@ export default function MessagesPage() {
               : conv
           ))
           
-          // Mark as read if it's not from current user
-          if (user && newMessage.sender_id !== user.id) {
-            const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
-            if (!readBy.includes(user.id)) {
-              readBy.push(user.id)
+            // Mark as read if it's not from current user
+            if (user && newMessage.sender_id !== user.id) {
+              const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
+              if (!readBy.includes(user.id)) {
+                readBy.push(user.id)
+              }
+              
+              await supabase
+                .from('messages')
+                .update({ 
+                  is_read: true,
+                  read_by: readBy
+                })
+                .eq('id', newMessage.id)
             }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedMessage = payload.new as any
             
-            await supabase
-              .from('messages')
-              .update({ 
-                is_read: true,
-                read_by: readBy
-              })
-              .eq('id', newMessage.id)
+            console.log('🔄 Processing UPDATE event for message:', updatedMessage.id)
+            
+            // Update message in state
+            setMessages(prev => prev.map(msg =>
+              msg.id === updatedMessage.id
+                ? { ...msg, ...updatedMessage }
+                : msg
+            ))
+            
+            // Update conversations list (optimized)
+            setConversations(prev => prev.map(conv => 
+              conv.id === updatedMessage.conversation_id && conv.last_message?.sender_id === updatedMessage.sender_id
+                ? {
+                    ...conv,
+                    last_message: {
+                      content: updatedMessage.content,
+                      sender_id: updatedMessage.sender_id,
+                      created_at: updatedMessage.created_at,
+                      is_read: updatedMessage.is_read
+                    }
+                  }
+                : conv
+            ))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedMessage = payload.old as any
+            
+            console.log('🗑️ Processing DELETE event for message:', deletedMessage.id)
+            
+            // Remove deleted message from state
+            setMessages(prev => prev.filter(msg => msg.id !== deletedMessage.id))
           }
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${selectedConversation}`
-        }, async (payload) => {
-          if (!mounted) return
-          
-          const updatedMessage = payload.new as any
-          
-          // Update message in state
-          setMessages(prev => prev.map(msg => 
-            msg.id === updatedMessage.id 
-              ? { ...msg, ...updatedMessage }
-              : msg
-          ))
-          
-          // Update conversations list
-          await fetchConversations()
-        })
-        .on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${selectedConversation}`
-        }, (payload) => {
-          if (!mounted) return
-          
-          // Remove deleted message from state
-          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id))
         })
         .on('postgres_changes', {
           event: 'INSERT',

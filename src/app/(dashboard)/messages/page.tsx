@@ -1240,6 +1240,13 @@ export default function MessagesPage() {
             console.error('Error marking conversation as read:', error)
           } else {
             console.log('✅ Conversation marked as read')
+
+            // Update local state to clear unread count immediately
+            setConversations(prev => prev.map(c =>
+              c.id === conversationId
+                ? { ...c, unread_count: 0 }
+                : c
+            ))
           }
         } catch (err) {
           console.error('Error calling mark_conversation_as_read:', err)

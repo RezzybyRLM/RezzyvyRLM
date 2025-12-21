@@ -451,18 +451,10 @@ export default function MessagesPage() {
 
       // Mark as read if it's not from current user
       if (user && newMessage.sender_id !== user.id) {
-        const readBy = Array.isArray(newMessage.read_by) ? [...newMessage.read_by] : []
-        if (!readBy.includes(user.id)) {
-          readBy.push(user.id)
-        }
-
-        await supabase
-          .from('messages')
-          .update({
-            is_read: true,
-            read_by: readBy
-          })
-          .eq('id', newMessage.id)
+        // Use RPC to mark as read which bypasses RLS
+        await supabase.rpc('mark_conversation_as_read', {
+          target_conversation_id: newMessage.conversation_id
+        })
       }
     } else if (eventType === 'UPDATE') {
       const updatedMessage = payload.new as any
@@ -1226,44 +1218,21 @@ export default function MessagesPage() {
       // Check if there are more messages
       setHasMoreMessages((count || 0) > (data?.length || 0))
 
-      // Mark messages as read and add to read_by array
+      // Mark messages as read using RPC
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Get unread messages - messages where user is not in read_by array
-        const { data: allMessages } = await supabase
-          .from('messages')
-          .select('id, read_by, is_read')
-          .eq('conversation_id', conversationId)
-          .neq('sender_id', user.id)
+        try {
+          const { error } = await supabase.rpc('mark_conversation_as_read', {
+            target_conversation_id: conversationId
+          })
 
-        // Filter messages where user is not in read_by array
-        const unreadMessages = (allMessages || []).filter(msg => {
-          const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
-          return !readBy.includes(user.id)
-        })
-
-        if (unreadMessages && unreadMessages.length > 0) {
-          console.log(`📖 Marking ${unreadMessages.length} messages as read for conversation ${conversationId}`)
-          // Update each message to mark as read and add user to read_by
-          await Promise.all(unreadMessages.map(async (msg) => {
-            const readBy = Array.isArray(msg.read_by) ? [...msg.read_by] : []
-            if (!readBy.includes(user.id)) {
-              readBy.push(user.id)
-            }
-
-            const { error } = await supabase
-              .from('messages')
-              .update({
-                is_read: true,
-                read_by: readBy
-              })
-              .eq('id', msg.id)
-
-            if (error) {
-              console.error('Error marking message as read:', error)
-            }
-          }))
-          console.log('✅ All messages marked as read')
+          if (error) {
+            console.error('Error marking conversation as read:', error)
+          } else {
+            console.log('✅ Conversation marked as read')
+          }
+        } catch (err) {
+          console.error('Error calling mark_conversation_as_read:', err)
         }
       }
     } catch (error) {

@@ -124,8 +124,8 @@ export function MessageBubble({
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
         <div className={`max-w-[70%] rounded-lg p-3 ${isOwn
-            ? 'bg-gray-300 text-gray-500'
-            : 'bg-gray-200 text-gray-500'
+          ? 'bg-gray-300 text-gray-500'
+          : 'bg-gray-200 text-gray-500'
           }`}>
           <p className="text-sm italic">[Message deleted]</p>
           <div className={`flex items-center gap-1 mt-1 text-xs ${isOwn ? 'text-gray-400' : 'text-gray-500'
@@ -162,8 +162,8 @@ export function MessageBubble({
     >
       <div
         className={`max-w-[40%] rounded-lg p-1.5 text-sm ${isOwn
-            ? 'bg-primary text-white'
-            : 'bg-gray-100 text-gray-900'
+          ? 'bg-primary text-white'
+          : 'bg-gray-100 text-gray-900'
           }`}
         onContextMenu={handleContextMenu}
       >
@@ -328,12 +328,12 @@ export function MessageBubble({
                 key={reaction}
                 onClick={() => handleReaction(reaction)}
                 className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${userReactions.includes(reaction)
-                    ? isOwn
-                      ? 'bg-white/30 text-white'
-                      : 'bg-primary/20 text-primary'
-                    : isOwn
-                      ? 'bg-white/20 text-white/80'
-                      : 'bg-gray-200 text-gray-700'
+                  ? isOwn
+                    ? 'bg-white/30 text-white'
+                    : 'bg-primary/20 text-primary'
+                  : isOwn
+                    ? 'bg-white/20 text-white/80'
+                    : 'bg-gray-200 text-gray-700'
                   } hover:opacity-80 transition-opacity`}
               >
                 <span>{reaction}</span>
@@ -351,7 +351,7 @@ export function MessageBubble({
             message.id.startsWith('temp-') ? (
               <Check className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             ) : (message.read_by && message.read_by.length > 0) || message.is_read ? (
-              <CheckCheck className="h-2.5 w-2.5 text-blue-300" />
+              <CheckCheck className="h-2.5 w-2.5 text-sky-400" />
             ) : (
               <CheckCheck className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             )

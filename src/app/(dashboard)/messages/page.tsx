@@ -25,9 +25,11 @@ import Link from 'next/link'
 import { MessageBubble } from '@/components/ui/message-bubble'
 import { TypingIndicator } from '@/components/ui/typing-indicator'
 import { NewConversationDialog } from '@/components/ui/new-conversation-dialog'
+import { NewGroupDialog } from '@/components/ui/new-group-dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { formatTime } from '@/lib/utils'
+import { Users } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface Conversation {
@@ -35,6 +37,11 @@ interface Conversation {
   participant1_id: string
   participant2_id: string
   last_message_at: string
+  type?: 'direct' | 'group'
+  name?: string | null
+  description?: string | null
+  avatar_url?: string | null
+  created_by?: string | null
   other_user: {
     id: string
     full_name: string | null
@@ -49,6 +56,7 @@ interface Conversation {
     is_read: boolean
   } | null
   unread_count: number
+  member_count?: number
 }
 
 interface Message {
@@ -112,6 +120,7 @@ export default function MessagesPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [otherUserTyping, setOtherUserTyping] = useState(false)
   const [showNewConversation, setShowNewConversation] = useState(false)
+  const [showNewGroup, setShowNewGroup] = useState(false)
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -679,55 +688,133 @@ export default function MessagesPage() {
         return
       }
 
-      const { data, error } = await supabase
+      // Get direct conversations
+      const { data: directConvs, error: directError } = await supabase
         .from('conversations')
         .select('*')
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .order('last_message_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching conversations:', error)
-        throw error
+        .or('type.is.null,type.eq.direct')
+      
+      // Get group conversations where user is a member
+      const { data: groupMemberships } = await supabase
+        .from('group_members')
+        .select('conversation_id')
+        .eq('user_id', user.id)
+      
+      const groupConvIds = groupMemberships?.map(gm => gm.conversation_id) || []
+      
+      const { data: groupConvs, error: groupError } = groupConvIds.length > 0
+        ? await supabase
+            .from('conversations')
+            .select('*')
+            .in('id', groupConvIds)
+            .eq('type', 'group')
+        : { data: [], error: null }
+      
+      if (directError || groupError) {
+        console.error('Error fetching conversations:', directError || groupError)
+        throw directError || groupError
       }
+      
+      // Combine and deduplicate
+      const allConvs = [
+        ...(directConvs || []),
+        ...(groupConvs || [])
+      ]
+      
+      const uniqueConvs = allConvs.filter((conv, index, self) =>
+        index === self.findIndex(c => c.id === conv.id)
+      )
+      
+      // Sort by last_message_at
+      const data = uniqueConvs.sort((a, b) => {
+        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+        return bTime - aTime
+      })
 
-      // Fetch user data for all participants
+      // Fetch user data for direct conversations
+      const directConvsOnly = data.filter((c: any) => !c.type || c.type === 'direct')
       const allParticipantIds = new Set<string>()
-      ;(data || []).forEach((conv: any) => {
+      directConvsOnly.forEach((conv: any) => {
         allParticipantIds.add(conv.participant1_id)
         allParticipantIds.add(conv.participant2_id)
       })
       
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, full_name, email, phone_number, avatar_url')
-        .in('id', Array.from(allParticipantIds))
+      const { data: usersData } = allParticipantIds.size > 0
+        ? await supabase
+            .from('users')
+            .select('id, full_name, email, phone_number, avatar_url')
+            .in('id', Array.from(allParticipantIds))
+        : { data: [] }
       
       const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
       
-      const formattedConversations = (data || []).map((conv: any) => {
-        const otherUserId = conv.participant1_id === user.id 
-          ? conv.participant2_id 
-          : conv.participant1_id
+      // Fetch member counts for group chats
+      const groupConvsOnly = data.filter((c: any) => c.type === 'group')
+      const memberCounts = new Map<string, number>()
+      if (groupConvsOnly.length > 0) {
+        const { data: memberData } = await supabase
+          .from('group_members')
+          .select('conversation_id')
+          .in('conversation_id', groupConvsOnly.map((c: any) => c.id))
         
-        const otherUser = usersMap.get(otherUserId) || {
-          id: otherUserId,
-          full_name: null,
-          email: '',
-          phone_number: null,
-          avatar_url: null
+        if (memberData) {
+          memberData.forEach((m: any) => {
+            memberCounts.set(m.conversation_id, (memberCounts.get(m.conversation_id) || 0) + 1)
+          })
         }
-        
-        return {
-          id: conv.id,
-          participant1_id: conv.participant1_id,
-          participant2_id: conv.participant2_id,
-          last_message_at: conv.last_message_at,
-          other_user: {
-            id: otherUser.id,
-            full_name: otherUser.full_name,
-            email: otherUser.email,
-            phone_number: otherUser.phone_number || null,
-            avatar_url: otherUser.avatar_url || null
+      }
+      
+      const formattedConversations = data.map((conv: any) => {
+        if (conv.type === 'group') {
+          // Group chat
+          return {
+            id: conv.id,
+            participant1_id: conv.participant1_id,
+            participant2_id: conv.participant2_id,
+            last_message_at: conv.last_message_at,
+            type: 'group',
+            name: conv.name,
+            description: conv.description,
+            avatar_url: conv.avatar_url,
+            created_by: conv.created_by,
+            other_user: {
+              id: '',
+              full_name: conv.name || 'Group Chat',
+              email: '',
+              phone_number: null,
+              avatar_url: conv.avatar_url
+            },
+            member_count: memberCounts.get(conv.id) || 0
+          }
+        } else {
+          // Direct chat
+          const otherUserId = conv.participant1_id === user.id 
+            ? conv.participant2_id 
+            : conv.participant1_id
+          
+          const otherUser = usersMap.get(otherUserId) || {
+            id: otherUserId,
+            full_name: null,
+            email: '',
+            phone_number: null,
+            avatar_url: null
+          }
+          
+          return {
+            id: conv.id,
+            participant1_id: conv.participant1_id,
+            participant2_id: conv.participant2_id,
+            last_message_at: conv.last_message_at,
+            type: 'direct',
+            other_user: {
+              id: otherUser.id,
+              full_name: otherUser.full_name,
+              email: otherUser.email,
+              phone_number: otherUser.phone_number || null,
+              avatar_url: otherUser.avatar_url || null
+            }
           }
         }
       })
@@ -1256,8 +1343,11 @@ export default function MessagesPage() {
 
 
   const filteredConversations = conversations.filter(conv =>
-    conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    conv.type === 'group'
+      ? (conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         conv.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+      : (conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   if (loading) {
@@ -1280,13 +1370,23 @@ export default function MessagesPage() {
           {/* Conversations List */}
           <Card className="card-professional overflow-hidden">
             <CardHeader className="border-b space-y-3">
-              <Button
-                onClick={() => setShowNewConversation(true)}
-                className="w-full btn-primary"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                New Message
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowNewConversation(true)}
+                  className="flex-1 btn-primary"
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  New Message
+                </Button>
+                <Button
+                  onClick={() => setShowNewGroup(true)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  New Group
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
                 <Input
@@ -1323,7 +1423,19 @@ export default function MessagesPage() {
                       >
                         <div className="flex items-start gap-3">
                           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {conv.other_user.avatar_url ? (
+                            {conv.type === 'group' ? (
+                              conv.avatar_url ? (
+                                <img
+                                  src={conv.avatar_url}
+                                  alt={conv.name || 'Group'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                                  <Users className="h-6 w-6" />
+                                </div>
+                              )
+                            ) : conv.other_user.avatar_url ? (
                               <img
                                 src={conv.other_user.avatar_url}
                                 alt={conv.other_user.full_name || 'User'}
@@ -1337,9 +1449,19 @@ export default function MessagesPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                {conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                              </h3>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 truncate">
+                                  {conv.type === 'group' 
+                                    ? conv.name || 'Group Chat'
+                                    : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                                </h3>
+                                {conv.type === 'group' && conv.member_count !== undefined && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    {conv.member_count}
+                                  </Badge>
+                                )}
+                              </div>
                               {conv.unread_count > 0 && (
                                 <Badge className="bg-primary text-white text-xs">
                                   {conv.unread_count}
@@ -1379,7 +1501,19 @@ export default function MessagesPage() {
                     return conv ? (
                       <CardTitle className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {conv.other_user.avatar_url ? (
+                          {conv.type === 'group' ? (
+                            conv.avatar_url ? (
+                              <img
+                                src={conv.avatar_url}
+                                alt={conv.name || 'Group'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
+                                <Users className="h-6 w-6" />
+                              </div>
+                            )
+                          ) : conv.other_user.avatar_url ? (
                             <img
                               src={conv.other_user.avatar_url}
                               alt={conv.other_user.full_name || 'User'}
@@ -1392,13 +1526,25 @@ export default function MessagesPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg truncate">{conv.other_user.full_name || conv.other_user.email.split('@')[0]}</div>
-                          <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
-                          {conv.other_user.phone_number && (
-                            <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
-                              <Phone className="h-3 w-3" />
-                              {conv.other_user.phone_number}
+                          <div className="font-semibold text-lg truncate">
+                            {conv.type === 'group' 
+                              ? conv.name || 'Group Chat'
+                              : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                          </div>
+                          {conv.type === 'group' ? (
+                            <div className="text-sm font-normal text-gray-500 truncate">
+                              {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
                             </div>
+                          ) : (
+                            <>
+                              <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
+                              {conv.other_user.phone_number && (
+                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                                  <Phone className="h-3 w-3" />
+                                  {conv.other_user.phone_number}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </CardTitle>
@@ -1628,6 +1774,18 @@ export default function MessagesPage() {
       <NewConversationDialog
         isOpen={showNewConversation}
         onClose={() => setShowNewConversation(false)}
+      />
+      
+      <NewGroupDialog
+        isOpen={showNewGroup}
+        onClose={() => setShowNewGroup(false)}
+        onSuccess={(conversationId) => {
+          setSelectedConversation(conversationId)
+          const params = new URLSearchParams(searchParams.toString())
+          params.set('conversation', conversationId)
+          router.replace(`/messages?${params.toString()}`, { scroll: false })
+          fetchConversations()
+        }}
       />
     </div>
   )

@@ -327,12 +327,15 @@ export default function MessagesPage() {
   selectedConversationRef.current = selectedConversation
 
   const handleRealtimeMessage = useCallback(async (payload: any) => {
-    console.log('🔔 Realtime event triggered:', payload.eventType, payload)
+    // Handle postgres_changes events from Supabase Realtime
+    // This is called when messages are inserted, updated, or deleted
+    const eventType = payload.eventType || (payload.new ? 'INSERT' : payload.old ? 'DELETE' : 'UPDATE')
+    console.log('🔔 Realtime event triggered:', eventType, payload)
     console.log('📋 Current conversation ref:', selectedConversationRef.current)
     console.log('📋 Message conversation_id:', payload.new?.conversation_id || payload.old?.conversation_id)
     
     // Handle different event types
-    if (payload.eventType === 'INSERT') {
+    if (eventType === 'INSERT') {
       const newMessage = payload.new as any
       
       // Verify this message is for the current conversation
@@ -459,7 +462,7 @@ export default function MessagesPage() {
           })
           .eq('id', newMessage.id)
       }
-    } else if (payload.eventType === 'UPDATE') {
+    } else if (eventType === 'UPDATE') {
       const updatedMessage = payload.new as any
       
       console.log('🔄 Processing UPDATE event for message:', updatedMessage.id)
@@ -485,7 +488,7 @@ export default function MessagesPage() {
             }
           : conv
       ))
-    } else if (payload.eventType === 'DELETE') {
+    } else if (eventType === 'DELETE') {
       const deletedMessage = payload.old as any
       
       console.log('🗑️ Processing DELETE event for message:', deletedMessage.id)
@@ -524,23 +527,71 @@ export default function MessagesPage() {
     
     console.log('🔌 Creating realtime subscription for conversation:', conversationId)
       
-    // Set up realtime subscription for messages with optimized updates
-    // Based on reference implementation from Stem-Spark
-    // Create a unique channel for this conversation (like a specific radio frequency)
+    // Set up realtime subscription for messages
+    // Following Supabase best practices: simple channel name pattern
+    // This ensures reliable real-time delivery between all connected clients
+    const channelName = `room-${conversationId}`
+    console.log(`📡 Creating channel: ${channelName} for conversation: ${conversationId}`)
+    
     messagesChannelRef.current = supabase
-      .channel(`messages:${conversationId}:${currentUserId}`, {
-        config: {
-          broadcast: { ack: true },
-          presence: { key: currentUserId }
-        }
-      })
-      // Listen for ALL events (INSERT, UPDATE, DELETE) with filter for this conversation
-        .on('postgres_changes', {
-        event: '*',
+      .channel(channelName)
+      // Listen for INSERT events - following Supabase best practices
+      // Simple channel name and direct INSERT subscription for reliable delivery
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`
-      }, handleRealtimeMessage)
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const newMessage = payload.new as any
+          console.log('🎯 Realtime INSERT received:', {
+            messageId: newMessage.id,
+            conversationId: newMessage.conversation_id,
+            senderId: newMessage.sender_id,
+            currentConversation: selectedConversationRef.current
+          })
+          handleRealtimeMessage(payload)
+        }
+      )
+      // Also subscribe to UPDATE events for message edits, reactions, etc.
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as any
+          console.log('🔄 Realtime UPDATE received:', {
+            messageId: updatedMessage.id,
+            conversationId: updatedMessage.conversation_id
+          })
+          handleRealtimeMessage(payload)
+        }
+      )
+      // Subscribe to DELETE events for message deletions
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const deletedMessage = payload.old as any
+          console.log('🗑️ Realtime DELETE received:', {
+            messageId: deletedMessage.id,
+            conversationId: deletedMessage.conversation_id
+          })
+          handleRealtimeMessage(payload)
+        }
+      )
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -602,12 +653,14 @@ export default function MessagesPage() {
         
         switch (status) {
           case 'SUBSCRIBED':
-            console.log(`✅ Realtime subscription active for conversation ${conversationId}`)
+            console.log(`✅ Realtime subscription ACTIVE for conversation ${conversationId}`)
             console.log('📋 Channel details:', {
-              channel: `messages:${conversationId}:${currentUserId}`,
+              channel: channelName,
               conversation: conversationId,
-              userId: currentUserId
+              userId: currentUserId,
+              status: 'SUBSCRIBED'
             })
+            console.log('🎯 Ready to receive realtime messages for conversation:', conversationId)
             break
           case 'CHANNEL_ERROR':
             console.error('❌ Realtime channel error:', err)

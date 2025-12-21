@@ -55,14 +55,13 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
       console.log('Current user ID:', currentUser.id)
 
       // Search users by name or email (case-insensitive)
-      // Use separate queries and combine results for better reliability
+      // Use separate queries for better reliability and to handle null full_name values
       const searchPattern = `%${query}%`
       
-      // Search by name (only if full_name is not null)
+      // Search by name (will return empty if full_name is null, which is fine)
       const nameResult = await supabase
         .from('users')
         .select('id, full_name, email, avatar_url')
-        .not('full_name', 'is', null)
         .ilike('full_name', searchPattern)
         .neq('id', currentUser.id)
         .limit(20)
@@ -75,9 +74,11 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
         .neq('id', currentUser.id)
         .limit(20)
 
-      console.log('Name search result:', nameResult)
-      console.log('Email search result:', emailResult)
+      console.log('Search query:', query)
+      console.log('Name search result:', { data: nameResult.data, error: nameResult.error })
+      console.log('Email search result:', { data: emailResult.data, error: emailResult.error })
 
+      // Log errors but don't fail completely - use whatever data we got
       if (nameResult.error) {
         console.error('Error searching by name:', nameResult.error)
       }
@@ -95,10 +96,10 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
         index === self.findIndex((u) => u.id === user.id)
       )
 
-      // Sort by full_name
+      // Sort by full_name (or email if no name)
       uniqueUsers.sort((a, b) => {
-        const nameA = a.full_name || a.email || ''
-        const nameB = b.full_name || b.email || ''
+        const nameA = (a.full_name || a.email || '').toLowerCase()
+        const nameB = (b.full_name || b.email || '').toLowerCase()
         return nameA.localeCompare(nameB)
       })
 
@@ -212,7 +213,10 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
 
           {!loading && searchQuery.trim().length > 0 && users.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              <p>No users found</p>
+              <p className="mb-2">No users found</p>
+              <p className="text-sm text-gray-400">
+                Try searching by name or email address
+              </p>
             </div>
           )}
 

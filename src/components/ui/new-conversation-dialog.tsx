@@ -170,11 +170,14 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
       setCreatedConversationId(conversationId)
       setCreatedConversationUser(recipientUser || null)
       
-      // Navigate to conversation
+      // Navigate to conversation and ensure it's selected
       router.push(`/messages?conversation=${conversationId}`)
       
       // Don't close immediately - show success state with button
       // onClose() will be called when user clicks the button
+      
+      // Trigger a refresh of conversations list in parent component
+      // This will be handled by the parent component's useEffect watching the URL
     } catch (error) {
       console.error('Error starting conversation:', error)
       alert('Failed to start conversation. Please try again.')

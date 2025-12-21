@@ -28,6 +28,7 @@ import { NewConversationDialog } from '@/components/ui/new-conversation-dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { formatTime } from '@/lib/utils'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface Conversation {
   id: string
@@ -39,6 +40,7 @@ interface Conversation {
     full_name: string | null
     email: string
     phone_number?: string | null
+    avatar_url?: string | null
   }
   last_message: {
     content: string
@@ -359,11 +361,11 @@ export default function MessagesPage() {
         .from('conversations')
         .select(`
           *,
-          participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number),
-          participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number)
+          participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
+          participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
         `)
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .order('last_message_at', { ascending: false })
+        .order('last_message_at', { ascending: false, nullsFirst: false })
 
       if (error) throw error
 
@@ -381,7 +383,8 @@ export default function MessagesPage() {
             id: otherUser.id,
             full_name: otherUser.full_name,
             email: otherUser.email,
-            phone_number: otherUser.phone_number || null
+            phone_number: otherUser.phone_number || null,
+            avatar_url: otherUser.avatar_url || null
           }
         }
       })
@@ -894,8 +897,18 @@ export default function MessagesPage() {
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <User className="h-6 w-6 text-primary" />
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {conv.other_user.avatar_url ? (
+                              <img
+                                src={conv.other_user.avatar_url}
+                                alt={conv.other_user.full_name || 'User'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                                {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
@@ -903,18 +916,23 @@ export default function MessagesPage() {
                                 {conv.other_user.full_name || conv.other_user.email.split('@')[0]}
                               </h3>
                               {conv.unread_count > 0 && (
-                                <Badge className="bg-primary text-white">
+                                <Badge className="bg-primary text-white text-xs">
                                   {conv.unread_count}
                                 </Badge>
                               )}
                             </div>
                             {conv.last_message && (
                               <p className="text-sm text-gray-600 truncate">
-                                {conv.last_message.content}
+                                {conv.last_message.content || '[Message deleted]'}
+                              </p>
+                            )}
+                            {!conv.last_message && (
+                              <p className="text-sm text-gray-400 italic truncate">
+                                No messages yet
                               </p>
                             )}
                             <p className="text-xs text-gray-500 mt-1">
-                              {formatTime(conv.last_message_at)}
+                              {conv.last_message_at ? formatTime(conv.last_message_at) : 'New conversation'}
                             </p>
                           </div>
                         </div>
@@ -934,13 +952,23 @@ export default function MessagesPage() {
                   {(() => {
                     const conv = conversations.find(c => c.id === selectedConversation)
                     return conv ? (
-                      <CardTitle className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
+                      <CardTitle className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {conv.other_user.avatar_url ? (
+                            <img
+                              src={conv.other_user.avatar_url}
+                              alt={conv.other_user.full_name || 'User'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
+                              {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <div>{conv.other_user.full_name || conv.other_user.email.split('@')[0]}</div>
-                          <div className="text-sm font-normal text-gray-500">{conv.other_user.email}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-lg truncate">{conv.other_user.full_name || conv.other_user.email.split('@')[0]}</div>
+                          <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
                           {conv.other_user.phone_number && (
                             <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
                               <Phone className="h-3 w-3" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -98,6 +98,10 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(false)
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -757,19 +761,26 @@ export default function MessagesPage() {
     }
   }
 
-  const fetchMessages = async (conversationId: string) => {
+  const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50) => {
     if (!conversationId) return
     
     setMessagesLoading(true)
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('messages')
         .select(`
           *,
           attachments:message_attachments(id, file_url, file_type, file_name)
-        `)
+        `, { count: 'exact' })
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      
+      if (beforeDate) {
+        query = query.lt('created_at', beforeDate)
+      }
+      
+      const { data, error, count } = await query
 
       if (error) {
         console.error('Error fetching messages:', error)
@@ -1001,9 +1012,7 @@ export default function MessagesPage() {
       await handleStopTyping()
 
       // Messages and conversations will update via realtime subscriptions
-      // But we also fetch to ensure immediate update on both ends
-      await fetchMessages(selectedConversation)
-      await fetchConversations()
+      // No need to refetch - realtime will handle updates
     } catch (error) {
       console.error('Error sending message:', error)
       alert('Failed to send message. Please try again.')
@@ -1203,6 +1212,8 @@ export default function MessagesPage() {
         user_id: currentUserId,
         is_typing: true,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'conversation_id,user_id'
       })
   }
 
@@ -1217,6 +1228,8 @@ export default function MessagesPage() {
         user_id: currentUserId,
         is_typing: false,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'conversation_id,user_id'
       })
   }
 
@@ -1381,8 +1394,37 @@ export default function MessagesPage() {
                     )
                   })()}
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-0">
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+                  <div 
+                    ref={messagesContainerRef}
+                    className="flex-1 overflow-y-auto p-6 space-y-4 h-full"
+                    onScroll={(e) => {
+                      const target = e.target as HTMLDivElement
+                      // Load older messages when scrolling to top
+                      if (target.scrollTop === 0 && hasMoreMessages && !loadingOlderMessages) {
+                        const oldestMessage = messages[0]
+                        if (oldestMessage) {
+                          setLoadingOlderMessages(true)
+                          fetchMessages(selectedConversation, oldestMessage.created_at, 50).then(() => {
+                            setLoadingOlderMessages(false)
+                            // Maintain scroll position
+                            setTimeout(() => {
+                              if (messagesContainerRef.current) {
+                                const newScrollHeight = messagesContainerRef.current.scrollHeight
+                                const oldScrollHeight = target.scrollHeight
+                                messagesContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight
+                              }
+                            }, 100)
+                          })
+                        }
+                      }
+                    }}
+                  >
+                    {loadingOlderMessages && (
+                      <div className="text-center py-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary mx-auto" />
+                      </div>
+                    )}
                     {messagesLoading ? (
                       <div className="text-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
@@ -1396,24 +1438,24 @@ export default function MessagesPage() {
                       </div>
                     ) : (
                       <>
-                        {messages.map((message, index) => {
+                        {messages.map((message) => {
                           const isOwn = message.sender_id === currentUserId
                           return (
-                            <ScrollAnimate key={message.id} animation={isOwn ? "slideInRight" : "slideInLeft"} delay={index * 50} triggerOnce={true}>
-                              <MessageBubble
-                                message={message}
-                                isOwn={isOwn}
-                                currentUserId={currentUserId || ''}
-                                onReply={handleReply}
-                                onForward={handleForward}
-                                onEdit={handleEditMessage}
-                                onDelete={handleDeleteMessage}
-                                onReaction={handleReaction}
-                                formatTime={formatTime}
-                              />
-                            </ScrollAnimate>
+                            <MessageBubble
+                              key={message.id}
+                              message={message}
+                              isOwn={isOwn}
+                              currentUserId={currentUserId || ''}
+                              onReply={handleReply}
+                              onForward={handleForward}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onReaction={handleReaction}
+                              formatTime={formatTime}
+                            />
                           )
                         })}
+                        <div ref={messagesEndRef} />
                         {otherUserTyping && <TypingIndicator />}
                       </>
                     )}

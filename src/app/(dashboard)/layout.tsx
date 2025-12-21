@@ -57,6 +57,7 @@ export default function DashboardLayout({
   })
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [initialLoad, setInitialLoad] = useState(true) // Track if we're still doing initial load
+  const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -77,6 +78,67 @@ export default function DashboardLayout({
 
     return () => clearTimeout(timeout)
   }, [])
+
+  // Fetch unread message count
+  useEffect(() => {
+    if (!user) return
+    
+    let mounted = true
+    const fetchUnreadCount = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        if (!currentUser || !mounted) return
+        
+        // Get all conversations user is part of
+        const { data: conversations } = await supabase
+          .from('conversations')
+          .select('id')
+          .or(`participant1_id.eq.${currentUser.id},participant2_id.eq.${currentUser.id}`)
+        
+        if (!conversations || conversations.length === 0) {
+          if (mounted) setUnreadCount(0)
+          return
+        }
+        
+        // Get unread messages count
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .in('conversation_id', conversations.map(c => c.id))
+          .eq('is_read', false)
+          .neq('sender_id', currentUser.id)
+        
+        if (mounted) setUnreadCount(count || 0)
+      } catch (error) {
+        console.error('Error fetching unread count:', error)
+      }
+    }
+    
+    fetchUnreadCount()
+    
+    // Set up realtime subscription for unread count
+    const channel = supabase
+      .channel('unread_count_updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages'
+      }, () => {
+        if (mounted) fetchUnreadCount()
+      })
+      .subscribe()
+    
+    // Refresh every 30 seconds as backup
+    const interval = setInterval(() => {
+      if (mounted) fetchUnreadCount()
+    }, 30000)
+    
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+    }
+  }, [user, supabase])
 
   useEffect(() => {
     let mounted = true
@@ -262,7 +324,12 @@ export default function DashboardLayout({
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon className="mr-3 h-5 w-5 flex-shrink-0 pointer-events-none" />
-                  <span className="truncate pointer-events-none">{item.name}</span>
+                  <span className="truncate pointer-events-none flex-1">{item.name}</span>
+                  {item.name === 'Messages' && unreadCount > 0 && (
+                    <span className="ml-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center pointer-events-none">
+                      {unreadCount > 999 ? '999+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}
@@ -338,8 +405,24 @@ export default function DashboardLayout({
                   } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
-                  {!sidebarCollapsed && <span className="truncate whitespace-nowrap">{item.name}</span>}
+                  <div className="relative">
+                    <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
+                    {item.name === 'Messages' && unreadCount > 0 && (
+                      <span className={`absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center ${sidebarCollapsed ? '' : '-right-0.5'}`}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  {!sidebarCollapsed && (
+                    <span className="truncate whitespace-nowrap flex-1 flex items-center">
+                      {item.name}
+                      {item.name === 'Messages' && unreadCount > 0 && (
+                        <span className="ml-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
+                          {unreadCount > 999 ? '999+' : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
               )
             })}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check, CheckCheck, Reply, MoreVertical, Image as ImageIcon } from 'lucide-react'
+import { Check, CheckCheck, Reply, MoreVertical, Image as ImageIcon, Forward } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 
 interface MessageBubbleProps {
@@ -39,10 +39,11 @@ interface MessageBubbleProps {
   }
   isOwn: boolean
   onReply?: (messageId: string) => void
+  onForward?: (messageId: string) => void
   formatTime: (date: string) => string
 }
 
-export function MessageBubble({ message, isOwn, onReply, formatTime }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, onReply, onForward, formatTime }: MessageBubbleProps) {
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -153,8 +154,8 @@ export function MessageBubble({ message, isOwn, onReply, formatTime }: MessageBu
         </div>
 
         {/* Action buttons (on hover) */}
-        {!isOwn && onReply && (
-          <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+          {onReply && (
             <Button
               variant="ghost"
               size="sm"
@@ -164,8 +165,19 @@ export function MessageBubble({ message, isOwn, onReply, formatTime }: MessageBu
               <Reply className="h-3 w-3 mr-1" />
               Reply
             </Button>
-          </div>
-        )}
+          )}
+          {onForward && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onForward(message.id)}
+              className="h-6 px-2 text-xs"
+            >
+              <Forward className="h-3 w-3 mr-1" />
+              Forward
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

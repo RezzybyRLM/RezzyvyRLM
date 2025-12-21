@@ -91,6 +91,8 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null)
+  const [forwardingToConversation, setForwardingToConversation] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isTyping, setIsTyping] = useState(false)
@@ -432,28 +434,35 @@ export default function MessagesPage() {
     setSending(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        alert('Please sign in to send messages')
+        return
+      }
 
-      // Create message first
+      // Create message with content (can be used as caption for images)
       const messageData: any = {
         conversation_id: selectedConversation,
         sender_id: user.id,
-        content: messageContent.trim() || '',
+        content: messageContent.trim() || '', // This serves as caption when image is attached
       }
 
       if (replyingTo) {
         messageData.reply_to_message_id = replyingTo.id
       }
 
+      // Insert message to database
       const { data: newMessage, error: msgError } = await supabase
         .from('messages')
         .insert(messageData)
         .select()
         .single()
 
-      if (msgError) throw msgError
+      if (msgError) {
+        console.error('Error creating message:', msgError)
+        throw msgError
+      }
 
-      // Upload image if selected
+      // Upload image if selected (image with optional caption)
       if (selectedImage && newMessage) {
         const formData = new FormData()
         formData.append('file', selectedImage)
@@ -466,26 +475,40 @@ export default function MessagesPage() {
 
         if (uploadResponse.ok) {
           const { url } = await uploadResponse.json()
-          // Update message with attachment URL
-          await supabase
+          // Update message with attachment URL (content field already has the caption)
+          const { error: updateError } = await supabase
             .from('messages')
             .update({
               attachment_url: url,
               attachment_type: selectedImage.type
             })
             .eq('id', newMessage.id)
+
+          if (updateError) {
+            console.error('Error updating message with attachment:', updateError)
+          }
+        } else {
+          console.error('Error uploading attachment')
         }
       }
 
-      // Update conversation last_message_at
-      await supabase
+      // Update conversation last_message_at for both participants
+      const { error: convError } = await supabase
         .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
+        .update({ 
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq('id', selectedConversation)
+
+      if (convError) {
+        console.error('Error updating conversation:', convError)
+      }
 
       // Clear form
       setMessageContent('')
       setReplyingTo(null)
+      setForwardingMessage(null)
       setSelectedImage(null)
       setImagePreview(null)
 
@@ -493,11 +516,12 @@ export default function MessagesPage() {
       await handleStopTyping()
 
       // Messages and conversations will update via realtime subscriptions
-      // But we can also fetch to ensure immediate update
-      fetchMessages(selectedConversation)
-      fetchConversations()
+      // But we also fetch to ensure immediate update on both ends
+      await fetchMessages(selectedConversation)
+      await fetchConversations()
     } catch (error) {
       console.error('Error sending message:', error)
+      alert('Failed to send message. Please try again.')
     } finally {
       setSending(false)
     }
@@ -521,6 +545,110 @@ export default function MessagesPage() {
     const message = messages.find(m => m.id === messageId)
     if (message) {
       setReplyingTo(message)
+      setForwardingMessage(null)
+    }
+  }
+
+  const handleForward = (messageId: string) => {
+    const message = messages.find(m => m.id === messageId)
+    if (message) {
+      setForwardingMessage(message)
+      setReplyingTo(null)
+      // Open conversation selector or use current conversation
+      // For now, we'll forward to the same conversation with a note
+      // In a full implementation, you'd open a dialog to select destination
+    }
+  }
+
+  const forwardMessage = async () => {
+    if (!forwardingMessage || !selectedConversation) return
+
+    setSending(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Create forwarded message
+      const forwardedContent = forwardingMessage.content 
+        ? `Forwarded: ${forwardingMessage.content}`
+        : 'Forwarded message'
+
+      const messageData: any = {
+        conversation_id: selectedConversation,
+        sender_id: user.id,
+        content: forwardedContent,
+      }
+
+      // If forwarding a message with attachments, copy them
+      if (forwardingMessage.attachments && forwardingMessage.attachments.length > 0) {
+        const { data: newMessage, error: msgError } = await supabase
+          .from('messages')
+          .insert(messageData)
+          .select()
+          .single()
+
+        if (msgError) throw msgError
+
+        // Copy attachments
+        for (const attachment of forwardingMessage.attachments) {
+          await supabase
+            .from('message_attachments')
+            .insert({
+              message_id: newMessage.id,
+              file_url: attachment.file_url,
+              file_type: attachment.file_type,
+              file_name: attachment.file_name,
+              file_size: null
+            })
+        }
+
+        // Update message with attachment URL if it's an image
+        const imageAttachment = forwardingMessage.attachments.find(a => a.file_type.startsWith('image/'))
+        if (imageAttachment) {
+          await supabase
+            .from('messages')
+            .update({
+              attachment_url: imageAttachment.file_url,
+              attachment_type: imageAttachment.file_type
+            })
+            .eq('id', newMessage.id)
+        }
+      } else if (forwardingMessage.attachment_url) {
+        // Handle legacy attachment_url
+        messageData.attachment_url = forwardingMessage.attachment_url
+        messageData.attachment_type = forwardingMessage.attachment_type
+
+        const { data: newMessage, error: msgError } = await supabase
+          .from('messages')
+          .insert(messageData)
+          .select()
+          .single()
+
+        if (msgError) throw msgError
+      } else {
+        const { data: newMessage, error: msgError } = await supabase
+          .from('messages')
+          .insert(messageData)
+          .select()
+          .single()
+
+        if (msgError) throw msgError
+      }
+
+      // Update conversation
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', selectedConversation)
+
+      setForwardingMessage(null)
+      setForwardingToConversation(null)
+      fetchMessages(selectedConversation)
+      fetchConversations()
+    } catch (error) {
+      console.error('Error forwarding message:', error)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -690,6 +818,7 @@ export default function MessagesPage() {
                                 message={message}
                                 isOwn={isOwn}
                                 onReply={handleReply}
+                                onForward={handleForward}
                                 formatTime={formatTime}
                               />
                             </ScrollAnimate>
@@ -713,6 +842,27 @@ export default function MessagesPage() {
                           type="button"
                           onClick={() => setReplyingTo(null)}
                           className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Forward preview */}
+                    {forwardingMessage && (
+                      <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-purple-900 mb-1">
+                            Forwarding message from {forwardingMessage.sender.full_name || forwardingMessage.sender.email.split('@')[0]}
+                          </p>
+                          <p className="text-sm text-purple-800 truncate">
+                            {forwardingMessage.content || (forwardingMessage.attachment_url ? 'Image' : 'Message')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setForwardingMessage(null)}
+                          className="ml-2 text-purple-600 hover:text-purple-800"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -789,7 +939,16 @@ export default function MessagesPage() {
                           className="hidden"
                         />
                       </div>
-                      <Button type="submit" disabled={sending || (!messageContent.trim() && !selectedImage)}>
+                      <Button 
+                        type="submit" 
+                        disabled={sending || (!messageContent.trim() && !selectedImage && !forwardingMessage)}
+                        onClick={(e) => {
+                          if (forwardingMessage && !replyingTo) {
+                            e.preventDefault()
+                            forwardMessage()
+                          }
+                        }}
+                      >
                         {sending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (

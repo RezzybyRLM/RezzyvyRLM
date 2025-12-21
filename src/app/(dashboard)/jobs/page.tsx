@@ -170,8 +170,8 @@ export default function JobsPage() {
       },
       {
         root: detailPanelRef.current,
-        rootMargin: '-50px 0px -50px 0px',
-        threshold: 0.1,
+        rootMargin: '100px 0px 0px 0px', // Trigger 100px before entering viewport
+        threshold: 0.01, // Trigger as soon as 1% is visible
       }
     )
 
@@ -808,10 +808,10 @@ export default function JobsPage() {
                       if (el) sectionRefs.current.set('description', el)
                     }}
                     data-section-id="description"
-                    className={`transition-all duration-700 ${
+                    className={`transition-all duration-300 ${
                       visibleSections.has('description')
                         ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 translate-y-8'
+                        : 'opacity-0 translate-y-4'
                     }`}
                   >
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
@@ -827,10 +827,10 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('requirements', el)
                       }}
                       data-section-id="requirements"
-                      className={`transition-all duration-700 delay-100 ${
+                      className={`transition-all duration-300 ${
                         visibleSections.has('requirements')
                           ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-8'
+                          : 'opacity-0 translate-y-4'
                       }`}
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -841,13 +841,13 @@ export default function JobsPage() {
                         {selectedJob.requirements.map((req, index) => (
                           <li
                             key={index}
-                            className={`transition-all duration-500 ${
+                            className={`transition-all duration-200 ${
                               visibleSections.has('requirements')
                                 ? 'opacity-100 translate-x-0'
-                                : 'opacity-0 -translate-x-4'
+                                : 'opacity-0 -translate-x-2'
                             }`}
                             style={{
-                              transitionDelay: `${200 + index * 50}ms`
+                              transitionDelay: `${50 + index * 20}ms`
                             }}
                           >
                             {req}
@@ -864,10 +864,10 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('benefits', el)
                       }}
                       data-section-id="benefits"
-                      className={`transition-all duration-700 delay-200 ${
+                      className={`transition-all duration-300 ${
                         visibleSections.has('benefits')
                           ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-8'
+                          : 'opacity-0 translate-y-4'
                       }`}
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -878,13 +878,13 @@ export default function JobsPage() {
                         {selectedJob.benefits.map((benefit, index) => (
                           <li
                             key={index}
-                            className={`transition-all duration-500 ${
+                            className={`transition-all duration-200 ${
                               visibleSections.has('benefits')
                                 ? 'opacity-100 translate-x-0'
-                                : 'opacity-0 -translate-x-4'
+                                : 'opacity-0 -translate-x-2'
                             }`}
                             style={{
-                              transitionDelay: `${300 + index * 50}ms`
+                              transitionDelay: `${50 + index * 20}ms`
                             }}
                           >
                             {benefit}
@@ -900,22 +900,22 @@ export default function JobsPage() {
                       if (el) sectionRefs.current.set('job-details', el)
                     }}
                     data-section-id="job-details"
-                    className={`bg-gray-50 rounded-lg p-4 transition-all duration-700 delay-300 ${
+                    className={`bg-gray-50 rounded-lg p-4 transition-all duration-300 ${
                       visibleSections.has('job-details')
                         ? 'opacity-100 scale-100'
-                        : 'opacity-0 scale-95'
+                        : 'opacity-0 scale-98'
                     }`}
                   >
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       {selectedJob.work_schedule && (
                         <div
-                          className={`transition-all duration-500 ${
+                          className={`transition-all duration-200 ${
                             visibleSections.has('job-details')
                               ? 'opacity-100 translate-y-0'
-                              : 'opacity-0 translate-y-4'
+                              : 'opacity-0 translate-y-2'
                           }`}
-                          style={{ transitionDelay: '400ms' }}
+                          style={{ transitionDelay: '50ms' }}
                         >
                           <p className="text-gray-500 mb-1">Work Schedule</p>
                           <p className="text-gray-900 font-medium">{selectedJob.work_schedule}</p>
@@ -923,12 +923,12 @@ export default function JobsPage() {
                       )}
                       {selectedJob.experience_required && (
                         <div
-                          className={`transition-all duration-500 ${
+                          className={`transition-all duration-200 ${
                             visibleSections.has('job-details')
                               ? 'opacity-100 translate-y-0'
-                              : 'opacity-0 translate-y-4'
+                              : 'opacity-0 translate-y-2'
                           }`}
-                          style={{ transitionDelay: '450ms' }}
+                          style={{ transitionDelay: '75ms' }}
                         >
                           <p className="text-gray-500 mb-1">Experience</p>
                           <p className="text-gray-900 font-medium">{selectedJob.experience_required}</p>
@@ -936,12 +936,12 @@ export default function JobsPage() {
                       )}
                       {selectedJob.education_required && (
                         <div
-                          className={`transition-all duration-500 ${
+                          className={`transition-all duration-200 ${
                             visibleSections.has('job-details')
                               ? 'opacity-100 translate-y-0'
-                              : 'opacity-0 translate-y-4'
+                              : 'opacity-0 translate-y-2'
                           }`}
-                          style={{ transitionDelay: '500ms' }}
+                          style={{ transitionDelay: '100ms' }}
                         >
                           <p className="text-gray-500 mb-1">Education</p>
                           <p className="text-gray-900 font-medium">{selectedJob.education_required}</p>
@@ -949,12 +949,12 @@ export default function JobsPage() {
                       )}
                       {selectedJob.application_deadline && (
                         <div
-                          className={`transition-all duration-500 ${
+                          className={`transition-all duration-200 ${
                             visibleSections.has('job-details')
                               ? 'opacity-100 translate-y-0'
-                              : 'opacity-0 translate-y-4'
+                              : 'opacity-0 translate-y-2'
                           }`}
-                          style={{ transitionDelay: '550ms' }}
+                          style={{ transitionDelay: '125ms' }}
                         >
                           <p className="text-gray-500 mb-1">Application Deadline</p>
                           <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
@@ -970,10 +970,10 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('instructions', el)
                       }}
                       data-section-id="instructions"
-                      className={`transition-all duration-700 delay-400 ${
+                      className={`transition-all duration-300 ${
                         visibleSections.has('instructions')
                           ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-8'
+                          : 'opacity-0 translate-y-4'
                       }`}
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
@@ -990,10 +990,10 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('company', el)
                       }}
                       data-section-id="company"
-                      className={`bg-gray-50 rounded-lg p-4 border border-gray-200 transition-all duration-700 delay-500 ${
+                      className={`bg-gray-50 rounded-lg p-4 border border-gray-200 transition-all duration-300 ${
                         visibleSections.has('company')
                           ? 'opacity-100 scale-100'
-                          : 'opacity-0 scale-95'
+                          : 'opacity-0 scale-98'
                       }`}
                     >
                       <div className="flex items-start gap-4 mb-3">
@@ -1003,13 +1003,13 @@ export default function JobsPage() {
                             alt={selectedJob.company.name}
                             width={64}
                             height={64}
-                            className={`rounded-lg object-contain bg-white p-2 transition-all duration-500 ${
+                            className={`rounded-lg object-contain bg-white p-2 transition-all duration-200 ${
                               visibleSections.has('company')
                                 ? 'opacity-100 rotate-0'
-                                : 'opacity-0 -rotate-12'
+                                : 'opacity-0 -rotate-6'
                             }`}
                             loading="lazy"
-                            style={{ transitionDelay: '600ms' }}
+                            style={{ transitionDelay: '50ms' }}
                           />
                         )}
                         <div className="flex-1">
@@ -1049,22 +1049,22 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('contact', el)
                       }}
                       data-section-id="contact"
-                      className={`transition-all duration-700 delay-600 ${
+                      className={`transition-all duration-300 ${
                         visibleSections.has('contact')
                           ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-8'
+                          : 'opacity-0 translate-y-4'
                       }`}
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
                       <div className="space-y-2">
                         {selectedJob.contact_email && (
                           <div
-                            className={`flex items-center gap-2 text-gray-700 transition-all duration-500 ${
+                            className={`flex items-center gap-2 text-gray-700 transition-all duration-200 ${
                               visibleSections.has('contact')
                                 ? 'opacity-100 translate-x-0'
-                                : 'opacity-0 -translate-x-4'
+                                : 'opacity-0 -translate-x-2'
                             }`}
-                            style={{ transitionDelay: '700ms' }}
+                            style={{ transitionDelay: '50ms' }}
                           >
                             <Mail className="h-4 w-4 text-gray-400" />
                             <a href={`mailto:${selectedJob.contact_email}`} className="text-primary hover:underline">
@@ -1074,12 +1074,12 @@ export default function JobsPage() {
                         )}
                         {selectedJob.contact_phone && (
                           <div
-                            className={`flex items-center gap-2 text-gray-700 transition-all duration-500 ${
+                            className={`flex items-center gap-2 text-gray-700 transition-all duration-200 ${
                               visibleSections.has('contact')
                                 ? 'opacity-100 translate-x-0'
-                                : 'opacity-0 -translate-x-4'
+                                : 'opacity-0 -translate-x-2'
                             }`}
-                            style={{ transitionDelay: '750ms' }}
+                            style={{ transitionDelay: '75ms' }}
                           >
                             <Phone className="h-4 w-4 text-gray-400" />
                             <a href={`tel:${selectedJob.contact_phone}`} className="text-primary hover:underline">
@@ -1098,10 +1098,10 @@ export default function JobsPage() {
                         if (el) sectionRefs.current.set('tags', el)
                       }}
                       data-section-id="tags"
-                      className={`transition-all duration-700 delay-700 ${
+                      className={`transition-all duration-300 ${
                         visibleSections.has('tags')
                           ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-8'
+                          : 'opacity-0 translate-y-4'
                       }`}
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Tags</h3>
@@ -1110,13 +1110,13 @@ export default function JobsPage() {
                           <Badge
                             key={index}
                             variant="outline"
-                            className={`text-sm transition-all duration-500 ${
+                            className={`text-sm transition-all duration-200 ${
                               visibleSections.has('tags')
                                 ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-0'
+                                : 'opacity-0 scale-95'
                             }`}
                             style={{
-                              transitionDelay: `${800 + index * 50}ms`
+                              transitionDelay: `${50 + index * 20}ms`
                             }}
                           >
                             {tag}
@@ -1132,10 +1132,10 @@ export default function JobsPage() {
                       if (el) sectionRefs.current.set('report', el)
                     }}
                     data-section-id="report"
-                    className={`pt-4 border-t border-gray-200 transition-all duration-700 delay-800 ${
+                    className={`pt-4 border-t border-gray-200 transition-all duration-300 ${
                       visibleSections.has('report')
                         ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 translate-y-8'
+                        : 'opacity-0 translate-y-4'
                     }`}
                   >
                     <button

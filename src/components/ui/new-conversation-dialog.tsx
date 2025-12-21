@@ -25,6 +25,8 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [starting, setStarting] = useState<string | null>(null)
+  const [createdConversationId, setCreatedConversationId] = useState<string | null>(null)
+  const [createdConversationUser, setCreatedConversationUser] = useState<User | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -163,9 +165,16 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
         conversationId = newConversation.id
       }
 
+      // Store created conversation info for the success screen
+      const recipientUser = users.find(u => u.id === recipientId)
+      setCreatedConversationId(conversationId)
+      setCreatedConversationUser(recipientUser || null)
+      
       // Navigate to conversation
       router.push(`/messages?conversation=${conversationId}`)
-      onClose()
+      
+      // Don't close immediately - show success state with button
+      // onClose() will be called when user clicks the button
     } catch (error) {
       console.error('Error starting conversation:', error)
       alert('Failed to start conversation. Please try again.')
@@ -174,15 +183,84 @@ export function NewConversationDialog({ isOpen, onClose }: NewConversationDialog
     }
   }
 
+  const handleOpenConversation = () => {
+    if (createdConversationId) {
+      router.push(`/messages?conversation=${createdConversationId}`)
+      onClose()
+      // Reset state
+      setCreatedConversationId(null)
+      setCreatedConversationUser(null)
+      setSearchQuery('')
+      setUsers([])
+    }
+  }
+
+  const handleClose = () => {
+    onClose()
+    // Reset state when closing
+    setCreatedConversationId(null)
+    setCreatedConversationUser(null)
+    setSearchQuery('')
+    setUsers([])
+  }
+
   if (!isOpen) return null
 
+  // Show success screen if conversation was created
+  if (createdConversationId && createdConversationUser) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={handleClose}>
+        <Card className="w-full max-w-[500px] bg-white" onClick={(e) => e.stopPropagation()}>
+          <CardHeader className="border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-bold">Conversation Created!</CardTitle>
+              <Button variant="ghost" size="icon" onClick={handleClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                <MessageSquare className="h-8 w-8 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Chat created with {createdConversationUser.full_name || createdConversationUser.email.split('@')[0]}
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Your conversation has been created and saved. Click the button below to open it.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={handleOpenConversation}
+                  className="bg-primary hover:bg-primary/90 text-white"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Open Chat
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleClose}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={handleClose}>
       <Card className="w-full max-w-[500px] max-h-[90vh] overflow-y-auto bg-white" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold">Start New Conversation</CardTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={handleClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>

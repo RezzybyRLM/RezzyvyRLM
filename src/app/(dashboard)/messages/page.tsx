@@ -116,6 +116,19 @@ export default function MessagesPage() {
       
       setCurrentUserId(user.id)
       await fetchConversations()
+      
+      // After conversations are loaded, check if there's a conversation ID in URL
+      const conversationId = searchParams.get('conversation')
+      if (conversationId && mounted) {
+        // Verify conversation exists or wait a bit for it to appear
+        const checkAndSetConversation = () => {
+          if (mounted) {
+            setSelectedConversation(conversationId)
+          }
+        }
+        // Small delay to ensure state is updated
+        setTimeout(checkAndSetConversation, 200)
+      }
 
       // Set up realtime subscription for conversations list
       if (mounted) {
@@ -161,9 +174,38 @@ export default function MessagesPage() {
   useEffect(() => {
     const conversationId = searchParams.get('conversation')
     if (conversationId) {
-      setSelectedConversation(conversationId)
+      if (!loading) {
+        // Only set selected conversation after conversations are loaded
+        const conversationExists = conversations.some(c => c.id === conversationId)
+        if (conversationExists) {
+          // Conversation found in list, set it as selected
+          if (selectedConversation !== conversationId) {
+            setSelectedConversation(conversationId)
+          }
+        } else if (conversations.length > 0) {
+          // Conversation not in list but we have other conversations
+          // This might be a newly created conversation - refresh the list
+          console.log('Conversation not found in list, refreshing...')
+          fetchConversations().then(() => {
+            // After refresh, try to set it again
+            setTimeout(() => {
+              setSelectedConversation(conversationId)
+            }, 300)
+          })
+        } else {
+          // No conversations loaded yet, but we have a conversation ID
+          // This is likely a new conversation - set it anyway
+          console.log('Setting conversation before list loads:', conversationId)
+          setSelectedConversation(conversationId)
+        }
+      }
+    } else {
+      // No conversation in URL, clear selection
+      if (selectedConversation) {
+        setSelectedConversation(null)
+      }
     }
-  }, [searchParams])
+  }, [searchParams, conversations, loading, selectedConversation])
 
   useEffect(() => {
     if (!selectedConversation || !currentUserId) return
@@ -273,6 +315,37 @@ export default function MessagesPage() {
       if (typingChannel) supabase.removeChannel(typingChannel)
     }
   }, [selectedConversation, currentUserId, supabase])
+
+  // Fetch conversation details if it's not in the list yet (newly created)
+  useEffect(() => {
+    if (selectedConversation && conversations.length > 0) {
+      const conv = conversations.find(c => c.id === selectedConversation)
+      if (!conv) {
+        // Conversation not in list, fetch it directly and refresh list
+        const fetchMissingConversation = async () => {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
+          
+          const { data: convData } = await supabase
+            .from('conversations')
+            .select(`
+              *,
+              participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number),
+              participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number)
+            `)
+            .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+            .eq('id', selectedConversation)
+            .single()
+          
+          if (convData) {
+            // Refresh conversations list to include this one
+            await fetchConversations()
+          }
+        }
+        fetchMissingConversation()
+      }
+    }
+  }, [selectedConversation, conversations, supabase])
 
   const fetchConversations = async () => {
     try {
@@ -736,7 +809,13 @@ export default function MessagesPage() {
                   {filteredConversations.map((conv, index) => (
                     <ScrollAnimate key={conv.id} animation="slideInLeft" delay={index * 50} triggerOnce={true}>
                       <button
-                        onClick={() => setSelectedConversation(conv.id)}
+                        onClick={() => {
+                          setSelectedConversation(conv.id)
+                          // Update URL to reflect selected conversation
+                          const params = new URLSearchParams(searchParams.toString())
+                          params.set('conversation', conv.id)
+                          router.replace(`/messages?${params.toString()}`, { scroll: false })
+                        }}
                         className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
                           selectedConversation === conv.id ? 'bg-blue-50' : ''
                         }`}
@@ -797,7 +876,17 @@ export default function MessagesPage() {
                           )}
                         </div>
                       </CardTitle>
-                    ) : null
+                    ) : (
+                      <CardTitle className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div>Loading conversation...</div>
+                          <div className="text-sm font-normal text-gray-500">Please wait</div>
+                        </div>
+                      </CardTitle>
+                    )
                   })()}
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col p-0">

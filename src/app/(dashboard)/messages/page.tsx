@@ -175,39 +175,23 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const conversationId = searchParams.get('conversation')
-    if (conversationId) {
-      if (!loading) {
-        // Only set selected conversation after conversations are loaded
-        const conversationExists = conversations.some(c => c.id === conversationId)
-        if (conversationExists) {
-          // Conversation found in list, set it as selected
-          if (selectedConversation !== conversationId) {
-            setSelectedConversation(conversationId)
-          }
-        } else if (conversations.length > 0) {
-          // Conversation not in list but we have other conversations
-          // This might be a newly created conversation - refresh the list
-          console.log('Conversation not found in list, refreshing...')
-          fetchConversations().then(() => {
-            // After refresh, try to set it again
-            setTimeout(() => {
-              setSelectedConversation(conversationId)
-            }, 300)
-          })
-        } else {
-          // No conversations loaded yet, but we have a conversation ID
-          // This is likely a new conversation - set it anyway
-          console.log('Setting conversation before list loads:', conversationId)
-          setSelectedConversation(conversationId)
-        }
+    if (conversationId && !loading) {
+      // Set selected conversation immediately if it's in the URL
+      if (selectedConversation !== conversationId) {
+        setSelectedConversation(conversationId)
       }
-    } else {
+      
+      // Check if conversation exists in list, if not it will be fetched by the other useEffect
+      const conversationExists = conversations.some(c => c.id === conversationId)
+      if (!conversationExists && conversations.length > 0) {
+        // Conversation not in list, it will be fetched by the fetchMissingConversation effect
+        console.log('Conversation not in list, will be fetched:', conversationId)
+      }
+    } else if (!conversationId && selectedConversation) {
       // No conversation in URL, clear selection
-      if (selectedConversation) {
-        setSelectedConversation(null)
-      }
+      setSelectedConversation(null)
     }
-  }, [searchParams, conversations, loading, selectedConversation])
+  }, [searchParams, loading])
 
   useEffect(() => {
     if (!selectedConversation || !currentUserId) return
@@ -320,7 +304,7 @@ export default function MessagesPage() {
 
   // Fetch conversation details if it's not in the list yet (newly created)
   useEffect(() => {
-    if (selectedConversation && conversations.length > 0) {
+    if (selectedConversation && !loading && currentUserId) {
       const conv = conversations.find(c => c.id === selectedConversation)
       if (!conv) {
         // Conversation not in list, fetch it directly and refresh list
@@ -328,26 +312,83 @@ export default function MessagesPage() {
           const { data: { user } } = await supabase.auth.getUser()
           if (!user) return
           
-          const { data: convData } = await supabase
-            .from('conversations')
-            .select(`
-              *,
-              participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number),
-              participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number)
-            `)
-            .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-            .eq('id', selectedConversation)
-            .single()
-          
-          if (convData) {
-            // Refresh conversations list to include this one
-            await fetchConversations()
+          try {
+            const { data: convData, error } = await supabase
+              .from('conversations')
+              .select(`
+                *,
+                participant1:users!conversations_participant1_id_fkey(id, full_name, email, phone_number, avatar_url),
+                participant2:users!conversations_participant2_id_fkey(id, full_name, email, phone_number, avatar_url)
+              `)
+              .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+              .eq('id', selectedConversation)
+              .single()
+            
+            if (error) {
+              console.error('Error fetching missing conversation:', error)
+              return
+            }
+            
+            if (convData) {
+              // Format the conversation and add it to the list
+              const otherUser = convData.participant1_id === user.id 
+                ? convData.participant2 
+                : convData.participant1
+              
+              // Get last message
+              const { data: lastMsg } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', convData.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+              
+              // Get unread count
+              const { count } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('conversation_id', convData.id)
+                .eq('is_read', false)
+                .neq('sender_id', user.id)
+              
+              const formattedConv = {
+                id: convData.id,
+                participant1_id: convData.participant1_id,
+                participant2_id: convData.participant2_id,
+                last_message_at: convData.last_message_at,
+                other_user: {
+                  id: otherUser.id,
+                  full_name: otherUser.full_name,
+                  email: otherUser.email,
+                  phone_number: otherUser.phone_number || null,
+                  avatar_url: otherUser.avatar_url || null
+                },
+                last_message: lastMsg || null,
+                unread_count: count || 0
+              }
+              
+              // Add to conversations list
+              setConversations(prev => {
+                const exists = prev.find(c => c.id === formattedConv.id)
+                if (exists) return prev
+                return [formattedConv, ...prev]
+              })
+              
+              // Also fetch messages for this conversation
+              await fetchMessages(selectedConversation)
+            }
+          } catch (err) {
+            console.error('Error in fetchMissingConversation:', err)
           }
         }
         fetchMissingConversation()
+      } else if (conv) {
+        // Conversation is in list, just fetch messages
+        fetchMessages(selectedConversation)
       }
     }
-  }, [selectedConversation, conversations, supabase])
+  }, [selectedConversation, conversations, loading, currentUserId, supabase])
 
   const fetchConversations = async () => {
     try {

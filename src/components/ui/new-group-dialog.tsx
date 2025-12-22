@@ -119,14 +119,14 @@ export function NewGroupDialog({ isOpen, onClose, onSuccess }: NewGroupDialogPro
         const filePath = `avatars/${fileName}`
 
         const { error: uploadError } = await supabase.storage
-          .from('post_images')
+          .from('avatars')
           .upload(filePath, imageFile)
 
         if (uploadError) {
           console.error('Error uploading group avatar:', uploadError)
         } else {
           const { data: { publicUrl } } = supabase.storage
-            .from('post_images')
+            .from('avatars')
             .getPublicUrl(filePath)
           avatarUrl = publicUrl
         }

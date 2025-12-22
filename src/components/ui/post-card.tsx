@@ -1,20 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  MoreVertical,
+import {
+  ThumbsUp,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
   Edit,
   Trash2,
   User,
-  Briefcase
+  Briefcase,
+  Send,
+  Repeat
 } from 'lucide-react'
-import { formatTime } from '@/lib/utils'
 
 interface PostCardProps {
   post: {
@@ -60,168 +60,151 @@ export function PostCard({
   const [showMenu, setShowMenu] = useState(false)
   const isOwn = post.user_id === currentUserId
 
-  // Extract hashtags and mentions from content
+  // Extract hashtags and mentions
   const hashtags: string[] = post.content.match(/#\w+/g) || []
   const mentions: string[] = post.content.match(/@\w+/g) || []
 
   return (
-    <Card className="card-professional">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            {post.user.avatar_url ? (
-              <img
-                src={post.user.avatar_url}
-                alt={post.user.full_name || post.user.email.split('@')[0]}
-                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                onError={(e) => {
-                  // Fallback to default if image fails to load
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                  const fallback = target.nextElementSibling as HTMLElement
-                  if (fallback) fallback.style.display = 'flex'
-                }}
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-5 w-5 text-primary" />
-              </div>
-            )}
-            <div>
-              <h3 className="font-semibold text-gray-900">
-                {post.user.full_name || post.user.email.split('@')[0]}
-              </h3>
-              <p className="text-sm text-gray-500">{formatTime(post.created_at)}</p>
-            </div>
-          </div>
-          {isOwn && (
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowMenu(!showMenu)}
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-              {showMenu && (
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                  {onEdit && (
-                    <button
-                      onClick={() => {
-                        onEdit()
-                        setShowMenu(false)
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button
-                      onClick={() => {
-                        onDelete()
-                        setShowMenu(false)
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {post.job && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Briefcase className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-900">Job Opportunity</span>
-              </div>
-              <p className="text-sm text-blue-800 font-medium">{post.job.title}</p>
-              <p className="text-xs text-blue-600">{post.job.company_name}</p>
-            </div>
-          )}
-          
-          <p className="text-gray-900 whitespace-pre-wrap break-words">
-            {post.content.split(/(#\w+|@\w+)/g).map((part, index) => {
-              if (hashtags.includes(part)) {
-                return (
-                  <span key={index} className="text-primary font-medium hover:underline cursor-pointer">
-                    {part}
-                  </span>
-                )
-              }
-              if (mentions.includes(part)) {
-                return (
-                  <span key={index} className="text-blue-600 font-medium hover:underline cursor-pointer">
-                    {part}
-                  </span>
-                )
-              }
-              return <span key={index}>{part}</span>
-            })}
-          </p>
-
-          {post.image_url && (
+    <div className="bg-white">
+      {/* Header */}
+      <div className="p-4 pb-2 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          {post.user.avatar_url ? (
             <img
-              src={post.image_url}
-              alt="Post"
-              className="w-full rounded-lg cursor-pointer"
-              onClick={() => window.open(post.image_url!, '_blank')}
+              src={post.user.avatar_url}
+              alt={post.user.full_name || 'User'}
+              className="w-12 h-12 rounded-full object-cover"
             />
-          )}
-
-          {/* Hashtags */}
-          {hashtags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {hashtags.map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+              <User className="w-6 h-6" />
             </div>
           )}
-
-          <div className="flex items-center gap-4 pt-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLike}
-              className={post.is_liked ? 'text-red-600' : 'text-gray-600'}
-            >
-              <Heart className={`h-4 w-4 mr-1 ${post.is_liked ? 'fill-current' : ''}`} />
-              {post.likes_count}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onComment}
-              className="text-gray-600"
-            >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              {post.comments_count}
-            </Button>
-            {onShare && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onShare}
-                className="text-gray-600"
-              >
-                <Share2 className="h-4 w-4 mr-1" />
-                Share
-              </Button>
-            )}
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">
+              {post.user.full_name || post.user.email.split('@')[0]}
+            </h3>
+            <p className="text-xs text-gray-500">
+              {/* Headline placeholder */}
+              User  • {formatTime(post.created_at)}
+            </p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {isOwn && (
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setShowMenu(!showMenu)}>
+              <MoreHorizontal className="h-5 w-5 text-gray-600" />
+            </Button>
+            {showMenu && (
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-20">
+                {onEdit && (
+                  <button onClick={() => { onEdit(); setShowMenu(false) }} className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button onClick={() => { onDelete(); setShowMenu(false) }} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="px-4 py-2">
+        {post.job && (
+          <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100 flex items-center gap-3">
+            <div className="p-2 bg-white rounded shadow-sm">
+              <Briefcase className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{post.job.title}</p>
+              <p className="text-xs text-gray-600">{post.job.company_name}</p>
+            </div>
+          </div>
+        )}
+
+        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+          {post.content.split(/(#\w+|@\w+)/g).map((part, index) => {
+            if (hashtags.includes(part)) return <span key={index} className="text-blue-600 font-medium hover:underline cursor-pointer">{part}</span>
+            if (mentions.includes(part)) return <span key={index} className="text-blue-600 font-semibold hover:underline cursor-pointer">{part}</span>
+            return <span key={index}>{part}</span>
+          })}
+        </p>
+      </div>
+
+      {/* Image */}
+      {post.image_url && (
+        <div className="mt-2 w-full bg-gray-100">
+          <img
+            src={post.image_url}
+            alt="Post content"
+            className="w-full max-h-[600px] object-contain mx-auto cursor-pointer"
+            onClick={() => window.open(post.image_url!, '_blank')}
+          />
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 border-b border-gray-100">
+        <div className="flex items-center gap-1">
+          {(post.likes_count > 0) && (
+            <>
+              <div className="flex -space-x-1">
+                <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center border border-white z-10">
+                  <ThumbsUp className="h-2 w-2 text-white" />
+                </span>
+                {/* Could add heart/clap icons for reaction pile */}
+              </div>
+              <span className="hover:text-blue-600 hover:underline cursor-pointer">{post.likes_count}</span>
+            </>
+          )}
+        </div>
+        <div>
+          {post.comments_count > 0 && <span className="hover:text-blue-600 hover:underline cursor-pointer mr-2">{post.comments_count} comments</span>}
+          <span className="hover:text-blue-600 hover:underline cursor-pointer">0 reposts</span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="px-2 py-1 flex items-center justify-between">
+        <Button
+          variant="ghost"
+          className={`flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 ${post.is_liked ? 'text-blue-600' : 'text-gray-600'}`}
+          onClick={onLike}
+        >
+          <ThumbsUp className={`h-5 w-5 ${post.is_liked ? 'fill-current' : ''}`} />
+          <span className="font-medium">Like</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 text-gray-600"
+          onClick={onComment}
+        >
+          <MessageCircle className="h-5 w-5" />
+          <span className="font-medium">Comment</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 text-gray-600"
+          onClick={onShare}
+        >
+          <Repeat className="h-5 w-5" />
+          <span className="font-medium">Repost</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 text-gray-600"
+        >
+          <Send className="h-5 w-5" />
+          <span className="font-medium">Send</span>
+        </Button>
+      </div>
+    </div>
   )
 }
 

@@ -23,14 +23,14 @@ import {
   ChevronRight,
   Briefcase,
   MessageSquare,
-  Rss
+  Home
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
+  { name: 'Home', href: '/feed', icon: Home },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
-  { name: 'Feed', href: '/feed', icon: Rss },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Resume Manager', href: '/resume-manager', icon: FileText },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
@@ -82,48 +82,48 @@ export default function DashboardLayout({
   // Fetch unread message count
   useEffect(() => {
     if (!user) return
-    
+
     let mounted = true
     const fetchUnreadCount = async () => {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (!currentUser || !mounted) return
-        
+
         // Get all conversations user is part of (including group chats)
         const { data: directConversations } = await supabase
           .from('conversations')
           .select('id')
           .or(`participant1_id.eq.${currentUser.id},participant2_id.eq.${currentUser.id}`)
-        
+
         // Get group conversations user is part of
         const { data: groupMembers } = await supabase
           .from('group_members')
           .select('conversation_id')
           .eq('user_id', currentUser.id)
-        
+
         // Combine conversation IDs
         const conversationIds = [
           ...(directConversations?.map(c => c.id) || []),
           ...(groupMembers?.map(gm => gm.conversation_id) || [])
         ]
-        
+
         if (conversationIds.length === 0) {
           if (mounted) setUnreadCount(0)
           return
         }
-        
+
         // Get all messages in user's conversations that are not from the user
         const { data: messages } = await supabase
           .from('messages')
           .select('id, is_read, read_by, sender_id')
           .in('conversation_id', conversationIds)
           .neq('sender_id', currentUser.id)
-        
+
         if (!messages) {
           if (mounted) setUnreadCount(0)
           return
         }
-        
+
         // Count messages that are unread by this user
         // A message is unread if:
         // 1. is_read is false AND user is not in read_by array, OR
@@ -134,7 +134,7 @@ export default function DashboardLayout({
           // Message is unread if user hasn't read it (not in read_by array)
           return !userHasRead
         }).length
-        
+
         if (mounted) {
           console.log('📊 Unread count updated:', unreadCount)
           setUnreadCount(unreadCount)
@@ -144,9 +144,9 @@ export default function DashboardLayout({
         if (mounted) setUnreadCount(0)
       }
     }
-    
+
     fetchUnreadCount()
-    
+
     // Set up realtime subscription for unread count
     // Listen to INSERT (new messages) and UPDATE (read status changes) events
     const channel = supabase
@@ -167,9 +167,9 @@ export default function DashboardLayout({
         // Only update if read_by or is_read changed
         const oldReadBy = Array.isArray(payload.old?.read_by) ? payload.old.read_by : []
         const newReadBy = Array.isArray(payload.new?.read_by) ? payload.new.read_by : []
-        const readStatusChanged = payload.old?.is_read !== payload.new?.is_read || 
-                                  JSON.stringify(oldReadBy) !== JSON.stringify(newReadBy)
-        
+        const readStatusChanged = payload.old?.is_read !== payload.new?.is_read ||
+          JSON.stringify(oldReadBy) !== JSON.stringify(newReadBy)
+
         if (readStatusChanged) {
           console.log('👁️ Message read status changed, updating unread count')
           if (mounted) fetchUnreadCount()
@@ -180,12 +180,12 @@ export default function DashboardLayout({
           console.log('✅ Unread count realtime subscription active')
         }
       })
-    
+
     // Refresh every 30 seconds as backup
     const interval = setInterval(() => {
       if (mounted) fetchUnreadCount()
     }, 30000)
-    
+
     return () => {
       mounted = false
       supabase.removeChannel(channel)
@@ -208,22 +208,22 @@ export default function DashboardLayout({
           setUser(session.user)
           setInitialLoad(false)
 
-          // Fetch user profile in background
-          ;(async () => {
-            try {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('full_name, avatar_url')
-                .eq('id', session.user.id)
-                .single()
+            // Fetch user profile in background
+            ; (async () => {
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('full_name, avatar_url')
+                  .eq('id', session.user.id)
+                  .single()
 
-              if (profile && mounted) {
-                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                if (profile && mounted) {
+                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                }
+              } catch {
+                // Non-critical error, continue without profile
               }
-            } catch {
-              // Non-critical error, continue without profile
-            }
-          })()
+            })()
           return
         }
 
@@ -236,22 +236,22 @@ export default function DashboardLayout({
           setUser(user)
           setInitialLoad(false)
 
-          // Fetch user profile in background
-          ;(async () => {
-            try {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('full_name, avatar_url')
-                .eq('id', user.id)
-                .single()
+            // Fetch user profile in background
+            ; (async () => {
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('full_name, avatar_url')
+                  .eq('id', user.id)
+                  .single()
 
-              if (profile && mounted) {
-                setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                if (profile && mounted) {
+                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+                }
+              } catch {
+                // Non-critical error, continue without profile
               }
-            } catch {
-              // Non-critical error, continue without profile
-            }
-          })()
+            })()
         } else {
           // No user found - but middleware already verified, so show page anyway
           // Middleware will handle redirect if truly unauthenticated
@@ -451,11 +451,10 @@ export default function DashboardLayout({
                 <div
                   key={item.name}
                   onClick={() => router.push(item.href)}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${
-                    isActive
+                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${isActive
                       ? 'bg-primary text-white shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100'
-                  } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
+                    } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
                   <div className="relative">
@@ -541,7 +540,7 @@ export default function DashboardLayout({
                       e.stopPropagation()
                     }}
                   />
-                  <div 
+                  <div
                     className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
                     onClick={(e) => e.stopPropagation()}
                   >

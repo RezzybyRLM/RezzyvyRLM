@@ -28,7 +28,6 @@ import {
 import { useRouter } from 'next/navigation'
 
 const navigation = [
-  { name: 'Home', href: '/feed', icon: Home },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
@@ -452,8 +451,8 @@ export default function DashboardLayout({
                   key={item.name}
                   onClick={() => router.push(item.href)}
                   className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${isActive
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100'
                     } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
                   title={sidebarCollapsed ? item.name : ''}
                 >

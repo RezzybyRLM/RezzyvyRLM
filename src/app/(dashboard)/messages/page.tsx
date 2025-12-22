@@ -27,6 +27,7 @@ import { MessageBubble } from '@/components/ui/message-bubble'
 import { TypingIndicator } from '@/components/ui/typing-indicator'
 import { NewConversationDialog } from '@/components/ui/new-conversation-dialog'
 import { NewGroupDialog } from '@/components/ui/new-group-dialog'
+import { GroupInfoDialog } from '@/components/ui/group-info-dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { formatTime } from '@/lib/utils'
@@ -126,6 +127,7 @@ export default function MessagesPage() {
   const [otherUserTyping, setOtherUserTyping] = useState(false)
   const [showNewConversation, setShowNewConversation] = useState(false)
   const [showNewGroup, setShowNewGroup] = useState(false)
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false)
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1839,54 +1841,74 @@ export default function MessagesPage() {
                   {(() => {
                     const conv = conversations.find(c => c.id === selectedConversation)
                     return conv ? (
-                      <CardTitle className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {conv.type === 'group' ? (
-                            conv.avatar_url ? (
+                      <CardTitle className="relative">
+                        <div
+                          className={`flex items-center gap-3 ${conv.type === 'group' ? 'cursor-pointer hover:opacity-80 transition-opacity p-1 -ml-1 rounded' : ''}`}
+                          onClick={() => conv.type === 'group' && setGroupInfoOpen(true)}
+                        >
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {conv.type === 'group' ? (
+                              conv.avatar_url ? (
+                                <img
+                                  src={conv.avatar_url}
+                                  alt={conv.name || 'Group'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
+                                  <Users className="h-6 w-6" />
+                                </div>
+                              )
+                            ) : conv.other_user.avatar_url ? (
                               <img
-                                src={conv.avatar_url}
-                                alt={conv.name || 'Group'}
+                                src={conv.other_user.avatar_url}
+                                alt={conv.other_user.full_name || 'User'}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                                <Users className="h-6 w-6" />
+                                {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
                               </div>
-                            )
-                          ) : conv.other_user.avatar_url ? (
-                            <img
-                              src={conv.other_user.avatar_url}
-                              alt={conv.other_user.full_name || 'User'}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                              {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg truncate">
-                            {conv.type === 'group'
-                              ? conv.name || 'Group Chat'
-                              : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                            )}
                           </div>
-                          {conv.type === 'group' ? (
-                            <div className="text-sm font-normal text-gray-500 truncate">
-                              {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-lg truncate">
+                              {conv.type === 'group'
+                                ? conv.name || 'Group Chat'
+                                : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
                             </div>
-                          ) : (
-                            <>
-                              <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
-                              {conv.other_user.phone_number && (
-                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
-                                  <Phone className="h-3 w-3" />
-                                  {conv.other_user.phone_number}
-                                </div>
-                              )}
-                            </>
-                          )}
+                            {conv.type === 'group' ? (
+                              <div className="text-sm font-normal text-gray-500 truncate">
+                                {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
+                                {conv.other_user.phone_number && (
+                                  <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                                    <Phone className="h-3 w-3" />
+                                    {conv.other_user.phone_number}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
+
+                        <GroupInfoDialog
+                          isOpen={groupInfoOpen}
+                          onClose={() => setGroupInfoOpen(false)}
+                          conversationId={selectedConversation}
+                          onUpdate={() => {
+                            fetchConversations()
+                            // Refetch current header data immediately
+                            const updateHead = async () => {
+                              const { data } = await supabase.from('conversations').select('*').eq('id', selectedConversation).single()
+                              if (data) setConversations(prev => prev.map(c => c.id === selectedConversation ? { ...c, ...data } : c))
+                            }
+                            updateHead()
+                          }}
+                        />
                       </CardTitle>
                     ) : (
                       <CardTitle className="flex items-center gap-2">

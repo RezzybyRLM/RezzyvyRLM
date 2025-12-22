@@ -228,6 +228,69 @@ export default function MessagesPage() {
               return [formattedConv, ...prev]
             })
           })
+          // Listen for group membership changes (e.g. being added to a group)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'group_members',
+            filter: `user_id=eq.${user.id}`
+          }, async (payload) => {
+            if (!mounted) return
+
+            const newMember = payload.new as any
+            const conversationId = newMember.conversation_id
+
+            // Fetch full conversation details
+            const { data: conv } = await supabase
+              .from('conversations')
+              .select('*')
+              .eq('id', conversationId)
+              .single()
+
+            if (!conv) return
+
+            // Get unread count
+            const { count } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', conv.id)
+              .eq('is_read', false)
+              .neq('sender_id', user.id)
+
+            // Get member count for groups
+            const { count: memberCount } = await supabase
+              .from('group_members')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', conv.id)
+
+            const formattedConv: Conversation = {
+              id: conv.id,
+              participant1_id: conv.participant1_id || '',
+              participant2_id: conv.participant2_id || '',
+              last_message_at: conv.last_message_at,
+              type: conv.type === 'group' ? 'group' : 'direct',
+              name: conv.name,
+              description: conv.description,
+              avatar_url: conv.avatar_url,
+              created_by: conv.created_by,
+              member_count: memberCount || 0,
+              other_user: {
+                id: '', // Not relevant for group
+                full_name: null,
+                email: '',
+                phone_number: null,
+                avatar_url: null
+              },
+              last_message: null, // Initial state, will be updated by messages subscription if new
+              unread_count: count || 0
+            }
+
+            setConversations(prev => {
+              const exists = prev.find(c => c.id === formattedConv.id)
+              if (exists) return prev
+              return [formattedConv, ...prev]
+            })
+          })
           .on('postgres_changes', {
             event: 'UPDATE',
             schema: 'public',

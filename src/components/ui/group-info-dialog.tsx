@@ -90,7 +90,7 @@ export function GroupInfoDialog({ conversationId, isOpen, onClose, onUpdate }: G
 
             // Fetch Group Info
             const { data: conv, error: convError } = await supabase
-                .from('conversations')
+                .from('group_conversations')
                 .select('*')
                 .eq('id', conversationId)
                 .single()

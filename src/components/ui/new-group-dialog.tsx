@@ -132,17 +132,14 @@ export function NewGroupDialog({ isOpen, onClose, onSuccess }: NewGroupDialogPro
         }
       }
 
-      // Create group conversation
+      // Create group conversation in the new group_conversations table
       const { data: conversation, error: convError } = await supabase
-        .from('conversations')
+        .from('group_conversations')
         .insert({
-          type: 'group',
           name: groupName.trim(),
           description: groupDescription.trim() || null,
           created_by: user.id,
-          avatar_url: avatarUrl,
-          participant1_id: null,
-          participant2_id: null
+          avatar_url: avatarUrl
         })
         .select()
         .single()

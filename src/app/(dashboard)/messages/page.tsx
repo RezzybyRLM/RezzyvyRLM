@@ -36,8 +36,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface Conversation {
   id: string
-  participant1_id: string
-  participant2_id: string
+  participant1_id: string | null
+  participant2_id: string | null
   last_message_at: string
   type?: 'direct' | 'group'
   name?: string | null
@@ -982,14 +982,13 @@ export default function MessagesPage() {
         .select('conversation_id')
         .eq('user_id', user.id)
 
-      const groupConvIds = groupMemberships?.map(gm => gm.conversation_id) || []
+      const groupMemberIds = groupMemberships?.map(gm => gm.conversation_id) || []
 
-      const { data: groupConvs, error: groupError } = groupConvIds.length > 0
+      const { data: groupConvs, error: groupError } = groupMemberIds.length > 0
         ? await supabase
-          .from('conversations')
+          .from('group_conversations')
           .select('*')
-          .in('id', groupConvIds)
-          .eq('type', 'group')
+          .in('id', groupMemberIds)
         : { data: [], error: null }
 
       if (directError || groupError) {
@@ -1032,13 +1031,13 @@ export default function MessagesPage() {
       const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
 
       // Fetch member counts for group chats
-      const groupConvsOnly = data.filter((c: any) => c.type === 'group')
+      const groupConversationIds = groupConvs?.map((c: any) => c.id) || []
       const memberCounts = new Map<string, number>()
-      if (groupConvsOnly.length > 0) {
+      if (groupConversationIds.length > 0) {
         const { data: memberData } = await supabase
           .from('group_members')
           .select('conversation_id')
-          .in('conversation_id', groupConvsOnly.map((c: any) => c.id))
+          .in('conversation_id', groupConversationIds)
 
         if (memberData) {
           memberData.forEach((m: any) => {
@@ -1047,29 +1046,29 @@ export default function MessagesPage() {
         }
       }
 
-      const formattedConversations = data.map((conv: any) => {
-        if (conv.type === 'group') {
-          // Group chat
-          return {
-            id: conv.id,
-            participant1_id: conv.participant1_id,
-            participant2_id: conv.participant2_id,
-            last_message_at: conv.last_message_at,
-            type: 'group' as const,
-            name: conv.name,
-            description: conv.description,
-            avatar_url: conv.avatar_url,
-            created_by: conv.created_by,
-            other_user: {
-              id: '',
-              full_name: conv.name || 'Group Chat',
-              email: '',
-              phone_number: null,
-              avatar_url: conv.avatar_url
-            },
-            member_count: memberCounts.get(conv.id) || 0
-          }
-        } else {
+      // Format group conversations
+      const formattedGroupConvs = (groupConvs || []).map((conv: any) => ({
+        id: conv.id,
+        participant1_id: null,
+        participant2_id: null,
+        last_message_at: conv.last_message_at,
+        type: 'group' as const,
+        name: conv.name,
+        description: conv.description,
+        avatar_url: conv.avatar_url,
+        created_by: conv.created_by,
+        other_user: {
+          id: '',
+          full_name: conv.name || 'Group Chat',
+          email: '',
+          phone_number: null,
+          avatar_url: conv.avatar_url
+        },
+        member_count: memberCounts.get(conv.id) || 0
+      }))
+
+      // Format direct conversations
+      const formattedDirectConvs = (directConvs || []).map((conv: any) => {
           // Direct chat
           const otherUserId = conv.participant1_id === user.id
             ? conv.participant2_id
@@ -1097,8 +1096,10 @@ export default function MessagesPage() {
               avatar_url: otherUser.avatar_url || null
             }
           }
-        }
       })
+
+      // Combine all conversations
+      const formattedConversations = [...formattedDirectConvs, ...formattedGroupConvs]
 
       // Fetch last message and unread count for each conversation
       const conversationsWithDetails = await Promise.all(

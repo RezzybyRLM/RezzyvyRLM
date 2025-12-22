@@ -21,14 +21,14 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Check if conversation is a group
+    // Check if conversation is a group (exists in group_conversations table)
     const { data: conversation, error: convError } = await supabase
-      .from('conversations')
-      .select('type, created_by')
+      .from('group_conversations')
+      .select('created_by')
       .eq('id', conversationId)
       .single()
 
-    if (convError || !conversation || conversation.type !== 'group') {
+    if (convError || !conversation) {
       return NextResponse.json({ error: 'Not a group chat' }, { status: 400 })
     }
 

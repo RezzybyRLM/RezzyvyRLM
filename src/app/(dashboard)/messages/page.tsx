@@ -872,1367 +872,1459 @@ export default function MessagesPage() {
       if (!user || !isMounted) return
 
       try {
-        const { data: convData, error } = await supabase
+        // Try fetching direct conversation first
+        const { data: convData, error: directError } = await supabase
           .from('conversations')
           .select('*')
           .eq('id', selectedConversation)
-          .single()
+          .maybeSingle()
 
-        if (error) {
-          console.error('Error fetching missing conversation:', error)
-          return
+        if (directError && directError.code !== 'PGRST116') {
+          console.error('Error fetching missing conversation details:', directError)
         }
 
-        // Verify user is a participant
-        if (convData && convData.participant1_id !== user.id && convData.participant2_id !== user.id) {
-          console.error('User is not a participant in this conversation')
-          return
-        }
-
-        if (convData && isMounted) {
-          // Fetch user data for the other participant
-          const otherUserId = convData.participant1_id === user.id
-            ? convData.participant2_id
-            : convData.participant1_id
-
-          const { data: otherUserData } = await supabase
-            .from('users')
-            .select('id, full_name, email, phone_number, avatar_url')
-            .eq('id', otherUserId)
-            .single()
-
-          const otherUser = otherUserData || {
-            id: otherUserId,
-            full_name: null,
-            email: '',
-            phone_number: null,
-            avatar_url: null
+        if (convData) {
+          // Verify user is a participant
+          if (convData.participant1_id !== user.id && convData.participant2_id !== user.id) {
+            console.error('User is not a participant in this conversation')
+            return
           }
 
-          // Get last message
+          if (isMounted) {
+            // Fetch user data for the other participant
+            const otherUserId = convData.participant1_id === user.id
+              ? convData.participant2_id
+              : convData.participant1_id
+
+            const { data: otherUserData } = await supabase
+              .from('users')
+              .select('id, full_name, email, phone_number, avatar_url')
+              .eq('id', otherUserId)
+              .single()
+
+            const otherUser = otherUserData || {
+              id: otherUserId,
+              full_name: null,
+              email: '',
+              phone_number: null,
+              avatar_url: null
+            }
+
+            // Get last message
+            const { data: lastMsg } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('conversation_id', convData.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            // Get unread count
+            const { count } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', convData.id)
+              .eq('is_read', false)
+              .neq('sender_id', user.id)
+
+            const formattedConv: Conversation = {
+              id: convData.id,
+              participant1_id: convData.participant1_id,
+              participant2_id: convData.participant2_id,
+              last_message_at: convData.last_message_at,
+              type: 'direct',
+              created_by: null,
+              other_user: {
+                id: otherUser.id,
+                full_name: otherUser.full_name,
+                email: otherUser.email,
+                phone_number: otherUser.phone_number || null,
+                avatar_url: otherUser.avatar_url || null
+              },
+              last_message: lastMsg ? {
+                content: lastMsg.content,
+                sender_id: lastMsg.sender_id,
+                created_at: lastMsg.created_at,
+                is_read: lastMsg.is_read
+              } : null,
+              unread_count: count || 0
+            }
+
+            setConversations(prev => {
+              const exists = prev.find(c => c.id === formattedConv.id)
+              if (exists) return prev
+              return [formattedConv, ...prev]
+            })
+          }
+          return
+        }
+
+        // Try fetching group conversation
+        const { data: groupConv, error: groupError } = await supabase
+          .from('group_conversations')
+          .select('*')
+          .eq('id', selectedConversation)
+          .maybeSingle()
+
+        if (groupConv && isMounted) {
+          // Check membership
+          const { data: membership } = await supabase
+            .from('group_members')
+            .select('id')
+            .eq('conversation_id', groupConv.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (!membership && groupConv.created_by !== user.id) {
+            console.error('User is not a member of this group')
+            return;
+          }
+
+          // Get last message and count for group
           const { data: lastMsg } = await supabase
             .from('messages')
             .select('*')
-            .eq('conversation_id', convData.id)
+            .eq('conversation_id', groupConv.id)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
 
-          // Get unread count
           const { count } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', convData.id)
+            .eq('conversation_id', groupConv.id)
             .eq('is_read', false)
             .neq('sender_id', user.id)
 
-          const formattedConv = {
-            id: convData.id,
-            participant1_id: convData.participant1_id,
-            participant2_id: convData.participant2_id,
-            last_message_at: convData.last_message_at,
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', groupConv.id)
+
+          const formattedConv: Conversation = {
+            id: groupConv.id,
+            participant1_id: null,
+            participant2_id: null,
+            last_message_at: groupConv.last_message_at,
+            type: 'group',
+            name: groupConv.name,
+            description: groupConv.description,
+            avatar_url: groupConv.avatar_url,
+            created_by: groupConv.created_by,
+            member_count: memberCount || 0,
             other_user: {
-              id: otherUser.id,
-              full_name: otherUser.full_name,
-              email: otherUser.email,
-              phone_number: otherUser.phone_number || null,
-              avatar_url: otherUser.avatar_url || null
+              id: '',
+              full_name: groupConv.name || 'Group Chat',
+              email: '',
+              phone_number: null,
+              avatar_url: groupConv.avatar_url
             },
-            last_message: lastMsg || null,
+            last_message: lastMsg ? {
+              content: lastMsg.content,
+              sender_id: lastMsg.sender_id,
+              created_at: lastMsg.created_at,
+              is_read: lastMsg.is_read
+            } : null,
             unread_count: count || 0
           }
 
-          // Add to conversations list only if not already there
           setConversations(prev => {
             const exists = prev.find(c => c.id === formattedConv.id)
             if (exists) return prev
             return [formattedConv, ...prev]
           })
         }
-      } catch (err) {
-        console.error('Error in fetchMissingConversation:', err)
+
+      } catch (error) {
+        console.error('Error fetching missing conversation details:', error)
       }
     }
-    fetchMissingConversation()
-
-    return () => {
-      isMounted = false
+  }
+      } catch (err) {
+  console.error('Error in fetchMissingConversation:', err)
+}
     }
+fetchMissingConversation()
+
+return () => {
+  isMounted = false
+}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, currentUserId, loading])
 
-  const fetchConversations = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      // Get direct conversations
-      const { data: directConvs, error: directError } = await supabase
-        .from('conversations')
-        .select('*')
-        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .or('type.is.null,type.eq.direct')
-
-      // Get group conversations where user is a member
-      const { data: groupMemberships } = await supabase
-        .from('group_members')
-        .select('conversation_id')
-        .eq('user_id', user.id)
-
-      const groupMemberIds = groupMemberships?.map(gm => gm.conversation_id) || []
-
-      const { data: groupConvs, error: groupError } = groupMemberIds.length > 0
-        ? await supabase
-          .from('group_conversations')
-          .select('*')
-          .in('id', groupMemberIds)
-        : { data: [], error: null }
-
-      if (directError || groupError) {
-        console.error('Error fetching conversations:', directError || groupError)
-        throw directError || groupError
-      }
-
-      // Combine and deduplicate
-      const allConvs = [
-        ...(directConvs || []),
-        ...(groupConvs || [])
-      ]
-
-      const uniqueConvs = allConvs.filter((conv, index, self) =>
-        index === self.findIndex(c => c.id === conv.id)
-      )
-
-      // Sort by last_message_at
-      const data = uniqueConvs.sort((a, b) => {
-        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
-        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
-        return bTime - aTime
-      })
-
-      // Fetch user data for direct conversations
-      const directConvsOnly = data.filter((c: any) => !c.type || c.type === 'direct')
-      const allParticipantIds = new Set<string>()
-      directConvsOnly.forEach((conv: any) => {
-        allParticipantIds.add(conv.participant1_id)
-        allParticipantIds.add(conv.participant2_id)
-      })
-
-      const { data: usersData } = allParticipantIds.size > 0
-        ? await supabase
-          .from('users')
-          .select('id, full_name, email, phone_number, avatar_url')
-          .in('id', Array.from(allParticipantIds))
-        : { data: [] }
-
-      const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
-
-      // Fetch member counts for group chats
-      const groupConversationIds = groupConvs?.map((c: any) => c.id) || []
-      const memberCounts = new Map<string, number>()
-      if (groupConversationIds.length > 0) {
-        const { data: memberData } = await supabase
-          .from('group_members')
-          .select('conversation_id')
-          .in('conversation_id', groupConversationIds)
-
-        if (memberData) {
-          memberData.forEach((m: any) => {
-            memberCounts.set(m.conversation_id, (memberCounts.get(m.conversation_id) || 0) + 1)
-          })
-        }
-      }
-
-      // Format group conversations
-      const formattedGroupConvs = (groupConvs || []).map((conv: any) => ({
-        id: conv.id,
-        participant1_id: null,
-        participant2_id: null,
-        last_message_at: conv.last_message_at,
-        type: 'group' as const,
-        name: conv.name,
-        description: conv.description,
-        avatar_url: conv.avatar_url,
-        created_by: conv.created_by,
-        other_user: {
-          id: '',
-          full_name: conv.name || 'Group Chat',
-          email: '',
-          phone_number: null,
-          avatar_url: conv.avatar_url
-        },
-        member_count: memberCounts.get(conv.id) || 0
-      }))
-
-      // Format direct conversations
-      const formattedDirectConvs = (directConvs || []).map((conv: any) => {
-          // Direct chat
-          const otherUserId = conv.participant1_id === user.id
-            ? conv.participant2_id
-            : conv.participant1_id
-
-          const otherUser = usersMap.get(otherUserId) || {
-            id: otherUserId,
-            full_name: null,
-            email: '',
-            phone_number: null,
-            avatar_url: null
-          }
-
-          return {
-            id: conv.id,
-            participant1_id: conv.participant1_id,
-            participant2_id: conv.participant2_id,
-            last_message_at: conv.last_message_at,
-            type: 'direct' as const,
-            other_user: {
-              id: otherUser.id,
-              full_name: otherUser.full_name,
-              email: otherUser.email,
-              phone_number: otherUser.phone_number || null,
-              avatar_url: otherUser.avatar_url || null
-            }
-          }
-      })
-
-      // Combine all conversations
-      const formattedConversations = [...formattedDirectConvs, ...formattedGroupConvs]
-
-      // Fetch last message and unread count for each conversation
-      const conversationsWithDetails = await Promise.all(
-        formattedConversations.map(async (conv) => {
-          const { data: lastMsg } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-
-          const { count } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.id)
-            .eq('is_read', false)
-            .neq('sender_id', user.id)
-
-          return {
-            ...conv,
-            last_message: lastMsg || null,
-            unread_count: count || 0
-          }
-        })
-      )
-
-      setConversations(conversationsWithDetails)
-    } catch (error) {
-      console.error('Error fetching conversations:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50) => {
-    if (!conversationId) return
-
-    setMessagesLoading(true)
-    try {
-      let query = supabase
-        .from('messages')
-        .select(`
-          *,
-          attachments:message_attachments(id, file_url, file_type, file_name)
-        `, { count: 'exact' })
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (beforeDate) {
-        query = query.lt('created_at', beforeDate)
-      }
-
-      const { data, error, count } = await query
-
-      if (error) {
-        console.error('Error fetching messages:', error)
-        throw error
-      }
-
-      // Fetch sender data for all messages
-      const senderIds = new Set<string>()
-        ; (data || []).forEach((msg: any) => {
-          senderIds.add(msg.sender_id)
-        })
-
-      const { data: sendersData } = await supabase
-        .from('users')
-        .select('id, full_name, email, phone_number')
-        .in('id', Array.from(senderIds))
-
-      const sendersMap = new Map((sendersData || []).map((u: any) => [u.id, u]))
-
-      // Fetch reply_to messages for messages that have replies
-      const messagesWithReplies = await Promise.all(
-        (data || []).map(async (msg: any) => {
-          let replyTo = null
-          if (msg.reply_to_message_id) {
-            const { data: replyData } = await supabase
-              .from('messages')
-              .select('id, content, sender_id')
-              .eq('id', msg.reply_to_message_id)
-              .single()
-
-            if (replyData) {
-              const replySender = sendersMap.get(replyData.sender_id) || {
-                full_name: null,
-                email: ''
-              }
-              replyTo = {
-                id: replyData.id,
-                content: replyData.content,
-                sender: {
-                  full_name: replySender.full_name || null,
-                  email: replySender.email || ''
-                }
-              }
-            }
-          }
-
-          // Get sender data from map
-          const senderData = sendersMap.get(msg.sender_id) || {
-            id: msg.sender_id,
-            full_name: null,
-            email: '',
-            phone_number: null
-          }
-
-          return {
-            id: msg.id,
-            sender_id: msg.sender_id,
-            content: msg.content,
-            is_read: msg.is_read,
-            created_at: msg.created_at,
-            reply_to_message_id: msg.reply_to_message_id,
-            attachment_url: msg.attachment_url,
-            attachment_type: msg.attachment_type,
-            is_edited: msg.is_edited || false,
-            edited_at: msg.edited_at,
-            is_deleted: msg.is_deleted || false,
-            deleted_at: msg.deleted_at,
-            reactions: msg.reactions || {},
-            image_caption: msg.image_caption,
-            file_caption: msg.file_caption,
-            forwarded_from_id: msg.forwarded_from_id,
-            read_by: msg.read_by || [],
-            sender: {
-              full_name: senderData.full_name || null,
-              email: senderData.email || '',
-              phone_number: senderData.phone_number || null
-            },
-            reply_to: replyTo,
-            attachments: Array.isArray(msg.attachments) ? msg.attachments : []
-          }
-        })
-      )
-
-      // Reverse to show oldest first, newest last
-      const sortedMessages = (messagesWithReplies || []).reverse()
-
-      if (beforeDate) {
-        // Loading older messages - prepend to existing
-        setMessages(prev => [...sortedMessages, ...prev])
-      } else {
-        // Initial load - replace all
-        setMessages(sortedMessages)
-
-        // Find the latest read message and scroll to it
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user && sortedMessages.length > 0) {
-          // Find the last message that was read by the current user
-          let lastReadIndex = -1
-          for (let i = sortedMessages.length - 1; i >= 0; i--) {
-            const msg = sortedMessages[i]
-            const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
-            if (msg.sender_id !== user.id && (msg.is_read || readBy.includes(user.id))) {
-              lastReadIndex = i
-              break
-            }
-          }
-
-          // If no read messages found, scroll to bottom
-          // Otherwise scroll to the last read message
-          setTimeout(() => {
-            if (lastReadIndex >= 0 && messagesContainerRef.current) {
-              // Find the message element and scroll to it
-              const messageElements = messagesContainerRef.current.querySelectorAll('[data-message-id]')
-              console.log(`📍 Found ${messageElements.length} message elements, scrolling to index ${lastReadIndex}`)
-              if (messageElements[lastReadIndex]) {
-                messageElements[lastReadIndex].scrollIntoView({ behavior: 'auto', block: 'center' })
-                console.log('✅ Scrolled to last read message')
-              } else {
-                // Fallback to bottom if element not found
-                console.log('⚠️ Message element not found, scrolling to bottom')
-                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-              }
-            } else {
-              // No read messages or all are unread - scroll to bottom
-              console.log('📍 No read messages found, scrolling to bottom')
-              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-            }
-          }, 300)
-        } else {
-          // No user or no messages - scroll to bottom
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-          }, 100)
-        }
-      }
-
-      // Check if there are more messages
-      setHasMoreMessages((count || 0) > (data?.length || 0))
-
-      // Mark messages as read using RPC
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        try {
-          const { error } = await supabase.rpc('mark_conversation_as_read', {
-            target_conversation_id: conversationId
-          })
-
-          if (error) {
-            console.error('Error marking conversation as read:', error)
-          } else {
-            console.log('✅ Conversation marked as read')
-
-            // Update local state to clear unread count immediately
-            setConversations(prev => prev.map(c =>
-              c.id === conversationId
-                ? { ...c, unread_count: 0 }
-                : c
-            ))
-          }
-        } catch (err) {
-          console.error('Error calling mark_conversation_as_read:', err)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error)
-      setMessages([])
-    } finally {
-      setMessagesLoading(false)
-    }
-  }
-
-  const sendMessage = async () => {
-    if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
-
+const fetchConversations = async () => {
+  try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      alert('Please sign in to send messages')
+      setLoading(false)
       return
     }
 
-    // Optimistic update - add message to UI immediately
-    const tempId = `temp-${Date.now()}`
-    const tempMessage: Message = {
-      id: tempId,
-      sender_id: user.id,
-      content: messageContent.trim() || '',
-      is_read: false,
-      created_at: new Date().toISOString(),
-      reply_to_message_id: replyingTo?.id || null,
-      attachment_url: selectedImage ? URL.createObjectURL(selectedImage) : null,
-      attachment_type: selectedImage?.type || null,
-      is_edited: false,
-      is_deleted: false,
-      reactions: {},
-      read_by: [],
-      sender: {
-        full_name: user.user_metadata?.full_name || null,
-        email: user.email || '',
-        phone_number: user.user_metadata?.phone_number || null
-      },
-      reply_to: replyingTo || null,
-      attachments: selectedImage ? [{
-        id: `temp-attach-${Date.now()}`,
-        file_url: URL.createObjectURL(selectedImage),
-        file_type: selectedImage.type,
-        file_name: selectedImage.name
-      }] : [],
-      image_caption: selectedImage && messageContent.trim() ? messageContent.trim() : null,
-      file_caption: null,
-      forwarded_from_id: null
+    // Get direct conversations
+    const { data: directConvs, error: directError } = await supabase
+      .from('conversations')
+      .select('*')
+      .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+      .or('type.is.null,type.eq.direct')
+
+    // Get group conversations where user is a member
+    const { data: groupMemberships } = await supabase
+      .from('group_members')
+      .select('conversation_id')
+      .eq('user_id', user.id)
+
+    const groupMemberIds = groupMemberships?.map(gm => gm.conversation_id) || []
+
+    const { data: groupConvs, error: groupError } = groupMemberIds.length > 0
+      ? await supabase
+        .from('group_conversations')
+        .select('*')
+        .in('id', groupMemberIds)
+      : { data: [], error: null }
+
+    if (directError || groupError) {
+      console.error('Error fetching conversations:', directError || groupError)
+      throw directError || groupError
     }
 
-    // Add optimistic message to state immediately
-    setMessages(prev => [...prev, tempMessage])
+    // Combine and deduplicate
+    const allConvs = [
+      ...(directConvs || []),
+      ...(groupConvs || [])
+    ]
 
-    // Scroll to bottom
+    const uniqueConvs = allConvs.filter((conv, index, self) =>
+      index === self.findIndex(c => c.id === conv.id)
+    )
+
+    // Sort by last_message_at
+    const data = uniqueConvs.sort((a, b) => {
+      const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+      const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+      return bTime - aTime
+    })
+
+    // Fetch user data for direct conversations
+    const directConvsOnly = data.filter((c: any) => !c.type || c.type === 'direct')
+    const allParticipantIds = new Set<string>()
+    directConvsOnly.forEach((conv: any) => {
+      allParticipantIds.add(conv.participant1_id)
+      allParticipantIds.add(conv.participant2_id)
+    })
+
+    const { data: usersData } = allParticipantIds.size > 0
+      ? await supabase
+        .from('users')
+        .select('id, full_name, email, phone_number, avatar_url')
+        .in('id', Array.from(allParticipantIds))
+      : { data: [] }
+
+    const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
+
+    // Fetch member counts for group chats
+    const groupConversationIds = groupConvs?.map((c: any) => c.id) || []
+    const memberCounts = new Map<string, number>()
+    if (groupConversationIds.length > 0) {
+      const { data: memberData } = await supabase
+        .from('group_members')
+        .select('conversation_id')
+        .in('conversation_id', groupConversationIds)
+
+      if (memberData) {
+        memberData.forEach((m: any) => {
+          memberCounts.set(m.conversation_id, (memberCounts.get(m.conversation_id) || 0) + 1)
+        })
+      }
+    }
+
+    // Format group conversations
+    const formattedGroupConvs = (groupConvs || []).map((conv: any) => ({
+      id: conv.id,
+      participant1_id: null,
+      participant2_id: null,
+      last_message_at: conv.last_message_at,
+      type: 'group' as const,
+      name: conv.name,
+      description: conv.description,
+      avatar_url: conv.avatar_url,
+      created_by: conv.created_by,
+      other_user: {
+        id: '',
+        full_name: conv.name || 'Group Chat',
+        email: '',
+        phone_number: null,
+        avatar_url: conv.avatar_url
+      },
+      member_count: memberCounts.get(conv.id) || 0
+    }))
+
+    // Format direct conversations
+    const formattedDirectConvs = (directConvs || []).map((conv: any) => {
+      // Direct chat
+      const otherUserId = conv.participant1_id === user.id
+        ? conv.participant2_id
+        : conv.participant1_id
+
+      const otherUser = usersMap.get(otherUserId) || {
+        id: otherUserId,
+        full_name: null,
+        email: '',
+        phone_number: null,
+        avatar_url: null
+      }
+
+      return {
+        id: conv.id,
+        participant1_id: conv.participant1_id,
+        participant2_id: conv.participant2_id,
+        last_message_at: conv.last_message_at,
+        type: 'direct' as const,
+        other_user: {
+          id: otherUser.id,
+          full_name: otherUser.full_name,
+          email: otherUser.email,
+          phone_number: otherUser.phone_number || null,
+          avatar_url: otherUser.avatar_url || null
+        }
+      }
+    })
+
+    // Combine all conversations
+    const formattedConversations = [...formattedDirectConvs, ...formattedGroupConvs]
+
+    // Fetch last message and unread count for each conversation
+    const conversationsWithDetails = await Promise.all(
+      formattedConversations.map(async (conv) => {
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id)
+          .eq('is_read', false)
+          .neq('sender_id', user.id)
+
+        return {
+          ...conv,
+          last_message: lastMsg || null,
+          unread_count: count || 0
+        }
+      })
+    )
+
+    setConversations(conversationsWithDetails)
+  } catch (error) {
+    console.error('Error fetching conversations:', error)
+  } finally {
+    setLoading(false)
+  }
+}
+
+const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50) => {
+  if (!conversationId) return
+
+  setMessagesLoading(true)
+  try {
+    let query = supabase
+      .from('messages')
+      .select(`
+          *,
+          attachments:message_attachments(id, file_url, file_type, file_name)
+        `, { count: 'exact' })
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (beforeDate) {
+      query = query.lt('created_at', beforeDate)
+    }
+
+    const { data, error, count } = await query
+
+    if (error) {
+      console.error('Error fetching messages:', error)
+      throw error
+    }
+
+    // Fetch sender data for all messages
+    const senderIds = new Set<string>()
+      ; (data || []).forEach((msg: any) => {
+        senderIds.add(msg.sender_id)
+      })
+
+    const { data: sendersData } = await supabase
+      .from('users')
+      .select('id, full_name, email, phone_number')
+      .in('id', Array.from(senderIds))
+
+    const sendersMap = new Map((sendersData || []).map((u: any) => [u.id, u]))
+
+    // Fetch reply_to messages for messages that have replies
+    const messagesWithReplies = await Promise.all(
+      (data || []).map(async (msg: any) => {
+        let replyTo = null
+        if (msg.reply_to_message_id) {
+          const { data: replyData } = await supabase
+            .from('messages')
+            .select('id, content, sender_id')
+            .eq('id', msg.reply_to_message_id)
+            .single()
+
+          if (replyData) {
+            const replySender = sendersMap.get(replyData.sender_id) || {
+              full_name: null,
+              email: ''
+            }
+            replyTo = {
+              id: replyData.id,
+              content: replyData.content,
+              sender: {
+                full_name: replySender.full_name || null,
+                email: replySender.email || ''
+              }
+            }
+          }
+        }
+
+        // Get sender data from map
+        const senderData = sendersMap.get(msg.sender_id) || {
+          id: msg.sender_id,
+          full_name: null,
+          email: '',
+          phone_number: null
+        }
+
+        return {
+          id: msg.id,
+          sender_id: msg.sender_id,
+          content: msg.content,
+          is_read: msg.is_read,
+          created_at: msg.created_at,
+          reply_to_message_id: msg.reply_to_message_id,
+          attachment_url: msg.attachment_url,
+          attachment_type: msg.attachment_type,
+          is_edited: msg.is_edited || false,
+          edited_at: msg.edited_at,
+          is_deleted: msg.is_deleted || false,
+          deleted_at: msg.deleted_at,
+          reactions: msg.reactions || {},
+          image_caption: msg.image_caption,
+          file_caption: msg.file_caption,
+          forwarded_from_id: msg.forwarded_from_id,
+          read_by: msg.read_by || [],
+          sender: {
+            full_name: senderData.full_name || null,
+            email: senderData.email || '',
+            phone_number: senderData.phone_number || null
+          },
+          reply_to: replyTo,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+        }
+      })
+    )
+
+    // Reverse to show oldest first, newest last
+    const sortedMessages = (messagesWithReplies || []).reverse()
+
+    if (beforeDate) {
+      // Loading older messages - prepend to existing
+      setMessages(prev => [...sortedMessages, ...prev])
+    } else {
+      // Initial load - replace all
+      setMessages(sortedMessages)
+
+      // Find the latest read message and scroll to it
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user && sortedMessages.length > 0) {
+        // Find the last message that was read by the current user
+        let lastReadIndex = -1
+        for (let i = sortedMessages.length - 1; i >= 0; i--) {
+          const msg = sortedMessages[i]
+          const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
+          if (msg.sender_id !== user.id && (msg.is_read || readBy.includes(user.id))) {
+            lastReadIndex = i
+            break
+          }
+        }
+
+        // If no read messages found, scroll to bottom
+        // Otherwise scroll to the last read message
+        setTimeout(() => {
+          if (lastReadIndex >= 0 && messagesContainerRef.current) {
+            // Find the message element and scroll to it
+            const messageElements = messagesContainerRef.current.querySelectorAll('[data-message-id]')
+            console.log(`📍 Found ${messageElements.length} message elements, scrolling to index ${lastReadIndex}`)
+            if (messageElements[lastReadIndex]) {
+              messageElements[lastReadIndex].scrollIntoView({ behavior: 'auto', block: 'center' })
+              console.log('✅ Scrolled to last read message')
+            } else {
+              // Fallback to bottom if element not found
+              console.log('⚠️ Message element not found, scrolling to bottom')
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            }
+          } else {
+            // No read messages or all are unread - scroll to bottom
+            console.log('📍 No read messages found, scrolling to bottom')
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+          }
+        }, 300)
+      } else {
+        // No user or no messages - scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        }, 100)
+      }
+    }
+
+    // Check if there are more messages
+    setHasMoreMessages((count || 0) > (data?.length || 0))
+
+    // Mark messages as read using RPC
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      try {
+        const { error } = await supabase.rpc('mark_conversation_as_read', {
+          target_conversation_id: conversationId
+        })
+
+        if (error) {
+          console.error('Error marking conversation as read:', error)
+        } else {
+          console.log('✅ Conversation marked as read')
+
+          // Update local state to clear unread count immediately
+          setConversations(prev => prev.map(c =>
+            c.id === conversationId
+              ? { ...c, unread_count: 0 }
+              : c
+          ))
+        }
+      } catch (err) {
+        console.error('Error calling mark_conversation_as_read:', err)
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching messages:', error)
+    setMessages([])
+  } finally {
+    setMessagesLoading(false)
+  }
+}
+
+const sendMessage = async () => {
+  if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    alert('Please sign in to send messages')
+    return
+  }
+
+  // Optimistic update - add message to UI immediately
+  const tempId = `temp-${Date.now()}`
+  const tempMessage: Message = {
+    id: tempId,
+    sender_id: user.id,
+    content: messageContent.trim() || '',
+    is_read: false,
+    created_at: new Date().toISOString(),
+    reply_to_message_id: replyingTo?.id || null,
+    attachment_url: selectedImage ? URL.createObjectURL(selectedImage) : null,
+    attachment_type: selectedImage?.type || null,
+    is_edited: false,
+    is_deleted: false,
+    reactions: {},
+    read_by: [],
+    sender: {
+      full_name: user.user_metadata?.full_name || null,
+      email: user.email || '',
+      phone_number: user.user_metadata?.phone_number || null
+    },
+    reply_to: replyingTo || null,
+    attachments: selectedImage ? [{
+      id: `temp-attach-${Date.now()}`,
+      file_url: URL.createObjectURL(selectedImage),
+      file_type: selectedImage.type,
+      file_name: selectedImage.name
+    }] : [],
+    image_caption: selectedImage && messageContent.trim() ? messageContent.trim() : null,
+    file_caption: null,
+    forwarded_from_id: null
+  }
+
+  // Add optimistic message to state immediately
+  setMessages(prev => [...prev, tempMessage])
+
+  // Scroll to bottom
+  setTimeout(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, 100)
+
+  // Clear form immediately for better UX
+  const originalContent = messageContent.trim()
+  const originalImage = selectedImage
+  setMessageContent('')
+  setReplyingTo(null)
+  setForwardingMessage(null)
+  setSelectedImage(null)
+  setImagePreview(null)
+
+  setSending(true)
+  try {
+    // Create message with content (can be used as caption for images)
+    const messageData: any = {
+      conversation_id: selectedConversation,
+      sender_id: user.id,
+      content: originalContent || '',
+    }
+
+    if (replyingTo) {
+      messageData.reply_to_message_id = replyingTo.id
+    }
+
+    // Insert message to database
+    const { data: newMessage, error: msgError } = await supabase
+      .from('messages')
+      .insert(messageData)
+      .select()
+      .single()
+
+    if (msgError) {
+      console.error('Error creating message:', msgError)
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      throw msgError
+    }
+
+    // Replace temp message with real message when it arrives
+    setMessages(prev => prev.map(msg =>
+      msg.id === tempId
+        ? {
+          ...msg,
+          id: newMessage.id,
+          created_at: newMessage.created_at,
+          is_read: newMessage.is_read,
+          read_by: newMessage.read_by || []
+        }
+        : msg
+    ))
+
+    // Upload image if selected (image with optional caption)
+    if (originalImage && newMessage) {
+      try {
+        const formData = new FormData()
+        formData.append('file', originalImage)
+        formData.append('messageId', newMessage.id)
+
+        const uploadResponse = await fetch('/api/messages/attachments/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (uploadResponse.ok) {
+          const result = await uploadResponse.json()
+          const url = result.url
+
+          // The attachment should already be saved to message_attachments table by the upload function
+          // But we also update the message with attachment_url for legacy support
+          const updateData: any = {
+            attachment_url: url,
+            attachment_type: originalImage.type
+          }
+
+          // If there's content and it's an image, use it as caption
+          if (originalContent && originalImage.type.startsWith('image/')) {
+            updateData.image_caption = originalContent
+          } else if (originalContent && !originalImage.type.startsWith('image/')) {
+            updateData.file_caption = originalContent
+          }
+
+          const { error: updateError } = await supabase
+            .from('messages')
+            .update(updateData)
+            .eq('id', newMessage.id)
+
+          if (updateError) {
+            console.error('Error updating message with attachment:', updateError)
+          }
+
+          // Update the message in state with the real attachment URL
+          setMessages(prev => prev.map(msg =>
+            msg.id === newMessage.id
+              ? {
+                ...msg,
+                attachment_url: url,
+                attachment_type: originalImage.type,
+                image_caption: originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.image_caption,
+                file_caption: !originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.file_caption
+              }
+              : msg
+          ))
+        } else {
+          const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
+          console.error('Error uploading attachment:', errorData.error || 'Upload failed')
+          alert('Failed to upload image. Please try again.')
+          // Remove optimistic message on upload error
+          setMessages(prev => prev.filter(m => m.id !== newMessage.id))
+        }
+      } catch (error) {
+        console.error('Error in image upload process:', error)
+        alert('Failed to upload image. Please try again.')
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(m => m.id !== newMessage.id))
+      }
+    }
+
+    // Update conversation last_message_at for both participants
+    const { error: convError } = await supabase
+      .from('conversations')
+      .update({
+        last_message_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', selectedConversation)
+
+    if (convError) {
+      console.error('Error updating conversation:', convError)
+    }
+
+    // Update conversation last_message_at
+    setConversations(prev => prev.map(conv =>
+      conv.id === selectedConversation
+        ? {
+          ...conv,
+          last_message: {
+            content: originalContent || '[Image]',
+            sender_id: user.id,
+            created_at: newMessage.created_at,
+            is_read: false
+          },
+          last_message_at: newMessage.created_at
+        }
+        : conv
+    ))
+
+    // Stop typing indicator
+    await handleStopTyping()
+
+    // Scroll to bottom after message is sent
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, 100)
+  } catch (error) {
+    console.error('Error sending message:', error)
+    alert('Failed to send message. Please try again.')
+  } finally {
+    setSending(false)
+  }
+}
 
-    // Clear form immediately for better UX
-    const originalContent = messageContent.trim()
-    const originalImage = selectedImage
-    setMessageContent('')
-    setReplyingTo(null)
+const handleImageSelect = (file: File) => {
+  setSelectedImage(file)
+  const reader = new FileReader()
+  reader.onloadend = () => {
+    setImagePreview(reader.result as string)
+  }
+  reader.readAsDataURL(file)
+}
+
+const handleImageRemove = () => {
+  setSelectedImage(null)
+  setImagePreview(null)
+}
+
+const handleReply = (messageId: string) => {
+  const message = messages.find(m => m.id === messageId)
+  if (message) {
+    setReplyingTo(message)
     setForwardingMessage(null)
-    setSelectedImage(null)
-    setImagePreview(null)
+  }
+}
 
-    setSending(true)
-    try {
-      // Create message with content (can be used as caption for images)
-      const messageData: any = {
-        conversation_id: selectedConversation,
-        sender_id: user.id,
-        content: originalContent || '',
+const handleForward = (messageId: string) => {
+  const message = messages.find(m => m.id === messageId)
+  if (message) {
+    setForwardingMessage(message)
+    setReplyingTo(null)
+    // Open conversation selector or use current conversation
+    // For now, we'll forward to the same conversation with a note
+    // In a full implementation, you'd open a dialog to select destination
+  }
+}
+
+const handleReaction = async (messageId: string, reaction: string) => {
+  try {
+    const response = await fetch(`/api/messages/${messageId}/react`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reaction })
+    })
+
+    if (response.ok) {
+      // Refresh messages to show updated reactions
+      if (selectedConversation) {
+        await fetchMessages(selectedConversation)
       }
+    }
+  } catch (error) {
+    console.error('Error adding reaction:', error)
+  }
+}
 
-      if (replyingTo) {
-        messageData.reply_to_message_id = replyingTo.id
+const handleEditMessage = async (messageId: string, newContent: string) => {
+  try {
+    const response = await fetch(`/api/messages/${messageId}/edit`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent })
+    })
+
+    if (response.ok) {
+      // Refresh messages to show updated content
+      if (selectedConversation) {
+        await fetchMessages(selectedConversation)
       }
+    }
+  } catch (error) {
+    console.error('Error editing message:', error)
+  }
+}
 
-      // Insert message to database
+const handleDeleteMessage = async (messageId: string) => {
+  try {
+    const response = await fetch(`/api/messages/${messageId}/delete`, {
+      method: 'DELETE'
+    })
+
+    if (response.ok) {
+      // Refresh messages to show deleted state
+      if (selectedConversation) {
+        await fetchMessages(selectedConversation)
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting message:', error)
+  }
+}
+
+const forwardMessage = async () => {
+  if (!forwardingMessage || !selectedConversation) return
+
+  setSending(true)
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Create forwarded message
+    const forwardedContent = forwardingMessage.content
+      ? `Forwarded: ${forwardingMessage.content}`
+      : 'Forwarded message'
+
+    const messageData: any = {
+      conversation_id: selectedConversation,
+      sender_id: user.id,
+      content: forwardedContent,
+    }
+
+    // If forwarding a message with attachments, copy them
+    if (forwardingMessage.attachments && forwardingMessage.attachments.length > 0) {
       const { data: newMessage, error: msgError } = await supabase
         .from('messages')
         .insert(messageData)
         .select()
         .single()
 
-      if (msgError) {
-        console.error('Error creating message:', msgError)
-        // Remove optimistic message on error
-        setMessages(prev => prev.filter(m => m.id !== tempId))
-        throw msgError
-      }
+      if (msgError) throw msgError
 
-      // Replace temp message with real message when it arrives
-      setMessages(prev => prev.map(msg =>
-        msg.id === tempId
-          ? {
-            ...msg,
-            id: newMessage.id,
-            created_at: newMessage.created_at,
-            is_read: newMessage.is_read,
-            read_by: newMessage.read_by || []
-          }
-          : msg
-      ))
-
-      // Upload image if selected (image with optional caption)
-      if (originalImage && newMessage) {
-        try {
-          const formData = new FormData()
-          formData.append('file', originalImage)
-          formData.append('messageId', newMessage.id)
-
-          const uploadResponse = await fetch('/api/messages/attachments/upload', {
-            method: 'POST',
-            body: formData
+      // Copy attachments
+      for (const attachment of forwardingMessage.attachments) {
+        await supabase
+          .from('message_attachments')
+          .insert({
+            message_id: newMessage.id,
+            file_url: attachment.file_url,
+            file_type: attachment.file_type,
+            file_name: attachment.file_name,
+            file_size: null
           })
-
-          if (uploadResponse.ok) {
-            const result = await uploadResponse.json()
-            const url = result.url
-
-            // The attachment should already be saved to message_attachments table by the upload function
-            // But we also update the message with attachment_url for legacy support
-            const updateData: any = {
-              attachment_url: url,
-              attachment_type: originalImage.type
-            }
-
-            // If there's content and it's an image, use it as caption
-            if (originalContent && originalImage.type.startsWith('image/')) {
-              updateData.image_caption = originalContent
-            } else if (originalContent && !originalImage.type.startsWith('image/')) {
-              updateData.file_caption = originalContent
-            }
-
-            const { error: updateError } = await supabase
-              .from('messages')
-              .update(updateData)
-              .eq('id', newMessage.id)
-
-            if (updateError) {
-              console.error('Error updating message with attachment:', updateError)
-            }
-
-            // Update the message in state with the real attachment URL
-            setMessages(prev => prev.map(msg =>
-              msg.id === newMessage.id
-                ? {
-                  ...msg,
-                  attachment_url: url,
-                  attachment_type: originalImage.type,
-                  image_caption: originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.image_caption,
-                  file_caption: !originalImage.type.startsWith('image/') && originalContent ? originalContent : msg.file_caption
-                }
-                : msg
-            ))
-          } else {
-            const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
-            console.error('Error uploading attachment:', errorData.error || 'Upload failed')
-            alert('Failed to upload image. Please try again.')
-            // Remove optimistic message on upload error
-            setMessages(prev => prev.filter(m => m.id !== newMessage.id))
-          }
-        } catch (error) {
-          console.error('Error in image upload process:', error)
-          alert('Failed to upload image. Please try again.')
-          // Remove optimistic message on error
-          setMessages(prev => prev.filter(m => m.id !== newMessage.id))
-        }
       }
 
-      // Update conversation last_message_at for both participants
-      const { error: convError } = await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedConversation)
-
-      if (convError) {
-        console.error('Error updating conversation:', convError)
-      }
-
-      // Update conversation last_message_at
-      setConversations(prev => prev.map(conv =>
-        conv.id === selectedConversation
-          ? {
-            ...conv,
-            last_message: {
-              content: originalContent || '[Image]',
-              sender_id: user.id,
-              created_at: newMessage.created_at,
-              is_read: false
-            },
-            last_message_at: newMessage.created_at
-          }
-          : conv
-      ))
-
-      // Stop typing indicator
-      await handleStopTyping()
-
-      // Scroll to bottom after message is sent
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
-    } catch (error) {
-      console.error('Error sending message:', error)
-      alert('Failed to send message. Please try again.')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const handleImageSelect = (file: File) => {
-    setSelectedImage(file)
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleImageRemove = () => {
-    setSelectedImage(null)
-    setImagePreview(null)
-  }
-
-  const handleReply = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId)
-    if (message) {
-      setReplyingTo(message)
-      setForwardingMessage(null)
-    }
-  }
-
-  const handleForward = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId)
-    if (message) {
-      setForwardingMessage(message)
-      setReplyingTo(null)
-      // Open conversation selector or use current conversation
-      // For now, we'll forward to the same conversation with a note
-      // In a full implementation, you'd open a dialog to select destination
-    }
-  }
-
-  const handleReaction = async (messageId: string, reaction: string) => {
-    try {
-      const response = await fetch(`/api/messages/${messageId}/react`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reaction })
-      })
-
-      if (response.ok) {
-        // Refresh messages to show updated reactions
-        if (selectedConversation) {
-          await fetchMessages(selectedConversation)
-        }
-      }
-    } catch (error) {
-      console.error('Error adding reaction:', error)
-    }
-  }
-
-  const handleEditMessage = async (messageId: string, newContent: string) => {
-    try {
-      const response = await fetch(`/api/messages/${messageId}/edit`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newContent })
-      })
-
-      if (response.ok) {
-        // Refresh messages to show updated content
-        if (selectedConversation) {
-          await fetchMessages(selectedConversation)
-        }
-      }
-    } catch (error) {
-      console.error('Error editing message:', error)
-    }
-  }
-
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      const response = await fetch(`/api/messages/${messageId}/delete`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        // Refresh messages to show deleted state
-        if (selectedConversation) {
-          await fetchMessages(selectedConversation)
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting message:', error)
-    }
-  }
-
-  const forwardMessage = async () => {
-    if (!forwardingMessage || !selectedConversation) return
-
-    setSending(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Create forwarded message
-      const forwardedContent = forwardingMessage.content
-        ? `Forwarded: ${forwardingMessage.content}`
-        : 'Forwarded message'
-
-      const messageData: any = {
-        conversation_id: selectedConversation,
-        sender_id: user.id,
-        content: forwardedContent,
-      }
-
-      // If forwarding a message with attachments, copy them
-      if (forwardingMessage.attachments && forwardingMessage.attachments.length > 0) {
-        const { data: newMessage, error: msgError } = await supabase
+      // Update message with attachment URL if it's an image
+      const imageAttachment = forwardingMessage.attachments.find(a => a.file_type.startsWith('image/'))
+      if (imageAttachment) {
+        await supabase
           .from('messages')
-          .insert(messageData)
-          .select()
-          .single()
-
-        if (msgError) throw msgError
-
-        // Copy attachments
-        for (const attachment of forwardingMessage.attachments) {
-          await supabase
-            .from('message_attachments')
-            .insert({
-              message_id: newMessage.id,
-              file_url: attachment.file_url,
-              file_type: attachment.file_type,
-              file_name: attachment.file_name,
-              file_size: null
-            })
-        }
-
-        // Update message with attachment URL if it's an image
-        const imageAttachment = forwardingMessage.attachments.find(a => a.file_type.startsWith('image/'))
-        if (imageAttachment) {
-          await supabase
-            .from('messages')
-            .update({
-              attachment_url: imageAttachment.file_url,
-              attachment_type: imageAttachment.file_type
-            })
-            .eq('id', newMessage.id)
-        }
-      } else if (forwardingMessage.attachment_url) {
-        // Handle legacy attachment_url
-        messageData.attachment_url = forwardingMessage.attachment_url
-        messageData.attachment_type = forwardingMessage.attachment_type
-
-        const { data: newMessage, error: msgError } = await supabase
-          .from('messages')
-          .insert(messageData)
-          .select()
-          .single()
-
-        if (msgError) throw msgError
-      } else {
-        const { data: newMessage, error: msgError } = await supabase
-          .from('messages')
-          .insert(messageData)
-          .select()
-          .single()
-
-        if (msgError) throw msgError
+          .update({
+            attachment_url: imageAttachment.file_url,
+            attachment_type: imageAttachment.file_type
+          })
+          .eq('id', newMessage.id)
       }
+    } else if (forwardingMessage.attachment_url) {
+      // Handle legacy attachment_url
+      messageData.attachment_url = forwardingMessage.attachment_url
+      messageData.attachment_type = forwardingMessage.attachment_type
 
-      // Update conversation
-      await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', selectedConversation)
+      const { data: newMessage, error: msgError } = await supabase
+        .from('messages')
+        .insert(messageData)
+        .select()
+        .single()
 
-      setForwardingMessage(null)
-      setForwardingToConversation(null)
-      fetchMessages(selectedConversation)
-      fetchConversations()
-    } catch (error) {
-      console.error('Error forwarding message:', error)
-    } finally {
-      setSending(false)
+      if (msgError) throw msgError
+    } else {
+      const { data: newMessage, error: msgError } = await supabase
+        .from('messages')
+        .insert(messageData)
+        .select()
+        .single()
+
+      if (msgError) throw msgError
     }
-  }
 
-  const handleTyping = async () => {
-    if (!selectedConversation || !currentUserId) return
-
-    setIsTyping(true)
+    // Update conversation
     await supabase
-      .from('typing_indicators')
-      .upsert({
-        conversation_id: selectedConversation,
-        user_id: currentUserId,
-        is_typing: true,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'conversation_id,user_id'
-      })
+      .from('conversations')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', selectedConversation)
+
+    setForwardingMessage(null)
+    setForwardingToConversation(null)
+    fetchMessages(selectedConversation)
+    fetchConversations()
+  } catch (error) {
+    console.error('Error forwarding message:', error)
+  } finally {
+    setSending(false)
   }
+}
 
-  const handleStopTyping = async () => {
-    if (!selectedConversation || !currentUserId) return
+const handleTyping = async () => {
+  if (!selectedConversation || !currentUserId) return
 
-    setIsTyping(false)
-    await supabase
-      .from('typing_indicators')
-      .upsert({
-        conversation_id: selectedConversation,
-        user_id: currentUserId,
-        is_typing: false,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'conversation_id,user_id'
-      })
-  }
+  setIsTyping(true)
+  await supabase
+    .from('typing_indicators')
+    .upsert({
+      conversation_id: selectedConversation,
+      user_id: currentUserId,
+      is_typing: true,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'conversation_id,user_id'
+    })
+}
+
+const handleStopTyping = async () => {
+  if (!selectedConversation || !currentUserId) return
+
+  setIsTyping(false)
+  await supabase
+    .from('typing_indicators')
+    .upsert({
+      conversation_id: selectedConversation,
+      user_id: currentUserId,
+      is_typing: false,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'conversation_id,user_id'
+    })
+}
 
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.type === 'group'
-      ? (conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.description?.toLowerCase().includes(searchQuery.toLowerCase()))
-      : (conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+const filteredConversations = conversations.filter(conv =>
+  conv.type === 'group'
+    ? (conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : (conv.other_user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+)
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
+if (loading) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
-          <p className="text-gray-600">Connect and communicate with employers and professionals</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  )
+}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-          {/* Conversations List */}
-          <Card className="card-professional overflow-hidden flex flex-col h-full">
-            <CardHeader className="border-b space-y-3 flex-shrink-0">
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowNewConversation(true)}
-                  className="flex-1 btn-primary text-xs sm:text-sm"
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">New Message</span>
-                  <span className="sm:hidden">New</span>
-                </Button>
-                <Button
-                  onClick={() => setShowNewGroup(true)}
-                  variant="outline"
-                  className="flex-1 text-xs sm:text-sm"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">New Group</span>
-                  <span className="sm:hidden">Group</span>
-                </Button>
+return (
+  <div className="min-h-screen bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
+        <p className="text-gray-600">Connect and communicate with employers and professionals</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+        {/* Conversations List */}
+        <Card className="card-professional overflow-hidden flex flex-col h-full">
+          <CardHeader className="border-b space-y-3 flex-shrink-0">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowNewConversation(true)}
+                className="flex-1 btn-primary text-xs sm:text-sm"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">New Message</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+              <Button
+                onClick={() => setShowNewGroup(true)}
+                variant="outline"
+                className="flex-1 text-xs sm:text-sm"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">New Group</span>
+                <span className="sm:hidden">Group</span>
+              </Button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
+              <Input
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="!pl-12 !pr-4"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
+            {filteredConversations.length === 0 ? (
+              <div className="p-8 text-center">
+                <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No conversations yet</p>
+                <p className="text-sm text-gray-500 mt-2">Start a conversation from a job application or profile</p>
               </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
-                <Input
-                  type="text"
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="!pl-12 !pr-4"
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
-              {filteredConversations.length === 0 ? (
-                <div className="p-8 text-center">
-                  <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No conversations yet</p>
-                  <p className="text-sm text-gray-500 mt-2">Start a conversation from a job application or profile</p>
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {filteredConversations.map((conv, index) => (
-                    <ScrollAnimate key={conv.id} animation="slideInLeft" delay={index * 50} triggerOnce={true}>
-                      <button
-                        onClick={() => {
-                          setSelectedConversation(conv.id)
-                          // Update URL to reflect selected conversation
-                          const params = new URLSearchParams(searchParams.toString())
-                          params.set('conversation', conv.id)
-                          router.replace(`/messages?${params.toString()}`, { scroll: false })
-                        }}
-                        className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-blue-50' : ''
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {conv.type === 'group' ? (
-                              conv.avatar_url ? (
-                                <img
-                                  src={conv.avatar_url}
-                                  alt={conv.name || 'Group'}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                                  <Users className="h-6 w-6" />
-                                </div>
-                              )
-                            ) : conv.other_user.avatar_url ? (
+            ) : (
+              <div className="divide-y">
+                {filteredConversations.map((conv, index) => (
+                  <ScrollAnimate key={conv.id} animation="slideInLeft" delay={index * 50} triggerOnce={true}>
+                    <button
+                      onClick={() => {
+                        setSelectedConversation(conv.id)
+                        // Update URL to reflect selected conversation
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set('conversation', conv.id)
+                        router.replace(`/messages?${params.toString()}`, { scroll: false })
+                      }}
+                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-blue-50' : ''
+                        }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {conv.type === 'group' ? (
+                            conv.avatar_url ? (
                               <img
-                                src={conv.other_user.avatar_url}
-                                alt={conv.other_user.full_name || 'User'}
+                                src={conv.avatar_url}
+                                alt={conv.name || 'Group'}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                                {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                                <Users className="h-6 w-6" />
                               </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 truncate">
-                                  {conv.type === 'group'
-                                    ? conv.name || 'Group Chat'
-                                    : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                                </h3>
-                                {conv.type === 'group' && conv.member_count !== undefined && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Users className="h-3 w-3 mr-1" />
-                                    {conv.member_count}
-                                  </Badge>
-                                )}
-                              </div>
-                              {conv.unread_count > 0 && (
-                                <Badge className="bg-primary text-white text-xs">
-                                  {conv.unread_count}
+                            )
+                          ) : conv.other_user.avatar_url ? (
+                            <img
+                              src={conv.other_user.avatar_url}
+                              alt={conv.other_user.full_name || 'User'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                              {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {conv.type === 'group'
+                                  ? conv.name || 'Group Chat'
+                                  : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                              </h3>
+                              {conv.type === 'group' && conv.member_count !== undefined && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  {conv.member_count}
                                 </Badge>
                               )}
                             </div>
-                            {conv.last_message && (
-                              <p className="text-sm text-gray-600 truncate">
-                                {conv.last_message.content || '[Message deleted]'}
-                              </p>
+                            {conv.unread_count > 0 && (
+                              <Badge className="bg-primary text-white text-xs">
+                                {conv.unread_count}
+                              </Badge>
                             )}
-                            {!conv.last_message && (
-                              <p className="text-sm text-gray-400 italic truncate">
-                                No messages yet
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              {conv.last_message_at ? formatTime(conv.last_message_at) : 'New conversation'}
-                            </p>
                           </div>
+                          {conv.last_message && (
+                            <p className="text-sm text-gray-600 truncate">
+                              {conv.last_message.content || '[Message deleted]'}
+                            </p>
+                          )}
+                          {!conv.last_message && (
+                            <p className="text-sm text-gray-400 italic truncate">
+                              No messages yet
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            {conv.last_message_at ? formatTime(conv.last_message_at) : 'New conversation'}
+                          </p>
                         </div>
-                      </button>
-                    </ScrollAnimate>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      </div>
+                    </button>
+                  </ScrollAnimate>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Messages */}
-          <div className="lg:col-span-2 flex flex-col min-h-0">
-            {selectedConversation ? (
-              <Card className="card-professional h-full flex flex-col min-h-0">
-                <CardHeader className="border-b flex-shrink-0">
-                  {(() => {
-                    const conv = conversations.find(c => c.id === selectedConversation)
-                    return conv ? (
-                      <CardTitle className="relative">
-                        <div
-                          className={`flex items-center gap-3 ${conv.type === 'group' ? 'cursor-pointer hover:opacity-80 transition-opacity p-1 -ml-1 rounded' : ''}`}
-                          onClick={() => conv.type === 'group' && setGroupInfoOpen(true)}
-                        >
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {conv.type === 'group' ? (
-                              conv.avatar_url ? (
-                                <img
-                                  src={conv.avatar_url}
-                                  alt={conv.name || 'Group'}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                                  <Users className="h-6 w-6" />
-                                </div>
-                              )
-                            ) : conv.other_user.avatar_url ? (
+        {/* Messages */}
+        <div className="lg:col-span-2 flex flex-col min-h-0">
+          {selectedConversation ? (
+            <Card className="card-professional h-full flex flex-col min-h-0">
+              <CardHeader className="border-b flex-shrink-0">
+                {(() => {
+                  const conv = conversations.find(c => c.id === selectedConversation)
+                  return conv ? (
+                    <CardTitle className="relative">
+                      <div
+                        className={`flex items-center gap-3 ${conv.type === 'group' ? 'cursor-pointer hover:opacity-80 transition-opacity p-1 -ml-1 rounded' : ''}`}
+                        onClick={() => conv.type === 'group' && setGroupInfoOpen(true)}
+                      >
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {conv.type === 'group' ? (
+                            conv.avatar_url ? (
                               <img
-                                src={conv.other_user.avatar_url}
-                                alt={conv.other_user.full_name || 'User'}
+                                src={conv.avatar_url}
+                                alt={conv.name || 'Group'}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                                {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                                <Users className="h-6 w-6" />
                               </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-lg truncate">
-                              {conv.type === 'group'
-                                ? conv.name || 'Group Chat'
-                                : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
-                            </div>
-                            {conv.type === 'group' ? (
-                              <div className="text-sm font-normal text-gray-500 truncate">
-                                {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
-                              </div>
-                            ) : (
-                              <>
-                                <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
-                                {conv.other_user.phone_number && (
-                                  <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
-                                    <Phone className="h-3 w-3" />
-                                    {conv.other_user.phone_number}
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        <GroupInfoDialog
-                          isOpen={groupInfoOpen}
-                          onClose={() => setGroupInfoOpen(false)}
-                          conversationId={selectedConversation}
-                          onUpdate={() => {
-                            fetchConversations()
-                            // Refetch current header data immediately
-                            const updateHead = async () => {
-                              const { data } = await supabase.from('conversations').select('*').eq('id', selectedConversation).single()
-                              if (data) setConversations(prev => prev.map(c => c.id === selectedConversation ? { ...c, ...data } : c))
-                            }
-                            updateHead()
-                          }}
-                        />
-                      </CardTitle>
-                    ) : (
-                      <CardTitle className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div>Loading conversation...</div>
-                          <div className="text-sm font-normal text-gray-500">Please wait</div>
-                        </div>
-                      </CardTitle>
-                    )
-                  })()}
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0 relative">
-                  <div
-                    ref={messagesContainerRef}
-                    className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
-                    onScroll={(e) => {
-                      const target = e.target as HTMLDivElement
-
-                      // Check if at bottom
-                      const { scrollTop, scrollHeight, clientHeight } = target
-                      const atBottom = scrollHeight - scrollTop - clientHeight < 100
-                      setIsAtBottom(atBottom)
-
-                      // Load older messages when scrolling to top
-                      if (target.scrollTop === 0 && hasMoreMessages && !loadingOlderMessages) {
-                        const oldestMessage = messages[0]
-                        if (oldestMessage) {
-                          setLoadingOlderMessages(true)
-                          fetchMessages(selectedConversation, oldestMessage.created_at, 50).then(() => {
-                            setLoadingOlderMessages(false)
-                            // Maintain scroll position
-                            setTimeout(() => {
-                              if (messagesContainerRef.current) {
-                                const newScrollHeight = messagesContainerRef.current.scrollHeight
-                                const oldScrollHeight = target.scrollHeight
-                                messagesContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight
-                              }
-                            }, 100)
-                          })
-                        }
-                      }
-                    }}
-                  >
-                    {loadingOlderMessages && (
-                      <div className="text-center py-2">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary mx-auto" />
-                      </div>
-                    )}
-                    {messagesLoading ? (
-                      <div className="text-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                        <p className="text-gray-600">Loading messages...</p>
-                      </div>
-                    ) : messages.length === 0 ? (
-                      <div className="text-center py-8">
-                        <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">No messages yet</p>
-                        <p className="text-sm text-gray-500 mt-2">Start the conversation!</p>
-                      </div>
-                    ) : (
-                      <>
-                        {messages.map((message) => {
-                          const isOwn = message.sender_id === currentUserId
-                          return (
-                            <MessageBubble
-                              key={message.id}
-                              message={message}
-                              isOwn={isOwn}
-                              currentUserId={currentUserId || ''}
-                              onReply={handleReply}
-                              onForward={handleForward}
-                              onEdit={handleEditMessage}
-                              onDelete={handleDeleteMessage}
-                              onReaction={handleReaction}
-                              formatTime={formatTime}
+                            )
+                          ) : conv.other_user.avatar_url ? (
+                            <img
+                              src={conv.other_user.avatar_url}
+                              alt={conv.other_user.full_name || 'User'}
+                              className="w-full h-full object-cover"
                             />
-                          )
-                        })}
-                        <div ref={messagesEndRef} />
-                        {otherUserTyping && <TypingIndicator />}
-                      </>
-                    )}
-                  </div>
-                  {/* Scroll to bottom button */}
-                  {!isAtBottom && (
-                    <button
-                      onClick={() => {
-                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-                        setIsAtBottom(true)
-                      }}
-                      className="absolute bottom-20 right-8 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-all z-10 animate-in fade-in zoom-in duration-200"
-                    >
-                      <ArrowDown className="h-5 w-5" />
-                    </button>
-                  )}
-                  <div className="border-t p-3 flex-shrink-0 space-y-2">
-                    {/* Reply preview */}
-                    {replyingTo && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-2 rounded flex items-start justify-between text-xs">
+                          ) : (
+                            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
+                              {(conv.other_user.full_name || conv.other_user.email.split('@')[0])?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-medium text-blue-900 mb-0.5">
-                            Replying to {replyingTo.sender.full_name || replyingTo.sender.email.split('@')[0]}
-                          </p>
-                          <p className="text-xs text-blue-800 truncate">{replyingTo.content}</p>
+                          <div className="font-semibold text-lg truncate">
+                            {conv.type === 'group'
+                              ? conv.name || 'Group Chat'
+                              : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
+                          </div>
+                          {conv.type === 'group' ? (
+                            <div className="text-sm font-normal text-gray-500 truncate">
+                              {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
+                              {conv.other_user.phone_number && (
+                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                                  <Phone className="h-3 w-3" />
+                                  {conv.other_user.phone_number}
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setReplyingTo(null)}
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
                       </div>
-                    )}
 
-                    {/* Forward preview */}
-                    {forwardingMessage && (
-                      <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-xs font-medium text-purple-900 mb-1">
-                            Forwarding message from {forwardingMessage.sender.full_name || forwardingMessage.sender.email.split('@')[0]}
-                          </p>
-                          <p className="text-sm text-purple-800 truncate">
-                            {forwardingMessage.content || (forwardingMessage.attachment_url ? 'Image' : 'Message')}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setForwardingMessage(null)}
-                          className="ml-2 text-purple-600 hover:text-purple-800"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                      <GroupInfoDialog
+                        isOpen={groupInfoOpen}
+                        onClose={() => setGroupInfoOpen(false)}
+                        conversationId={selectedConversation}
+                        onUpdate={() => {
+                          fetchConversations()
+                          // Refetch current header data immediately
+                          const updateHead = async () => {
+                            const { data } = await supabase.from('conversations').select('*').eq('id', selectedConversation).single()
+                            if (data) setConversations(prev => prev.map(c => c.id === selectedConversation ? { ...c, ...data } : c))
+                          }
+                          updateHead()
+                        }}
+                      />
+                    </CardTitle>
+                  ) : (
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
                       </div>
-                    )}
-
-                    {/* Image preview */}
-                    {imagePreview && (
-                      <div className="relative">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="max-w-xs max-h-48 rounded-lg object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleImageRemove}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                      <div>
+                        <div>Loading conversation...</div>
+                        <div className="text-sm font-normal text-gray-500">Please wait</div>
                       </div>
-                    )}
+                    </CardTitle>
+                  )
+                })()}
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0 relative">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
+                  onScroll={(e) => {
+                    const target = e.target as HTMLDivElement
 
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        sendMessage()
-                      }}
-                      className="flex gap-2"
-                    >
-                      <div className="flex-1 flex gap-2 items-end">
-                        <Textarea
-                          value={messageContent}
-                          onChange={async (e) => {
-                            setMessageContent(e.target.value)
+                    // Check if at bottom
+                    const { scrollTop, scrollHeight, clientHeight } = target
+                    const atBottom = scrollHeight - scrollTop - clientHeight < 100
+                    setIsAtBottom(atBottom)
 
-                            // Update typing indicator
-                            if (e.target.value.trim().length > 0) {
-                              await handleTyping()
-                            } else {
-                              await handleStopTyping()
+                    // Load older messages when scrolling to top
+                    if (target.scrollTop === 0 && hasMoreMessages && !loadingOlderMessages) {
+                      const oldestMessage = messages[0]
+                      if (oldestMessage) {
+                        setLoadingOlderMessages(true)
+                        fetchMessages(selectedConversation, oldestMessage.created_at, 50).then(() => {
+                          setLoadingOlderMessages(false)
+                          // Maintain scroll position
+                          setTimeout(() => {
+                            if (messagesContainerRef.current) {
+                              const newScrollHeight = messagesContainerRef.current.scrollHeight
+                              const oldScrollHeight = target.scrollHeight
+                              messagesContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight
                             }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              sendMessage()
-                            }
-                          }}
-                          onBlur={() => handleStopTyping()}
-                          placeholder="Type a message..."
-                          disabled={sending}
-                          className="flex-1 min-h-[40px] max-h-[100px] resize-none text-sm"
-                          rows={1}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => document.getElementById('image-upload-input')?.click()}
-                          disabled={sending}
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
-                        <input
-                          id="image-upload-input"
-                          type="file"
-                          accept="image/jpeg,image/png,image/gif,image/webp"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleImageSelect(file)
-                          }}
-                          className="hidden"
-                        />
+                          }, 100)
+                        })
+                      }
+                    }
+                  }}
+                >
+                  {loadingOlderMessages && (
+                    <div className="text-center py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary mx-auto" />
+                    </div>
+                  )}
+                  {messagesLoading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                      <p className="text-gray-600">Loading messages...</p>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No messages yet</p>
+                      <p className="text-sm text-gray-500 mt-2">Start the conversation!</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((message) => {
+                        const isOwn = message.sender_id === currentUserId
+                        return (
+                          <MessageBubble
+                            key={message.id}
+                            message={message}
+                            isOwn={isOwn}
+                            currentUserId={currentUserId || ''}
+                            onReply={handleReply}
+                            onForward={handleForward}
+                            onEdit={handleEditMessage}
+                            onDelete={handleDeleteMessage}
+                            onReaction={handleReaction}
+                            formatTime={formatTime}
+                          />
+                        )
+                      })}
+                      <div ref={messagesEndRef} />
+                      {otherUserTyping && <TypingIndicator />}
+                    </>
+                  )}
+                </div>
+                {/* Scroll to bottom button */}
+                {!isAtBottom && (
+                  <button
+                    onClick={() => {
+                      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                      setIsAtBottom(true)
+                    }}
+                    className="absolute bottom-20 right-8 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-all z-10 animate-in fade-in zoom-in duration-200"
+                  >
+                    <ArrowDown className="h-5 w-5" />
+                  </button>
+                )}
+                <div className="border-t p-3 flex-shrink-0 space-y-2">
+                  {/* Reply preview */}
+                  {replyingTo && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-2 rounded flex items-start justify-between text-xs">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-medium text-blue-900 mb-0.5">
+                          Replying to {replyingTo.sender.full_name || replyingTo.sender.email.split('@')[0]}
+                        </p>
+                        <p className="text-xs text-blue-800 truncate">{replyingTo.content}</p>
                       </div>
-                      <Button
-                        type="submit"
-                        disabled={sending || (!messageContent.trim() && !selectedImage && !forwardingMessage)}
-                        onClick={(e) => {
-                          if (forwardingMessage && !replyingTo) {
-                            e.preventDefault()
-                            forwardMessage()
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Forward preview */}
+                  {forwardingMessage && (
+                    <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-purple-900 mb-1">
+                          Forwarding message from {forwardingMessage.sender.full_name || forwardingMessage.sender.email.split('@')[0]}
+                        </p>
+                        <p className="text-sm text-purple-800 truncate">
+                          {forwardingMessage.content || (forwardingMessage.attachment_url ? 'Image' : 'Message')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForwardingMessage(null)}
+                        className="ml-2 text-purple-600 hover:text-purple-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Image preview */}
+                  {imagePreview && (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-w-xs max-h-48 rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleImageRemove}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      sendMessage()
+                    }}
+                    className="flex gap-2"
+                  >
+                    <div className="flex-1 flex gap-2 items-end">
+                      <Textarea
+                        value={messageContent}
+                        onChange={async (e) => {
+                          setMessageContent(e.target.value)
+
+                          // Update typing indicator
+                          if (e.target.value.trim().length > 0) {
+                            await handleTyping()
+                          } else {
+                            await handleStopTyping()
                           }
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            sendMessage()
+                          }
+                        }}
+                        onBlur={() => handleStopTyping()}
+                        placeholder="Type a message..."
+                        disabled={sending}
+                        className="flex-1 min-h-[40px] max-h-[100px] resize-none text-sm"
+                        rows={1}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => document.getElementById('image-upload-input')?.click()}
+                        disabled={sending}
                       >
-                        {sending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
+                        <ImageIcon className="h-4 w-4" />
                       </Button>
-                    </form>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="card-professional h-full flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a conversation</h3>
-                  <p className="text-gray-600">Choose a conversation from the list to start messaging</p>
+                      <input
+                        id="image-upload-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleImageSelect(file)
+                        }}
+                        className="hidden"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={sending || (!messageContent.trim() && !selectedImage && !forwardingMessage)}
+                      onClick={(e) => {
+                        if (forwardingMessage && !replyingTo) {
+                          e.preventDefault()
+                          forwardMessage()
+                        }
+                      }}
+                    >
+                      {sending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </form>
                 </div>
-              </Card>
-            )}
-          </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="card-professional h-full flex items-center justify-center">
+              <div className="text-center">
+                <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a conversation</h3>
+                <p className="text-gray-600">Choose a conversation from the list to start messaging</p>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
-
-      <NewConversationDialog
-        isOpen={showNewConversation}
-        onClose={() => setShowNewConversation(false)}
-      />
-
-      <NewGroupDialog
-        isOpen={showNewGroup}
-        onClose={() => setShowNewGroup(false)}
-        onSuccess={(conversationId) => {
-          setSelectedConversation(conversationId)
-          const params = new URLSearchParams(searchParams.toString())
-          params.set('conversation', conversationId)
-          router.replace(`/messages?${params.toString()}`, { scroll: false })
-          fetchConversations()
-        }}
-      />
     </div>
-  )
+
+    <NewConversationDialog
+      isOpen={showNewConversation}
+      onClose={() => setShowNewConversation(false)}
+    />
+
+    <NewGroupDialog
+      isOpen={showNewGroup}
+      onClose={() => setShowNewGroup(false)}
+      onSuccess={(conversationId) => {
+        setSelectedConversation(conversationId)
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('conversation', conversationId)
+        router.replace(`/messages?${params.toString()}`, { scroll: false })
+        fetchConversations()
+      }}
+    />
+  </div>
+)
 }
 
 

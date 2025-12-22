@@ -1040,16 +1040,12 @@ export default function MessagesPage() {
         console.error('Error fetching missing conversation details:', error)
       }
     }
-  }
-      } catch (err) {
-  console.error('Error in fetchMissingConversation:', err)
-}
-    }
-fetchMissingConversation()
 
-return () => {
-  isMounted = false
-}
+    fetchMissingConversation()
+
+    return () => {
+      isMounted = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, currentUserId, loading])
 

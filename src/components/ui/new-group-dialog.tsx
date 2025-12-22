@@ -140,7 +140,9 @@ export function NewGroupDialog({ isOpen, onClose, onSuccess }: NewGroupDialogPro
           name: groupName.trim(),
           description: groupDescription.trim() || null,
           created_by: user.id,
-          avatar_url: avatarUrl
+          avatar_url: avatarUrl,
+          participant1_id: null,
+          participant2_id: null
         })
         .select()
         .single()

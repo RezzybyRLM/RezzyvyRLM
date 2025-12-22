@@ -12,9 +12,13 @@ import {
   Edit,
   Trash2,
   Smile,
-  X
+  X,
+  Info,
+  FileText,
+  Download
 } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
+
 
 const REACTIONS = ['👍', '❤️', '😄', '😮', '😢', '😡']
 
@@ -82,6 +86,7 @@ export function MessageBubble({
   const [showReactions, setShowReactions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
+  const [showInfo, setShowInfo] = useState(false)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
 
   const handleEdit = async () => {
@@ -349,11 +354,11 @@ export function MessageBubble({
           <span>{formatTime(message.created_at)}</span>
           {isOwn && (
             message.id.startsWith('temp-') ? (
-              <Check className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
+              <Check className={`h-3.5 w-3.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             ) : (message.read_by && message.read_by.length > 0) || message.is_read ? (
-              <CheckCheck className="h-2.5 w-2.5 text-sky-400" />
+              <CheckCheck className="h-3.5 w-3.5 text-sky-400" />
             ) : (
-              <CheckCheck className={`h-2.5 w-2.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
+              <CheckCheck className={`h-3.5 w-3.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             )
           )}
         </div>
@@ -375,7 +380,7 @@ export function MessageBubble({
                   setShowReactionPicker(!showReactionPicker)
                   setShowContextMenu(false)
                 }}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-900"
               >
                 <Smile className="h-3.5 w-3.5" />
                 React
@@ -387,7 +392,7 @@ export function MessageBubble({
                   <button
                     key={reaction}
                     onClick={() => {
-                      handleReaction(reaction)
+                      onReaction?.(message.id, reaction)
                       setShowReactionPicker(false)
                       setShowContextMenu(false)
                     }}
@@ -404,7 +409,7 @@ export function MessageBubble({
                   onReply(message.id)
                   setShowContextMenu(false)
                 }}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-900"
               >
                 <Reply className="h-3.5 w-3.5" />
                 Reply
@@ -416,10 +421,22 @@ export function MessageBubble({
                   onForward(message.id)
                   setShowContextMenu(false)
                 }}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-900"
               >
                 <Forward className="h-3.5 w-3.5" />
                 Forward
+              </button>
+            )}
+            {isOwn && (
+              <button
+                onClick={() => {
+                  setShowInfo(true)
+                  setShowContextMenu(false)
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-900"
+              >
+                <Info className="h-3.5 w-3.5" />
+                Info
               </button>
             )}
             {isOwn && onEdit && !isEditing && (
@@ -429,7 +446,7 @@ export function MessageBubble({
                   setEditContent(message.content)
                   setShowContextMenu(false)
                 }}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-900"
               >
                 <Edit className="h-3.5 w-3.5" />
                 Edit
@@ -438,7 +455,7 @@ export function MessageBubble({
             {isOwn && onDelete && (
               <button
                 onClick={() => {
-                  handleDelete()
+                  onDelete(message.id)
                   setShowContextMenu(false)
                 }}
                 className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
@@ -450,6 +467,64 @@ export function MessageBubble({
           </div>
         )}
       </div>
+
+      {showInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200" onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}>
+          <div className="w-full max-w-sm bg-white rounded-lg shadow-lg overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Message Info</h3>
+              <button onClick={(e) => { e.stopPropagation(); setShowInfo(false); }} className="text-gray-500 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <p className="text-gray-900 text-sm whitespace-pre-wrap max-h-[100px] overflow-y-auto">{message.content || (message.attachment_url ? 'Attachment' : 'Message')}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-sky-50 p-2 rounded-full">
+                      <CheckCheck className="h-5 w-5 text-sky-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Read</p>
+                      <p className="text-xs text-gray-500">
+                        {(message.is_read || (message.read_by && message.read_by.length > 0))
+                          ? 'Read by recipient'
+                          : 'Not read yet'}
+                      </p>
+                    </div>
+                  </div>
+                  {(message.is_read || (message.read_by && message.read_by.length > 0)) && (
+                    <span className="text-xs font-medium text-gray-500">
+                      {/* Using created_at or updated_at as proxy */}
+                      {new Date((message as any).updated_at || message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gray-50 p-2 rounded-full">
+                      <CheckCheck className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Delivered</p>
+                      <p className="text-xs text-gray-500">Delivered to server</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-gray-500">
+                    {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

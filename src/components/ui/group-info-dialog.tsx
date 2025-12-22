@@ -101,18 +101,36 @@ export function GroupInfoDialog({ conversationId, isOpen, onClose, onUpdate }: G
             setGroupDescription(conv.description || '')
             setPreviewAvatar(conv.avatar_url)
 
-            // Fetch Members
+            // Fetch Members - first get member IDs, then fetch user data separately
             const { data: memberData, error: membError } = await supabase
                 .from('group_members')
-                .select(`
-          *,
-          user:users (id, full_name, email, avatar_url)
-        `)
+                .select('*')
                 .eq('conversation_id', conversationId)
 
             if (membError) throw membError
 
-            const formattedMembers = memberData as unknown as GroupMember[]
+            // Fetch user data for all members
+            const userIds = (memberData || []).map(m => m.user_id).filter(Boolean)
+            const { data: usersData } = userIds.length > 0
+                ? await supabase
+                    .from('users')
+                    .select('id, full_name, email, avatar_url')
+                    .in('id', userIds)
+                : { data: [] }
+
+            const usersMap = new Map((usersData || []).map((u: any) => [u.id, u]))
+
+            // Combine member data with user data
+            const formattedMembers = (memberData || []).map((member: any) => ({
+                ...member,
+                user: usersMap.get(member.user_id) || {
+                    id: member.user_id,
+                    full_name: null,
+                    email: '',
+                    avatar_url: null
+                }
+            }))
+
             setMembers(formattedMembers)
 
             // Check Admin Status

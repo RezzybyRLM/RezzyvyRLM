@@ -1105,8 +1105,8 @@ const fetchConversations = async () => {
     const directConvsOnly = data.filter((c: any) => !c.type || c.type === 'direct')
     const allParticipantIds = new Set<string>()
     directConvsOnly.forEach((conv: any) => {
-      allParticipantIds.add(conv.participant1_id)
-      allParticipantIds.add(conv.participant2_id)
+      if (conv.participant1_id) allParticipantIds.add(conv.participant1_id)
+      if (conv.participant2_id) allParticipantIds.add(conv.participant2_id)
     })
 
     const { data: usersData } = allParticipantIds.size > 0
@@ -2051,14 +2051,29 @@ return (
                         isOpen={groupInfoOpen}
                         onClose={() => setGroupInfoOpen(false)}
                         conversationId={selectedConversation}
-                        onUpdate={() => {
-                          fetchConversations()
-                          // Refetch current header data immediately
-                          const updateHead = async () => {
-                            const { data } = await supabase.from('conversations').select('*').eq('id', selectedConversation).single()
-                            if (data) setConversations(prev => prev.map(c => c.id === selectedConversation ? { ...c, ...data } : c))
+                        onUpdate={async () => {
+                          await fetchConversations()
+                          // Refetch current header data immediately for group conversations
+                          if (selectedConversation) {
+                            const { data: groupData } = await supabase
+                              .from('group_conversations')
+                              .select('*')
+                              .eq('id', selectedConversation)
+                              .maybeSingle()
+                            
+                            if (groupData) {
+                              setConversations(prev => prev.map(c => 
+                                c.id === selectedConversation 
+                                  ? { 
+                                      ...c, 
+                                      name: groupData.name,
+                                      description: groupData.description,
+                                      avatar_url: groupData.avatar_url
+                                    } 
+                                  : c
+                              ))
+                            }
                           }
-                          updateHead()
                         }}
                       />
                     </CardTitle>

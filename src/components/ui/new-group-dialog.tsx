@@ -177,8 +177,7 @@ export function NewGroupDialog({ isOpen, onClose, onSuccess }: NewGroupDialogPro
         .insert({
           conversation_id: conversation.id,
           sender_id: user.id,
-          content: `Group "${groupName}" created. ${selectedUsers.length} member${selectedUsers.length !== 1 ? 's' : ''} added.`,
-          message_type: 'system'
+          content: `Group "${groupName}" created. ${selectedUsers.length} member${selectedUsers.length !== 1 ? 's' : ''} added.`
         })
 
       onSuccess(conversation.id)

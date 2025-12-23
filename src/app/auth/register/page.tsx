@@ -54,10 +54,34 @@ export default function RegisterPage() {
       }
 
       if (data?.user) {
+        // Create user record in users table with onboarding_completed = false
+        try {
+          const { error: userError } = await supabase
+            .from('users')
+            .upsert({
+              id: data.user.id,
+              email: email,
+              onboarding_completed: false,
+              onboarding_step: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'id'
+            })
+
+          if (userError) {
+            console.error('Error creating user record:', userError)
+            // Don't fail the signup, just log the error
+          }
+        } catch (err) {
+          console.error('Error in user record creation:', err)
+        }
+
         // Session is automatically stored by Supabase
         if (data.session) {
           // User is automatically signed in after registration
-          router.push('/dashboard')
+          // Redirect to onboarding if not completed
+          router.push('/onboarding')
           router.refresh()
         } else {
           // Email confirmation required

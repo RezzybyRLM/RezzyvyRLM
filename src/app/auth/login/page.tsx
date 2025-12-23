@@ -53,8 +53,24 @@ export default function LoginPage() {
           attempts++
         }
         
-        // Use window.location for full page reload to ensure cookies are read
-        window.location.href = redirectTo
+        // Check onboarding status before redirecting
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('onboarding_completed')
+            .eq('id', data.user.id)
+            .single()
+
+          const onboardingCompleted = userData?.onboarding_completed ?? false
+          const finalRedirect = onboardingCompleted ? redirectTo : '/onboarding'
+          
+          // Use window.location for full page reload to ensure cookies are read
+          window.location.href = finalRedirect
+        } catch (err) {
+          console.error('Error checking onboarding status:', err)
+          // Fallback to original redirect - middleware will handle it
+          window.location.href = redirectTo
+        }
       } else {
         setError('Failed to create session. Please try again.')
         setLoading(false)

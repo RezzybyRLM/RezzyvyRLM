@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
     '/jobs',
   ]
 
-  // Auth routes (redirect to dashboard if logged in)
+  // Auth routes (redirect to onboarding/dashboard if logged in)
   const authRoutes = ['/auth/login', '/auth/register']
 
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -74,7 +74,45 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Check onboarding status
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .single()
+
+      const onboardingCompleted = userData?.onboarding_completed ?? false
+
+      if (!onboardingCompleted) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    } catch (error) {
+      // If error checking onboarding, redirect to onboarding to be safe
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
+
+  // Check onboarding status for protected routes
+  if (isProtectedRoute && user && !pathname.startsWith('/onboarding')) {
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .single()
+
+      const onboardingCompleted = userData?.onboarding_completed ?? false
+
+      if (!onboardingCompleted) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+    } catch (error) {
+      // If error checking onboarding, allow access (don't block)
+      console.error('Error checking onboarding status:', error)
+    }
   }
 
   return response

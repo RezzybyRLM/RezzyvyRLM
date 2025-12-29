@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { signOut } from '@/lib/auth/signout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -67,22 +68,25 @@ export default function DashboardPage() {
 
         if (mounted) {
           setUser(user)
+          setLoading(false) // Show page immediately after auth check
           
-          // Fetch user profile and stats in parallel
-          const [profileResult] = await Promise.all([
+          // Fetch user profile and stats in background (non-blocking)
+          Promise.all([
             supabase
               .from('users')
               .select('full_name, avatar_url')
               .eq('id', user.id)
               .single(),
-          ])
-          
-          if (profileResult.data) {
-            setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
-          }
+          ]).then(([profileResult]) => {
+            if (profileResult.data && mounted) {
+              setUserProfile(profileResult.data as { full_name: string | null; avatar_url: string | null })
+            }
+          }).catch(() => {
+            // Non-critical error, continue without profile
+          })
 
-          // Fetch stats
-          await fetchStats(user.id)
+          // Fetch stats in background
+          fetchStats(user.id)
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
@@ -114,8 +118,7 @@ export default function DashboardPage() {
   }, [router, supabase])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    await signOut('/auth/login')
   }
 
   const fetchStats = async (userId: string) => {
@@ -149,16 +152,16 @@ export default function DashboardPage() {
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
-      // Set default stats on error
+      // Set default stats on error (non-blocking)
       setStats({
         resumes: 0,
         bookmarks: 0,
         jobAlerts: 0,
         interviews: 0,
       })
-    } finally {
-      setLoading(false)
     }
+    // Note: setLoading(false) is now called immediately after auth check
+    // Stats loading is non-blocking
   }
 
   if (loading) {

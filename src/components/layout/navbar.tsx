@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCartItemCount } from '@/lib/cart/actions'
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import { signOut } from '@/lib/auth/signout'
 
 interface NavbarProps {
   user?: SupabaseUser | null
@@ -99,8 +100,8 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   }, [isUserMenuOpen])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
     setIsUserMenuOpen(false)
+    await signOut('/auth/login')
   }
 
   const handleSearch = (e: React.FormEvent) => {

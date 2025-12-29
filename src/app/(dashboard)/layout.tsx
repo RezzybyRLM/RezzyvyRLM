@@ -26,6 +26,7 @@ import {
   Home
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { signOut } from '@/lib/auth/signout'
 
 const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
@@ -317,14 +318,7 @@ export default function DashboardLayout({
   }, [profileMenuOpen])
 
   const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push('/auth/login')
-    } catch (error) {
-      console.error('Error signing out:', error)
-      // Still redirect even if there's an error
-      router.push('/auth/login')
-    }
+    await signOut('/auth/login')
   }
 
   // Show loading only during very brief initial load

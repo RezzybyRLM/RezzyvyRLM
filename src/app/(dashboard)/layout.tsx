@@ -215,11 +215,16 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-[#F3F2EF] flex items-center justify-center">
         <div className="text-center animate-in fade-in duration-500">
-          <div className="relative w-16 h-16 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-xl bg-primary/20 animate-pulse"></div>
-            <div className="absolute inset-2 rounded-lg bg-primary animate-bounce shadow-lg shadow-primary/20 flex items-center justify-center">
-              <Briefcase className="w-8 h-8 text-white" />
-            </div>
+          <div className="relative mx-auto mb-4 flex items-center justify-center">
+            <div className="absolute inset-0 scale-150 rounded-full bg-primary/10 animate-pulse"></div>
+            <Image
+              src="/logo.png"
+              alt="Rezzy Logo"
+              width={120}
+              height={40}
+              className="object-contain animate-bounce transition-all"
+              priority
+            />
           </div>
           <p className="text-gray-500 font-medium tracking-tight">Loading Rezzy</p>
         </div>
@@ -235,9 +240,14 @@ export default function DashboardLayout({
           {/* Logo & Search */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <Link href="/" className="transition-transform active:scale-95">
-              <div className="w-9 h-9 bg-primary rounded-md flex items-center justify-center shadow-sm">
-                <Briefcase className="text-white w-6 h-6 stroke-[2.5]" />
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Rezzy Logo"
+                width={90}
+                height={28}
+                className="object-contain"
+                priority
+              />
             </Link>
             <div className="hidden md:flex items-center bg-[#EDF3F8] rounded px-3 py-1.5 w-64 group focus-within:w-72 transition-all border-transparent border focus-within:border-primary/30">
               <Menu className="w-4 h-4 text-gray-600 mr-2" />

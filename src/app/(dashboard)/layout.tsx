@@ -48,34 +48,20 @@ export default function DashboardLayout({
 }) {
   const [user, setUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(SIDEBAR_STATE_KEY) === 'true'
-    }
-    return false
-  })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [initialLoad, setInitialLoad] = useState(true) // Track if we're still doing initial load
+  const [initialLoad, setInitialLoad] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const profileDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Persist sidebar state
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed))
-    }
-  }, [sidebarCollapsed])
-
-  // Timeout to show page after initial load period - trust middleware if we're here
+  // Timeout to show page after initial load period
   useEffect(() => {
     const timeout = setTimeout(() => {
       setInitialLoad(false)
-    }, 1000) // Reduced to 1 second - middleware already verified auth
-
+    }, 1000)
     return () => clearTimeout(timeout)
   }, [])
 
@@ -89,19 +75,16 @@ export default function DashboardLayout({
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (!currentUser || !mounted) return
 
-        // Get all conversations user is part of (including group chats)
         const { data: directConversations } = await supabase
           .from('conversations')
           .select('id')
           .or(`participant1_id.eq.${currentUser.id},participant2_id.eq.${currentUser.id}`)
 
-        // Get group conversations user is part of
         const { data: groupMembers } = await supabase
           .from('group_members')
           .select('conversation_id')
           .eq('user_id', currentUser.id)
 
-        // Combine conversation IDs
         const conversationIds = [
           ...(directConversations?.map(c => c.id) || []),
           ...(groupMembers?.map(gm => gm.conversation_id) || [])
@@ -112,7 +95,6 @@ export default function DashboardLayout({
           return
         }
 
-        // Get all messages in user's conversations that are not from the user
         const { data: messages } = await supabase
           .from('messages')
           .select('id, is_read, read_by, sender_id')
@@ -124,21 +106,12 @@ export default function DashboardLayout({
           return
         }
 
-        // Count messages that are unread by this user
-        // A message is unread if:
-        // 1. is_read is false AND user is not in read_by array, OR
-        // 2. is_read is true but user is not in read_by array (for backwards compatibility)
-        const unreadCount = messages.filter(msg => {
+        const count = messages.filter(msg => {
           const readBy = Array.isArray(msg.read_by) ? msg.read_by : []
-          const userHasRead = readBy.includes(currentUser.id)
-          // Message is unread if user hasn't read it (not in read_by array)
-          return !userHasRead
+          return !readBy.includes(currentUser.id)
         }).length
 
-        if (mounted) {
-          console.log('📊 Unread count updated:', unreadCount)
-          setUnreadCount(unreadCount)
-        }
+        if (mounted) setUnreadCount(count)
       } catch (error) {
         console.error('Error fetching unread count:', error)
         if (mounted) setUnreadCount(0)
@@ -147,8 +120,6 @@ export default function DashboardLayout({
 
     fetchUnreadCount()
 
-    // Set up realtime subscription for unread count
-    // Listen to INSERT (new messages) and UPDATE (read status changes) events
     const channel = supabase
       .channel('unread_count_updates')
       .on('postgres_changes', {
@@ -156,132 +127,34 @@ export default function DashboardLayout({
         schema: 'public',
         table: 'messages'
       }, () => {
-        console.log('📨 New message inserted, updating unread count')
         if (mounted) fetchUnreadCount()
       })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'messages'
-      }, (payload) => {
-        // Only update if read_by or is_read changed
-        const oldReadBy = Array.isArray(payload.old?.read_by) ? payload.old.read_by : []
-        const newReadBy = Array.isArray(payload.new?.read_by) ? payload.new.read_by : []
-        const readStatusChanged = payload.old?.is_read !== payload.new?.is_read ||
-          JSON.stringify(oldReadBy) !== JSON.stringify(newReadBy)
-
-        if (readStatusChanged) {
-          console.log('👁️ Message read status changed, updating unread count')
-          if (mounted) fetchUnreadCount()
-        }
+      }, () => {
+        if (mounted) fetchUnreadCount()
       })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Unread count realtime subscription active')
-        }
-      })
-
-    // Refresh every 30 seconds as backup
-    const interval = setInterval(() => {
-      if (mounted) fetchUnreadCount()
-    }, 30000)
+      .subscribe()
 
     return () => {
       mounted = false
       supabase.removeChannel(channel)
-      clearInterval(interval)
     }
   }, [user, supabase])
 
   useEffect(() => {
     let mounted = true
-
-    // Initialize user from session
     const initializeUser = async () => {
       try {
-        // Get session first - this reads from cookies set by middleware
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
+        const { data: { session } } = await supabase.auth.getSession()
         if (!mounted) return
 
-        if (session?.user && !sessionError) {
-          setUser(session.user)
-          setInitialLoad(false)
-
-            // Fetch user profile in background
-            ; (async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', session.user.id)
-                  .single()
-
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch {
-                // Non-critical error, continue without profile
-              }
-            })()
-          return
-        }
-
-        // If no session, try getUser as fallback
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-        if (!mounted) return
-
-        if (user && !userError) {
-          setUser(user)
-          setInitialLoad(false)
-
-            // Fetch user profile in background
-            ; (async () => {
-              try {
-                const { data: profile } = await supabase
-                  .from('users')
-                  .select('full_name, avatar_url')
-                  .eq('id', user.id)
-                  .single()
-
-                if (profile && mounted) {
-                  setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
-                }
-              } catch {
-                // Non-critical error, continue without profile
-              }
-            })()
-        } else {
-          // No user found - but middleware already verified, so show page anyway
-          // Middleware will handle redirect if truly unauthenticated
-          setInitialLoad(false)
-        }
-      } catch (error) {
-        console.error('Error initializing user:', error)
-        // Even on error, show the page - middleware already verified auth
-        if (mounted) {
-          setInitialLoad(false)
-        }
-      }
-    }
-
-    initializeUser()
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
-
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUserProfile(null)
-        router.push('/auth/login')
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setUser(session.user)
           setInitialLoad(false)
 
-          // Fetch user profile
           const { data: profile } = await supabase
             .from('users')
             .select('full_name, avatar_url')
@@ -289,9 +162,34 @@ export default function DashboardLayout({
             .single()
 
           if (profile && mounted) {
-            setUserProfile(profile as { full_name: string | null; avatar_url: string | null })
+            setUserProfile(profile as any)
           }
+        } else {
+          setInitialLoad(false)
         }
+      } catch (error) {
+        console.error('Error:', error)
+        if (mounted) setInitialLoad(false)
+      }
+    }
+
+    initializeUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setUserProfile(null)
+        router.push('/auth/login')
+      } else if (session?.user) {
+        setUser(session.user)
+        setInitialLoad(false)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name, avatar_url')
+          .eq('id', session.user.id)
+          .single()
+        if (profile && mounted) setUserProfile(profile as any)
       }
     })
 
@@ -301,61 +199,58 @@ export default function DashboardLayout({
     }
   }, [router, supabase])
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false)
       }
     }
-
     if (profileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
+      return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [profileMenuOpen])
 
-  const handleSignOut = async () => {
-    await signOut('/auth/login')
-  }
-
-  // Show loading only during very brief initial load
-  // Trust middleware - if we're here, user is authenticated
-  // The middleware already verified authentication, so show the page quickly
   if (initialLoad) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-[#F3F2EF] flex items-center justify-center">
+        <div className="text-center animate-in fade-in duration-500">
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-xl bg-primary/20 animate-pulse"></div>
+            <div className="absolute inset-2 rounded-lg bg-primary animate-bounce shadow-lg shadow-primary/20 flex items-center justify-center">
+              <Briefcase className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <p className="text-gray-500 font-medium tracking-tight">Loading Rezzy</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-          <div className="flex h-16 items-center justify-between px-4">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="Rezzy Logo"
-                width={100}
-                height={32}
-                className="object-contain"
-              />
+    <div className="min-h-screen bg-[#F3F2EF]">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          {/* Logo & Search */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link href="/" className="transition-transform active:scale-95">
+              <div className="w-9 h-9 bg-primary rounded-md flex items-center justify-center shadow-sm">
+                <Briefcase className="text-white w-6 h-6 stroke-[2.5]" />
+              </div>
             </Link>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-              <X className="h-6 w-6" />
-            </Button>
+            <div className="hidden md:flex items-center bg-[#EDF3F8] rounded px-3 py-1.5 w-64 group focus-within:w-72 transition-all border-transparent border focus-within:border-primary/30">
+              <Menu className="w-4 h-4 text-gray-600 mr-2" />
+              <input
+                type="text"
+                placeholder="Search"
+                className="bg-transparent border-none outline-none text-sm placeholder:text-gray-600 w-full"
+              />
+            </div>
           </div>
-          <nav className="flex-1 px-4 py-4 space-y-1">
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center h-full">
             {navigation.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -363,259 +258,171 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative z-10 ${isActive
-                    ? 'bg-primary text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  className={`flex flex-col items-center justify-center min-w-[80px] h-full px-2 transition-colors relative group ${isActive ? 'text-black' : 'text-gray-500 hover:text-black'
                     }`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Icon className="mr-3 h-5 w-5 flex-shrink-0 pointer-events-none" />
-                  <span className="truncate pointer-events-none flex-1">{item.name}</span>
-                  {item.name === 'Messages' && unreadCount > 0 && (
-                    <span className="ml-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center pointer-events-none">
-                      {unreadCount > 999 ? '999+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-          </nav>
-          <div className="border-t px-4 py-4">
-            <Button
-              variant="ghost"
-              onClick={handleSignOut}
-              className="w-full justify-start text-red-600 hover:text-red-700 relative z-10"
-              type="button"
-            >
-              <LogOut className="mr-3 h-5 w-5 pointer-events-none" />
-              <span className="pointer-events-none">Sign Out</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 z-50 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
-        }`}>
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 relative">
-          <div className="flex h-16 items-center px-4 justify-between relative">
-            {!sidebarCollapsed ? (
-              <Link href="/" className="flex items-center flex-shrink-0">
-                <Image
-                  src="/logo.png"
-                  alt="Rezzy Logo"
-                  width={100}
-                  height={32}
-                  className="object-contain"
-                  priority
-                />
-              </Link>
-            ) : (
-              <Link href="/" className="flex items-center justify-center w-full flex-shrink-0">
-                <Image
-                  src="/logo.png"
-                  alt="Rezzy Logo"
-                  width={32}
-                  height={32}
-                  className="object-contain"
-                  priority
-                />
-              </Link>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 h-6 w-6 rounded-full p-0"
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="h-3 w-3" />
-              ) : (
-                <ChevronLeft className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-              return (
-                <div
-                  key={item.name}
-                  onClick={() => router.push(item.href)}
-                  className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group relative cursor-pointer ${isActive
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    } ${sidebarCollapsed ? 'justify-center px-2' : ''}`}
-                  title={sidebarCollapsed ? item.name : ''}
                 >
                   <div className="relative">
-                    <Icon className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} transition-all`} />
+                    <Icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
                     {item.name === 'Messages' && unreadCount > 0 && (
-                      <span className={`absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center ${sidebarCollapsed ? '' : '-right-0.5'}`}>
+                      <span className="absolute -top-1 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1 border-2 border-white">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
                   </div>
-                  {!sidebarCollapsed && (
-                    <span className="truncate whitespace-nowrap flex-1 flex items-center">
-                      {item.name}
-                      {item.name === 'Messages' && unreadCount > 0 && (
-                        <span className="ml-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
-                          {unreadCount > 999 ? '999+' : unreadCount}
-                        </span>
-                      )}
-                    </span>
+                  <span className="text-xs mt-1 font-normal">{item.name}</span>
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
                   )}
-                </div>
+                  {!isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-transparent group-hover:bg-gray-200 transition-colors" />
+                  )}
+                </Link>
               )
             })}
-          </nav>
-          <div className="border-t px-2 py-4">
-            <Button
-              variant="ghost"
-              onClick={handleSignOut}
-              className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all cursor-pointer ${sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
-              title={sidebarCollapsed ? 'Sign Out' : ''}
-              type="button"
-            >
-              <LogOut className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-              {!sidebarCollapsed && <span className="truncate whitespace-nowrap">Sign Out</span>}
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      {/* Main content */}
-      <div className={`transition-all duration-300 relative z-0 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
-        {/* Desktop header */}
-        <div className="hidden lg:flex h-16 items-center justify-between px-6 bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="flex-1" />
-          <div className="flex items-center gap-4">
-            {/* Profile dropdown */}
-            <div className="relative z-50" ref={profileDropdownRef}>
+            {/* Profile Dropdown */}
+            <div className="relative h-full flex items-center ml-4 pl-4 border-l border-gray-100" ref={profileDropdownRef}>
               <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setProfileMenuOpen(!profileMenuOpen)
-                }}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors relative z-50"
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex flex-col items-center justify-center transition-colors group text-gray-500 hover:text-black"
               >
                 {userProfile?.avatar_url ? (
                   <img
                     src={userProfile.avatar_url}
-                    alt={userProfile.full_name || 'User'}
-                    className="w-8 h-8 rounded-full object-cover pointer-events-none"
+                    alt="Me"
+                    className="w-6 h-6 rounded-full object-cover border border-gray-200"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center pointer-events-none">
-                    <User className="h-5 w-5 text-primary" />
+                  <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                    <User className="h-4 w-4" />
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-700 hidden xl:block pointer-events-none">
-                  {userProfile?.full_name || user?.email?.split('@')[0] || 'User'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-gray-500 hidden xl:block pointer-events-none" />
+                <div className="flex items-center gap-0.5 mt-1">
+                  <span className="text-xs">Me</span>
+                  <ChevronDown className="w-3 h-3" />
+                </div>
               </button>
 
-              {/* Dropdown menu */}
               {profileMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setProfileMenuOpen(false)
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation()
-                    }}
-                  />
-                  <div
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                <div className="absolute top-14 right-0 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 pb-3 border-b border-gray-100 mb-2">
+                    <div className="flex gap-2">
+                      {userProfile?.avatar_url ? (
+                        <img src={userProfile.avatar_url} className="w-12 h-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"><User className="w-6 h-6 text-gray-400" /></div>
+                      )}
+                      <div className="flex-1 overflow-hidden">
+                        <h3 className="text-sm font-semibold truncate">{userProfile?.full_name || 'User'}</h3>
+                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                      </div>
+                    </div>
                     <Link
                       href="/profile"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setProfileMenuOpen(false)
-                      }}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="mt-3 block text-center w-full py-1 text-sm font-semibold text-primary border border-primary rounded-full hover:bg-primary/5 transition-colors"
                     >
-                      <User className="h-4 w-4 mr-2" />
-                      Profile Settings
+                      View Profile
                     </Link>
+                  </div>
+                  <div className="py-1">
                     <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleSignOut()
+                      onClick={() => {
+                        signOut('/auth/login')
                         setProfileMenuOpen(false)
                       }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
                       Sign Out
                     </button>
                   </div>
-                </>
+                </div>
               )}
             </div>
-          </div>
-        </div>
+          </nav>
 
-        {/* Mobile header */}
-        <div className="lg:hidden flex h-16 items-center justify-between px-4 bg-white border-b border-gray-200">
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
-            <Menu className="h-6 w-6" />
-          </Button>
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Rezzy Logo"
-              width={80}
-              height={26}
-              className="object-contain"
-            />
-          </Link>
-          <div className="flex items-center gap-2">
-            {/* Profile picture and sign out on mobile */}
-            {userProfile?.avatar_url ? (
-              <Link href="/profile">
-                <img
-                  src={userProfile.avatar_url}
-                  alt={userProfile.full_name || 'User'}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              </Link>
-            ) : (
-              <Link href="/profile">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-              </Link>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              className="text-red-600 hover:text-red-700"
+          {/* Mobile Menu Toggle */}
+          <div className="lg:hidden flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <LogOut className="h-5 w-5" />
-            </Button>
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
 
-        {/* Page content */}
-        <main className="flex-1">
-          <PageLoader>
-            {children}
-          </PageLoader>
-        </main>
-      </div>
+        {/* Mobile Navigation Dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-white border-t border-gray-100 animate-in slide-in-from-top duration-300 overflow-hidden">
+            <div className="px-4 py-4 space-y-1">
+              {navigation.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/5 text-primary' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{item.name}</span>
+                    {item.name === 'Messages' && unreadCount > 0 && (
+                      <span className="ml-auto bg-red-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+              <div className="pt-2 mt-2 border-t border-gray-100">
+                <button
+                  onClick={() => signOut('/auth/login')}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <PageLoader>
+          {children}
+        </PageLoader>
+      </main>
+
+      {/* Bottom Nav for Mobile (Optional but good for premium feel) */}
+      <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-gray-200 px-4 h-16 flex items-center justify-around z-50 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
+        {navigation.slice(0, 5).map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex flex-col items-center gap-1 ${isActive ? 'text-black' : 'text-gray-500'}`}
+            >
+              <div className="relative">
+                <Icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+                {item.name === 'Messages' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center border-2 border-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px]">{item.name.split(' ')[0]}</span>
+            </Link>
+          )
+        })}
+      </nav>
     </div>
   )
 }
+

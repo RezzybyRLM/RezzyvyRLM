@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
-import { 
-  Search, 
-  MapPin, 
-  Loader2, 
-  AlertCircle, 
-  Briefcase, 
+import {
+  Search,
+  MapPin,
+  Loader2,
+  AlertCircle,
+  Briefcase,
   DollarSign,
   X,
   Mail,
@@ -243,13 +243,13 @@ export default function JobsPage() {
       setMatchScoreLoading(true)
       setMatchScore(null)
       setMatchedProfileName(null)
-      
+
       // Simulate loading for better UX
       setTimeout(async () => {
         setSelectedJob(job)
         markAsVisited(job.id)
         setDetailLoading(false)
-        
+
         // Calculate match score
         await calculateJobMatchScore(job)
       }, 100)
@@ -259,7 +259,7 @@ export default function JobsPage() {
   const calculateJobMatchScore = async (job: Job) => {
     try {
       setMatchScoreLoading(true)
-      
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -285,7 +285,7 @@ export default function JobsPage() {
 
       // Find best matching profile
       const bestMatch = findBestMatchingProfile(profiles, job)
-      
+
       if (bestMatch) {
         setMatchScore(bestMatch.score)
         setMatchedProfileName(bestMatch.profile.profile_name)
@@ -316,7 +316,7 @@ export default function JobsPage() {
       }
 
       const isBookmarked = bookmarkedJobs.has(job.id)
-      
+
       if (isBookmarked) {
         // Remove bookmark
         const response = await fetch(`/api/jobs/bookmark?jobId=${job.id}`, {
@@ -380,7 +380,7 @@ export default function JobsPage() {
     const now = new Date()
     const diffTime = Math.abs(now.getTime() - date.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
+
     if (diffDays === 0) return 'Just now'
     if (diffDays === 1) return '1 day ago'
     if (diffDays < 7) return `${diffDays} days ago`
@@ -400,7 +400,7 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-gray-50 relative" style={{ zIndex: 0 }}>
       {/* Sticky Search Bar */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 30 }}>
+      <div className="sticky top-14 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 30 }}>
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <form onSubmit={handleSearch} className="flex gap-3 mb-4">
             <div className="flex-1 relative">
@@ -435,7 +435,7 @@ export default function JobsPage() {
           {/* Quick Filters Bar */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-gray-600 font-medium">Filters:</span>
-            
+
             {/* Date Posted Filter */}
             <div className="relative">
               <button
@@ -467,9 +467,8 @@ export default function JobsPage() {
                           setShowDateDropdown(false)
                           fetchJobs()
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                          dateFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${dateFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
                       >
                         {filter === 'anytime' ? 'Any time' : filter === 'today' ? 'Today' : filter === '3days' ? 'Past 3 days' : filter === 'week' ? 'Past week' : 'Past month'}
                       </button>
@@ -510,9 +509,8 @@ export default function JobsPage() {
                           setShowRemoteDropdown(false)
                           fetchJobs()
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                          remoteFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${remoteFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
                       >
                         {filter === 'all' ? 'All' : filter === 'remote' ? 'Remote' : filter === 'hybrid' ? 'Hybrid' : 'On-site'}
                       </button>
@@ -553,9 +551,8 @@ export default function JobsPage() {
                           setShowSalaryDropdown(false)
                           fetchJobs()
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                          salaryFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${salaryFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
                       >
                         {filter === 'all' ? 'Any salary' : `$${filter}+`}
                       </button>
@@ -570,9 +567,8 @@ export default function JobsPage() {
 
       <div className="flex max-w-full h-[calc(100vh-200px)]">
         {/* Jobs List - Left Side */}
-        <div className={`flex-1 transition-all duration-300 overflow-y-auto ${
-          selectedJob ? 'lg:w-1/2' : 'w-full'
-        }`} ref={jobsListRef}>
+        <div className={`flex-1 transition-all duration-300 overflow-y-auto ${selectedJob ? 'lg:w-1/2' : 'w-full'
+          }`} ref={jobsListRef}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Results Count */}
             {!loading && !error && (
@@ -624,16 +620,15 @@ export default function JobsPage() {
                       const isSelected = selectedJob?.id === job.id
                       const isVisited = visitedJobs.has(job.id)
                       const isBookmarked = bookmarkedJobs.has(job.id)
-                      
+
                       return (
                         <div
                           key={job.id}
                           onClick={() => handleJobClick(job)}
-                          className={`relative bg-white border-l-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 ${
-                            isSelected
+                          className={`relative bg-white border-l-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 ${isSelected
                               ? 'border-l-blue-600 bg-blue-50 shadow-md scale-[1.02]'
                               : 'border-l-transparent border-b border-gray-200'
-                          } ${isVisited && !isSelected ? 'opacity-90' : ''} animate-fadeInUp`}
+                            } ${isVisited && !isSelected ? 'opacity-90' : ''} animate-fadeInUp`}
                           style={{
                             animationDelay: `${index * 0.05}s`,
                             animationFillMode: 'both'
@@ -643,11 +638,10 @@ export default function JobsPage() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <h3 className={`text-lg font-semibold line-clamp-2 transition-colors ${
-                                    isSelected
+                                  <h3 className={`text-lg font-semibold line-clamp-2 transition-colors ${isSelected
                                       ? 'text-blue-600'
                                       : 'text-black'
-                                  }`}>
+                                    }`}>
                                     {job.title}
                                   </h3>
                                   {job.is_featured && (
@@ -656,7 +650,7 @@ export default function JobsPage() {
                                     </Badge>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3 text-sm text-gray-600 mb-2">
                                   {job.company && (
                                     <span className="font-medium text-gray-900">{job.company.name}</span>
@@ -699,11 +693,10 @@ export default function JobsPage() {
                               </div>
                               <button
                                 onClick={(e) => handleBookmark(job, e)}
-                                className={`flex-shrink-0 p-2 rounded-md transition-colors ${
-                                  isBookmarked
+                                className={`flex-shrink-0 p-2 rounded-md transition-colors ${isBookmarked
                                     ? 'text-yellow-500 hover:text-yellow-600'
                                     : 'text-gray-400 hover:text-gray-600'
-                                }`}
+                                  }`}
                                 type="button"
                               >
                                 <Bookmark className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
@@ -729,7 +722,7 @@ export default function JobsPage() {
               style={{ zIndex: 20 }}
               onClick={handleCloseDetails}
             />
-            
+
             <div
               ref={detailPanelRef}
               className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none animate-slideInRight"
@@ -771,7 +764,7 @@ export default function JobsPage() {
                         <X className="h-5 w-5" />
                       </Button>
                     </div>
-                    
+
                     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-4">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
@@ -837,12 +830,11 @@ export default function JobsPage() {
                                   fill="none"
                                   strokeDasharray={`${2 * Math.PI * 28}`}
                                   strokeDashoffset={`${2 * Math.PI * 28 * (1 - matchScore / 100)}`}
-                                  className={`transition-all duration-500 ${
-                                    matchScore >= 80 ? 'text-green-500' :
-                                    matchScore >= 60 ? 'text-blue-500' :
-                                    matchScore >= 40 ? 'text-yellow-500' :
-                                    'text-orange-500'
-                                  }`}
+                                  className={`transition-all duration-500 ${matchScore >= 80 ? 'text-green-500' :
+                                      matchScore >= 60 ? 'text-blue-500' :
+                                        matchScore >= 40 ? 'text-yellow-500' :
+                                          'text-orange-500'
+                                    }`}
                                 />
                               </svg>
                             </div>

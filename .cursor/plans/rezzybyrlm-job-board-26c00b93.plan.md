@@ -1,4 +1,67 @@
-<!-- 26c00b93-384f-43e6-94cc-43bfed396919 60449ba0-e539-40c0-8b0d-e1729edf0bb2 -->
+---
+name: rezzybyrlm AI Job Aggregator - Implementation Plan
+overview: ""
+todos:
+  - id: ab70a1c7-c77b-4582-bf9f-c998fc729bfc
+    content: Initialize Next.js 14 project with TypeScript, Tailwind v4, and install all dependencies IN THE  CURRENT WORKSPACE
+    status: pending
+  - id: 3f24dc2a-d3fa-46e3-9ff8-ae89aaf0f49d
+    content: Configure Supabase client, create database schema, set up RLS policies and authentication
+    status: pending
+  - id: 89b0d407-ccd5-40b6-996d-707fe6499ff3
+    content: Set up next-intl for multi-language support with locale files and middleware
+    status: pending
+  - id: 30b5d08d-7da1-4980-b48d-559a6f54128e
+    content: Create layout components (Navbar, Footer, Sidebar) and UI primitives (Button, Card, Input, etc.)
+    status: pending
+  - id: abb29f67-a56b-4a19-a55b-ce01488cd720
+    content: Build homepage inspired by pagesource.html layout with hero search, featured jobs, and testimonials
+    status: pending
+  - id: e6e7e12b-4516-4223-b9ca-7fa4348b4327
+    content: Create jobs listing page with advanced search, filters, and pagination
+    status: pending
+  - id: bf1d62e6-721f-415c-b4dd-32f23089cab9
+    content: Build job detail page with application form and company info
+    status: pending
+  - id: 0dccc6cd-735a-45e8-a213-116cf2f7bc36
+    content: Implement Supabase authentication with login/register pages and middleware
+    status: pending
+  - id: 1e7558be-3e80-439d-94f4-aa45294807ed
+    content: Create job seeker dashboard (profile, resume manager, applications, bookmarks, alerts)
+    status: pending
+  - id: bd8091c5-4456-4285-b56b-17dc452435c8
+    content: Build employer dashboard for job posting and application management
+    status: pending
+  - id: c33d0b54-2eda-4cc2-8004-7f1fd7fa120e
+    content: Set up Stripe for paid job listings, packages, and donations with webhook handling
+    status: pending
+  - id: 32d3df83-563a-4680-a46c-9e9100bf69d7
+    content: Create donation page with Stripe Checkout integration and thank you flow
+    status: pending
+  - id: 7fcee180-6aeb-4437-ae1e-7272e9906fc1
+    content: Integrate Gemini API for auto resume suggestion feature
+    status: pending
+  - id: 8889f40f-13bc-4f1d-980f-91cdd66c8f63
+    content: Build Interview Pro with Web Speech API + Gemini for voice-to-voice practice interviews
+    status: pending
+  - id: 16af1224-1d24-4906-ba45-9d200e8d919b
+    content: Set up email infrastructure for alerts, notifications, and confirmations with i18n support
+    status: pending
+  - id: 24163235-db70-42da-9c82-2df0a6a28b49
+    content: Implement user locator and geo job manager with location-based filtering
+    status: pending
+  - id: 7c7809f7-baa9-4a02-b3f8-91e20ec613a7
+    content: Create embeddable job widget API and standalone script for external websites
+    status: pending
+  - id: fde1a597-c347-4e6d-b68b-7947372e84cc
+    content: Optimize performance with ISR, caching, image optimization, and SEO implementation
+    status: pending
+  - id: 5924bb90-db47-472e-8c43-d50b5e55a69a
+    content: Configure and deploy to Vercel with environment variables and analytics
+    status: pending
+isProject: false
+---
+
 # rezzybyrlm AI Job Aggregator - Implementation Plan
 
 ## Overview
@@ -23,11 +86,11 @@ This is now a **job aggregator**, not a traditional job board:
 - Install dependencies: `tailwindcss@next`, `@supabase/ssr`, `stripe`, `@google/generative-ai`, `apify-client`
 - Configure `next.config.mjs` for Vercel deployment optimization
 - Set up `tailwind.config.ts` with the custom color palette:
-  - Primary Coral: `#FF6B6B`
-  - Secondary Dark Brown: `#5D4037`
-  - Accent Red: `#D90429`
-  - Background: `#F7F7F7`
-  - Text: `#212121`
+- Primary Coral: `#FF6B6B`
+- Secondary Dark Brown: `#5D4037`
+- Accent Red: `#D90429`
+- Background: `#F7F7F7`
+- Text: `#212121`
 
 ### 1.2 Configure Supabase (Using MCP)
 
@@ -37,16 +100,16 @@ This is now a **job aggregator**, not a traditional job board:
 - Project ref: `vptsewotbthuklrcamek`
 - Initialize Supabase client with environment variables from MCP config
 - Create database schema using `mcp_supabase_apply_migration` tool:
-  - `users` table (extends auth.users with additional fields: location, preferences)
-  - `companies` table (for premium listings: name, logo_url, description, website, created_at)
-  - `jobs` table (for premium/featured jobs: title, description, company_id, location, salary_range, is_featured, featured_until, created_at, expires_at)
-  - `cached_indeed_jobs` table (title, company, location, description, apply_url, salary, job_type, scraped_at, expires_at, search_query)
-  - `resumes` table (user_id, file_name, file_url, content_text, created_at, updated_at)
-  - `bookmarks` table (user_id, job_id, source ['indeed'|'premium'], job_snapshot jsonb, created_at)
-  - `job_alerts` table (user_id, search_query, location, frequency ['daily'|'weekly'], last_sent_at, is_active)
-  - `interview_sessions` table (user_id, job_role, duration, questions jsonb, feedback jsonb, created_at)
-  - **`api_usage_tracking` table** (user_id, service ['apify'|'gemini'|'stripe'], endpoint, request_count, cost_estimate, timestamp, metadata jsonb)
-  - **`user_plans` table** (user_id, plan_type ['free'|'basic'|'pro'|'enterprise'], stripe_subscription_id, api_quota_remaining, quota_reset_date, created_at, updated_at)
+- `users` table (extends auth.users with additional fields: location, preferences)
+- `companies` table (for premium listings: name, logo_url, description, website, created_at)
+- `jobs` table (for premium/featured jobs: title, description, company_id, location, salary_range, is_featured, featured_until, created_at, expires_at)
+- `cached_indeed_jobs` table (title, company, location, description, apply_url, salary, job_type, scraped_at, expires_at, search_query)
+- `resumes` table (user_id, file_name, file_url, content_text, created_at, updated_at)
+- `bookmarks` table (user_id, job_id, source ['indeed'|'premium'], job_snapshot jsonb, created_at)
+- `job_alerts` table (user_id, search_query, location, frequency ['daily'|'weekly'], last_sent_at, is_active)
+- `interview_sessions` table (user_id, job_role, duration, questions jsonb, feedback jsonb, created_at)
+- `**api_usage_tracking` table** (user_id, service ['apify'|'gemini'|'stripe'], endpoint, request_count, cost_estimate, timestamp, metadata jsonb)
+- `**user_plans` table** (user_id, plan_type ['free'|'basic'|'pro'|'enterprise'], stripe_subscription_id, api_quota_remaining, quota_reset_date, created_at, updated_at)
 - Set up Row Level Security (RLS) policies using `mcp_supabase_execute_sql`
 - Configure Supabase Storage for resume uploads
 - Set up Supabase Auth for user authentication
@@ -55,7 +118,7 @@ This is now a **job aggregator**, not a traditional job board:
 
 - Store Apify API token in environment variables
 - Create `lib/apify/client.ts` for Apify API calls
-- Configure Indeed Scraper actor (https://console.apify.com/actors/hMvNSpz3JnHgl5jkh)
+- Configure Indeed Scraper actor ([https://console.apify.com/actors/hMvNSpz3JnHgl5jkh](https://console.apify.com/actors/hMvNSpz3JnHgl5jkh))
 - Set up caching strategy to avoid excessive API calls
 - Implement rate limiting and error handling
 
@@ -104,15 +167,14 @@ Create in `components/ui/`:
 - **IMPORTANT: Limit maxItems to 10** to control Apify costs and API usage
 - Call Apify Indeed Scraper with configuration:
   ```json
-  {
-    "position": "Software Engineer",
-    "country": "us",
-    "location": "Austin, TX",
-    "maxItems": 10,  // HARD LIMIT: Max 10 jobs per request
-    "date": "7"      // Last 7 days for active jobs
-  }
+        {
+          "position": "Software Engineer",
+          "country": "us",
+          "location": "Austin, TX",
+          "maxItems": 10,  // HARD LIMIT: Max 10 jobs per request
+          "date": "7"      // Last 7 days for active jobs
+        }
   ```
-
 - Wait for actor run completion
 - Fetch dataset results (maximum 10 jobs)
 - Transform Indeed data to standardized format
@@ -245,21 +307,19 @@ Location: `lib/ai/resume-matcher.ts`
 
 ### 6.2 Interview Pro (`app/(dashboard)/interview-pro/page.tsx`)
 
-**Voice-to-Voice Practice Interviews**
-
-Implementation using Web Speech API + Gemini:
+**Voice-to-Voice Practice Interviews**Implementation using Web Speech API + Gemini:
 
 1. **Speech Input**: Web Speech API (`webkitSpeechRecognition` or `SpeechRecognition`)
 2. **AI Processing**: Send transcript to Gemini API
 3. **Speech Output**: Web Speech API (`SpeechSynthesis`)
 4. **Flow**:
 
-   - User selects job role/industry
-   - Gemini generates interview questions
-   - User speaks answer (captured via `SpeechRecognition`)
-   - Transcript sent to Gemini for analysis
-   - Gemini returns feedback + next question
-   - Feedback spoken using `SpeechSynthesis`
+- User selects job role/industry
+- Gemini generates interview questions
+- User speaks answer (captured via `SpeechRecognition`)
+- Transcript sent to Gemini for analysis
+- Gemini returns feedback + next question
+- Feedback spoken using `SpeechSynthesis`
 
 Components:
 
@@ -326,12 +386,12 @@ Payment flows:
 1. **Simple Paid Listing**: $49 for single 30-day job post
 2. **Premium Packages**:
 
-   - Basic: $99/month - 3 job posts
-   - Pro: $199/month - 10 job posts + featured placement
-   - Enterprise: $499/month - Unlimited + priority support
+- Basic: $99/month - 3 job posts
+- Pro: $199/month - 10 job posts + featured placement
+- Enterprise: $499/month - Unlimited + priority support
 
-3. **Donations**: One-time contributions
-4. **AI Tools Subscription** (Optional): $9.99/month for unlimited Interview Pro
+1. **Donations**: One-time contributions
+2. **AI Tools Subscription** (Optional): $9.99/month for unlimited Interview Pro
 
 API routes:
 
@@ -350,9 +410,7 @@ API routes:
 
 ### 8.1 Email Infrastructure
 
-Use Resend or SendGrid with React Email templates
-
-Email types:
+Use Resend or SendGrid with React Email templatesEmail types:
 
 - Job alert notifications (daily/weekly digest)
 - Password reset
@@ -392,8 +450,8 @@ Create email templates in `lib/emails/templates/`:
 
 - Cache scraping results in `cached_indeed_jobs` table
 - Set TTL (Time To Live) based on search popularity:
-  - Popular searches: 6 hours
-  - Rare searches: 24 hours
+- Popular searches: 6 hours
+- Rare searches: 24 hours
 - Stale-while-revalidate pattern
 - Background refresh for trending searches
 
@@ -506,7 +564,7 @@ Create email templates in `lib/emails/templates/`:
 
 **Environment Variables Required:**
 
-```
+```javascript
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
@@ -522,13 +580,13 @@ RESEND_API_KEY
 **Database Schema Changes:**
 
 - `cached_indeed_jobs` table:
-  - id, title, company, location, description, apply_url (Indeed link), salary, job_type, scraped_at, expires_at, search_query
+- id, title, company, location, description, apply_url (Indeed link), salary, job_type, scraped_at, expires_at, search_query
 - `jobs` table (premium only):
-  - Add `is_featured` boolean
-  - Add `featured_until` timestamp
+- Add `is_featured` boolean
+- Add `featured_until` timestamp
 - `bookmarks` table:
-  - Add `source` field ('indeed' or 'premium')
-  - Store job data snapshot for Indeed jobs
+- Add `source` field ('indeed' or 'premium')
+- Store job data snapshot for Indeed jobs
 
 **Critical Implementation Detail:**
 
@@ -542,28 +600,7 @@ RESEND_API_KEY
 >
   {job.source === 'indeed' ? 'Apply on Indeed' : 'Apply Now'}
 </a>
+
+
 ```
 
-This plan creates a comprehensive job aggregator with unique AI-powered value propositions, optimized for Vercel deployment and scalable growth.
-
-### To-dos
-
-- [ ] Initialize Next.js 14 project with TypeScript, Tailwind v4, and install all dependencies IN THE  CURRENT WORKSPACE
-- [ ] Configure Supabase client, create database schema, set up RLS policies and authentication
-- [ ] Set up next-intl for multi-language support with locale files and middleware
-- [ ] Create layout components (Navbar, Footer, Sidebar) and UI primitives (Button, Card, Input, etc.)
-- [ ] Build homepage inspired by pagesource.html layout with hero search, featured jobs, and testimonials
-- [ ] Create jobs listing page with advanced search, filters, and pagination
-- [ ] Build job detail page with application form and company info
-- [ ] Implement Supabase authentication with login/register pages and middleware
-- [ ] Create job seeker dashboard (profile, resume manager, applications, bookmarks, alerts)
-- [ ] Build employer dashboard for job posting and application management
-- [ ] Set up Stripe for paid job listings, packages, and donations with webhook handling
-- [ ] Create donation page with Stripe Checkout integration and thank you flow
-- [ ] Integrate Gemini API for auto resume suggestion feature
-- [ ] Build Interview Pro with Web Speech API + Gemini for voice-to-voice practice interviews
-- [ ] Set up email infrastructure for alerts, notifications, and confirmations with i18n support
-- [ ] Implement user locator and geo job manager with location-based filtering
-- [ ] Create embeddable job widget API and standalone script for external websites
-- [ ] Optimize performance with ISR, caching, image optimization, and SEO implementation
-- [ ] Configure and deploy to Vercel with environment variables and analytics

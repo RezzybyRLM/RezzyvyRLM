@@ -6,6 +6,7 @@ import { formatRelativeTime, formatSalary, getJobTypeColor } from '@/lib/utils'
 import { TransformedJob } from '@/lib/types/indeed-job'
 import { ProfileSelector } from '@/components/ui/profile-selector'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 
 interface JobCardProps {
   job: TransformedJob
@@ -39,131 +40,139 @@ export function JobCard({ job, onBookmark, onMarkApplied, isBookmarked = false, 
   }
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
-              {job.title}
-            </h3>
-            <p className="text-primary font-medium">{job.company_name}</p>
-          </div>
-          <div className="flex items-center space-x-2 ml-4">
-            {job.source === 'premium' && (
-              <Badge variant="featured">Featured</Badge>
-            )}
-            {onBookmark && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onBookmark(job.id)
-                }}
-                className={isBookmarked ? 'text-accent' : 'text-gray-400'}
-                type="button"
-              >
-                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''} pointer-events-none`} />
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-0">
-        <div className="space-y-3">
-          {/* Job Details */}
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <div className="flex items-center space-x-1">
-              <MapPin className="h-4 w-4" />
-              <span>{job.location}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card className="hover:shadow-lg transition-shadow duration-200 h-full">
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+                {job.title}
+              </h3>
+              <p className="text-primary font-medium">{job.company_name}</p>
             </div>
-            {job.job_type && (
-              <Badge 
-                variant="outline" 
-                className={getJobTypeColor(job.job_type)}
-              >
-                {job.job_type}
-              </Badge>
-            )}
-          </div>
-
-          {/* Salary */}
-          {job.salary_range && (
-            <div className="flex items-center space-x-1 text-sm text-gray-600">
-              <DollarSign className="h-4 w-4" />
-              <span>{formatSalary(job.salary_range)}</span>
+            <div className="flex items-center space-x-2 ml-4">
+              {job.source === 'premium' && (
+                <Badge variant="featured">Featured</Badge>
+              )}
+              {onBookmark && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onBookmark(job.id)
+                  }}
+                  className={isBookmarked ? 'text-accent' : 'text-gray-400'}
+                  type="button"
+                >
+                  <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''} pointer-events-none`} />
+                </Button>
+              )}
             </div>
-          )}
-
-          {/* Posted Date */}
-          {job.scraped_at && (
-            <div className="flex items-center space-x-1 text-sm text-gray-500">
-              <Clock className="h-4 w-4" />
-              <span>Posted {formatRelativeTime(job.scraped_at)}</span>
-            </div>
-          )}
-
-          {/* Description */}
-          <p className="text-gray-700 text-sm line-clamp-3">
-            {job.description}
-          </p>
-
-          {/* Apply Button */}
-          <div className="pt-2 space-y-2">
-            {isApplied ? (
-              <Button 
-                variant="outline"
-                className="w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                disabled
-                type="button"
-              >
-                <CheckCircle className="mr-2 h-4 w-4 pointer-events-none" />
-                <span className="pointer-events-none">Applied</span>
-              </Button>
-            ) : (
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleApply()
-                }}
-                className="w-full"
-                variant={job.source === 'indeed' ? 'default' : 'secondary'}
-                type="button"
-              >
-                {job.source === 'indeed' ? (
-                  <>
-                    Apply on Indeed
-                    <ExternalLink className="ml-2 h-4 w-4 pointer-events-none" />
-                  </>
-                ) : (
-                  'Apply Now'
-                )}
-              </Button>
-            )}
-            {onMarkApplied && !isApplied && (
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowProfileSelector(true)
-                }}
-                variant="outline"
-                className="w-full"
-                type="button"
-              >
-                Mark as Applied
-              </Button>
-            )}
           </div>
-        </div>
-      </CardContent>
-      <ProfileSelector
-        isOpen={showProfileSelector}
-        onClose={() => setShowProfileSelector(false)}
-        onSelect={handleProfileSelected}
-        jobTitle={job.title}
-        companyName={job.company_name}
-      />
-    </Card>
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            {/* Job Details */}
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-1">
+                <MapPin className="h-4 w-4" />
+                <span>{job.location}</span>
+              </div>
+              {job.job_type && (
+                <Badge
+                  variant="outline"
+                  className={getJobTypeColor(job.job_type)}
+                >
+                  {job.job_type}
+                </Badge>
+              )}
+            </div>
+
+            {/* Salary */}
+            {job.salary_range && (
+              <div className="flex items-center space-x-1 text-sm text-gray-600">
+                <DollarSign className="h-4 w-4" />
+                <span>{formatSalary(job.salary_range)}</span>
+              </div>
+            )}
+
+            {/* Posted Date */}
+            {job.scraped_at && (
+              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                <Clock className="h-4 w-4" />
+                <span>Posted {formatRelativeTime(job.scraped_at)}</span>
+              </div>
+            )}
+
+            {/* Description */}
+            <p className="text-gray-700 text-sm line-clamp-3">
+              {job.description}
+            </p>
+
+            {/* Apply Button */}
+            <div className="pt-2 space-y-2">
+              {isApplied ? (
+                <Button
+                  variant="outline"
+                  className="w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                  disabled
+                  type="button"
+                >
+                  <CheckCircle className="mr-2 h-4 w-4 pointer-events-none" />
+                  <span className="pointer-events-none">Applied</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleApply()
+                  }}
+                  className="w-full"
+                  variant={job.source === 'indeed' ? 'default' : 'secondary'}
+                  type="button"
+                >
+                  {job.source === 'indeed' ? (
+                    <>
+                      Apply on Indeed
+                      <ExternalLink className="ml-2 h-4 w-4 pointer-events-none" />
+                    </>
+                  ) : (
+                    'Apply Now'
+                  )}
+                </Button>
+              )}
+              {onMarkApplied && !isApplied && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowProfileSelector(true)
+                  }}
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                >
+                  Mark as Applied
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <ProfileSelector
+          isOpen={showProfileSelector}
+          onClose={() => setShowProfileSelector(false)}
+          onSelect={handleProfileSelected}
+          jobTitle={job.title}
+          companyName={job.company_name}
+        />
+      </Card>
+    </motion.div>
   )
 }

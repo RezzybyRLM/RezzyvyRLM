@@ -30,6 +30,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { JobApplicationModal } from '@/components/ui/job-application-modal'
 import { findBestMatchingProfile } from '@/lib/jobs/match-score'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface Job {
   id: string
@@ -622,25 +623,32 @@ export default function JobsPage() {
                       const isBookmarked = bookmarkedJobs.has(job.id)
 
                       return (
-                        <div
+                        <motion.div
                           key={job.id}
+                          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          whileHover={{ scale: 1.01, backgroundColor: 'rgba(59, 130, 246, 0.03)' }}
+                          whileTap={{ scale: 0.99 }}
                           onClick={() => handleJobClick(job)}
-                          className={`relative bg-white border-l-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 ${isSelected
-                              ? 'border-l-blue-600 bg-blue-50 shadow-md scale-[1.02]'
-                              : 'border-l-transparent border-b border-gray-200'
-                            } ${isVisited && !isSelected ? 'opacity-90' : ''} animate-fadeInUp`}
-                          style={{
-                            animationDelay: `${index * 0.05}s`,
-                            animationFillMode: 'both'
-                          }}
+                          className={`relative border-l-4 cursor-pointer transition-all duration-300 ${isSelected
+                            ? 'border-l-blue-600 bg-blue-50 shadow-md ring-1 ring-blue-600/10'
+                            : 'border-l-transparent border-b border-gray-200 bg-white'
+                            } ${isVisited && !isSelected ? 'opacity-90' : ''}`}
                         >
+                          {isSelected && (
+                            <motion.div
+                              layoutId="active-job-indicator"
+                              className="absolute inset-0 bg-blue-100/10 pointer-events-none"
+                            />
+                          )}
                           <div className="p-5">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className={`text-lg font-semibold line-clamp-2 transition-colors ${isSelected
-                                      ? 'text-blue-600'
-                                      : 'text-black'
+                                    ? 'text-blue-600'
+                                    : 'text-black'
                                     }`}>
                                     {job.title}
                                   </h3>
@@ -694,8 +702,8 @@ export default function JobsPage() {
                               <button
                                 onClick={(e) => handleBookmark(job, e)}
                                 className={`flex-shrink-0 p-2 rounded-md transition-colors ${isBookmarked
-                                    ? 'text-yellow-500 hover:text-yellow-600'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                  ? 'text-yellow-500 hover:text-yellow-600'
+                                  : 'text-gray-400 hover:text-gray-600'
                                   }`}
                                 type="button"
                               >
@@ -703,7 +711,7 @@ export default function JobsPage() {
                               </button>
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       )
                     })}
                   </div>
@@ -714,369 +722,377 @@ export default function JobsPage() {
         </div>
 
         {/* Job Details Panel - Right Side */}
-        {selectedJob && (
-          <>
-            {/* Mobile Overlay */}
-            <div
-              className="lg:hidden fixed inset-0 bg-black bg-opacity-50"
-              style={{ zIndex: 20 }}
-              onClick={handleCloseDetails}
-            />
+        <AnimatePresence>
+          {selectedJob && (
+            <>
+              {/* Mobile Overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="lg:hidden fixed inset-0 bg-black bg-opacity-50"
+                style={{ zIndex: 20 }}
+                onClick={handleCloseDetails}
+              />
 
-            <div
-              ref={detailPanelRef}
-              className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none animate-slideInRight"
-              style={{ zIndex: 30 }}
-            >
-              {/* Sticky Header with Apply Button */}
-              {detailLoading ? (
-                <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm p-6" style={{ zIndex: 10 }}>
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                    <div className="h-10 bg-gray-200 rounded w-full"></div>
+              <motion.div
+                ref={detailPanelRef}
+                initial={{ x: '100%', opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed lg:relative top-0 right-0 w-full lg:w-1/2 h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:shadow-none"
+                style={{ zIndex: 30 }}
+              >
+                {/* Sticky Header with Apply Button */}
+                {detailLoading ? (
+                  <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm p-6" style={{ zIndex: 10 }}>
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-10 bg-gray-200 rounded w-full"></div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 10 }}>
-                  <div className="px-6 py-4">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h2>
-                        {selectedJob.company && (
-                          <div className="flex items-center gap-2">
-                            <p className="text-lg text-gray-700">{selectedJob.company.name}</p>
-                            {/* Company Rating Placeholder */}
-                            <div className="flex items-center gap-1 text-sm text-gray-500">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span>4.2</span>
+                ) : (
+                  <div className="sticky top-0 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 10 }}>
+                    <div className="px-6 py-4">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex-1">
+                          <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h2>
+                          {selectedJob.company && (
+                            <div className="flex items-center gap-2">
+                              <p className="text-lg text-gray-700">{selectedJob.company.name}</p>
+                              {/* Company Rating Placeholder */}
+                              <div className="flex items-center gap-1 text-sm text-gray-500">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span>4.2</span>
+                              </div>
                             </div>
-                          </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCloseDetails}
+                          className="flex-shrink-0"
+                          type="button"
+                        >
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{selectedJob.location}</span>
+                        </div>
+                        {selectedJob.job_type && (
+                          <Badge variant="outline" className="text-xs">
+                            {selectedJob.job_type.replace('-', ' ')}
+                          </Badge>
+                        )}
+                        {selectedJob.remote_type && (
+                          <Badge variant="outline" className="text-xs">
+                            {selectedJob.remote_type}
+                          </Badge>
+                        )}
+                        {selectedJob.salary_range && (
+                          <Badge variant="outline" className="text-xs">
+                            {selectedJob.salary_range}
+                          </Badge>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleCloseDetails}
-                        className="flex-shrink-0"
-                        type="button"
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        <span>{selectedJob.location}</span>
-                      </div>
-                      {selectedJob.job_type && (
-                        <Badge variant="outline" className="text-xs">
-                          {selectedJob.job_type.replace('-', ' ')}
-                        </Badge>
-                      )}
-                      {selectedJob.remote_type && (
-                        <Badge variant="outline" className="text-xs">
-                          {selectedJob.remote_type}
-                        </Badge>
-                      )}
-                      {selectedJob.salary_range && (
-                        <Badge variant="outline" className="text-xs">
-                          {selectedJob.salary_range}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Match Score Display */}
-                    {matchScoreLoading ? (
-                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Calculating match score...</span>
-                        </div>
-                      </div>
-                    ) : matchScore !== null ? (
-                      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Match Score</p>
-                            {matchedProfileName && (
-                              <p className="text-xs text-gray-600 mt-1">
-                                Based on profile: <span className="font-medium">{matchedProfileName}</span>
-                              </p>
-                            )}
+                      {/* Match Score Display */}
+                      {matchScoreLoading ? (
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Calculating match score...</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {matchScore}%
+                        </div>
+                      ) : matchScore !== null ? (
+                        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Match Score</p>
+                              {matchedProfileName && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Based on profile: <span className="font-medium">{matchedProfileName}</span>
+                                </p>
+                              )}
                             </div>
-                            <div className="w-16 h-16 relative">
-                              <svg className="transform -rotate-90 w-16 h-16">
-                                <circle
-                                  cx="32"
-                                  cy="32"
-                                  r="28"
-                                  stroke="currentColor"
-                                  strokeWidth="6"
-                                  fill="none"
-                                  className="text-gray-200"
-                                />
-                                <circle
-                                  cx="32"
-                                  cy="32"
-                                  r="28"
-                                  stroke="currentColor"
-                                  strokeWidth="6"
-                                  fill="none"
-                                  strokeDasharray={`${2 * Math.PI * 28}`}
-                                  strokeDashoffset={`${2 * Math.PI * 28 * (1 - matchScore / 100)}`}
-                                  className={`transition-all duration-500 ${matchScore >= 80 ? 'text-green-500' :
+                            <div className="flex items-center gap-2">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {matchScore}%
+                              </div>
+                              <div className="w-16 h-16 relative">
+                                <svg className="transform -rotate-90 w-16 h-16">
+                                  <circle
+                                    cx="32"
+                                    cy="32"
+                                    r="28"
+                                    stroke="currentColor"
+                                    strokeWidth="6"
+                                    fill="none"
+                                    className="text-gray-200"
+                                  />
+                                  <circle
+                                    cx="32"
+                                    cy="32"
+                                    r="28"
+                                    stroke="currentColor"
+                                    strokeWidth="6"
+                                    fill="none"
+                                    strokeDasharray={`${2 * Math.PI * 28}`}
+                                    strokeDashoffset={`${2 * Math.PI * 28 * (1 - matchScore / 100)}`}
+                                    className={`transition-all duration-500 ${matchScore >= 80 ? 'text-green-500' :
                                       matchScore >= 60 ? 'text-blue-500' :
                                         matchScore >= 40 ? 'text-yellow-500' :
                                           'text-orange-500'
-                                    }`}
-                                />
-                              </svg>
+                                      }`}
+                                  />
+                                </svg>
+                              </div>
                             </div>
                           </div>
                         </div>
+                      ) : (
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-600">
+                            Not able to calculate match score because of no profile
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={() => setShowApplicationModal(true)}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                          type="button"
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          Apply Now
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={(e) => handleBookmark(selectedJob, e)}
+                          className={bookmarkedJobs.has(selectedJob.id) ? 'text-yellow-500' : ''}
+                          type="button"
+                        >
+                          <Bookmark className={`h-4 w-4 ${bookmarkedJobs.has(selectedJob.id) ? 'fill-current' : ''}`} />
+                        </Button>
+                        <Button variant="outline" size="icon" type="button">
+                          <Share2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    ) : (
-                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-sm text-gray-600">
-                          Not able to calculate match score because of no profile
-                        </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Job Details Content */}
+                {!detailLoading && (
+                  <div className="px-6 py-6 space-y-6">
+                    {/* Job Description */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
+                      <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+                        {selectedJob.description}
+                      </div>
+                    </div>
+
+                    {/* Requirements */}
+                    {selectedJob.requirements && selectedJob.requirements.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <GraduationCap className="h-5 w-5" />
+                          Requirements
+                        </h3>
+                        <ul className="list-disc list-inside space-y-2 text-gray-700">
+                          {selectedJob.requirements.map((req, index) => (
+                            <li key={index}>{req}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => setShowApplicationModal(true)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                        type="button"
-                      >
-                        <Mail className="mr-2 h-4 w-4" />
-                        Apply Now
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={(e) => handleBookmark(selectedJob, e)}
-                        className={bookmarkedJobs.has(selectedJob.id) ? 'text-yellow-500' : ''}
-                        type="button"
-                      >
-                        <Bookmark className={`h-4 w-4 ${bookmarkedJobs.has(selectedJob.id) ? 'fill-current' : ''}`} />
-                      </Button>
-                      <Button variant="outline" size="icon" type="button">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                    {/* Benefits */}
+                    {selectedJob.benefits && selectedJob.benefits.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <Users className="h-5 w-5" />
+                          Benefits
+                        </h3>
+                        <ul className="list-disc list-inside space-y-2 text-gray-700">
+                          {selectedJob.benefits.map((benefit, index) => (
+                            <li key={index}>{benefit}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-              {/* Job Details Content */}
-              {!detailLoading && (
-                <div className="px-6 py-6 space-y-6">
-                  {/* Job Description */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
-                    <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
-                      {selectedJob.description}
-                    </div>
-                  </div>
-
-                  {/* Requirements */}
-                  {selectedJob.requirements && selectedJob.requirements.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5" />
-                        Requirements
-                      </h3>
-                      <ul className="list-disc list-inside space-y-2 text-gray-700">
-                        {selectedJob.requirements.map((req, index) => (
-                          <li key={index}>{req}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Benefits */}
-                  {selectedJob.benefits && selectedJob.benefits.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Benefits
-                      </h3>
-                      <ul className="list-disc list-inside space-y-2 text-gray-700">
-                        {selectedJob.benefits.map((benefit, index) => (
-                          <li key={index}>{benefit}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Job Details */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {selectedJob.work_schedule && (
-                        <div>
-                          <p className="text-gray-500 mb-1">Work Schedule</p>
-                          <p className="text-gray-900 font-medium">{selectedJob.work_schedule}</p>
-                        </div>
-                      )}
-                      {selectedJob.experience_required && (
-                        <div>
-                          <p className="text-gray-500 mb-1">Experience</p>
-                          <p className="text-gray-900 font-medium">{selectedJob.experience_required}</p>
-                        </div>
-                      )}
-                      {selectedJob.education_required && (
-                        <div>
-                          <p className="text-gray-500 mb-1">Education</p>
-                          <p className="text-gray-900 font-medium">{selectedJob.education_required}</p>
-                        </div>
-                      )}
-                      {selectedJob.application_deadline && (
-                        <div>
-                          <p className="text-gray-500 mb-1">Application Deadline</p>
-                          <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Application Instructions */}
-                  {selectedJob.application_instructions && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
-                      <div className="text-gray-700 whitespace-pre-wrap bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        {selectedJob.application_instructions}
+                    {/* Job Details */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {selectedJob.work_schedule && (
+                          <div>
+                            <p className="text-gray-500 mb-1">Work Schedule</p>
+                            <p className="text-gray-900 font-medium">{selectedJob.work_schedule}</p>
+                          </div>
+                        )}
+                        {selectedJob.experience_required && (
+                          <div>
+                            <p className="text-gray-500 mb-1">Experience</p>
+                            <p className="text-gray-900 font-medium">{selectedJob.experience_required}</p>
+                          </div>
+                        )}
+                        {selectedJob.education_required && (
+                          <div>
+                            <p className="text-gray-500 mb-1">Education</p>
+                            <p className="text-gray-900 font-medium">{selectedJob.education_required}</p>
+                          </div>
+                        )}
+                        {selectedJob.application_deadline && (
+                          <div>
+                            <p className="text-gray-500 mb-1">Application Deadline</p>
+                            <p className="text-gray-900 font-medium">{formatFullDate(selectedJob.application_deadline)}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  {/* Company Card */}
-                  {selectedJob.company && (
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-start gap-4 mb-3">
-                        {selectedJob.company.logo_url && (
-                          <Image
-                            src={selectedJob.company.logo_url}
-                            alt={selectedJob.company.name}
-                            width={64}
-                            height={64}
-                            className="rounded-lg object-contain bg-white p-2"
-                            loading="lazy"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            {selectedJob.company.name}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span>4.2 rating</span>
-                            <span>•</span>
-                            <span>1,234 reviews</span>
-                          </div>
-                          {selectedJob.company.description && (
-                            <p className="text-gray-700 text-sm mb-3">{selectedJob.company.description}</p>
+                    {/* Application Instructions */}
+                    {selectedJob.application_instructions && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
+                        <div className="text-gray-700 whitespace-pre-wrap bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          {selectedJob.application_instructions}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Company Card */}
+                    {selectedJob.company && (
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-start gap-4 mb-3">
+                          {selectedJob.company.logo_url && (
+                            <Image
+                              src={selectedJob.company.logo_url}
+                              alt={selectedJob.company.name}
+                              width={64}
+                              height={64}
+                              className="rounded-lg object-contain bg-white p-2"
+                              loading="lazy"
+                            />
                           )}
-                          {selectedJob.company.website && (
-                            <a
-                              href={selectedJob.company.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline flex items-center gap-1 text-sm font-medium"
-                            >
-                              View company page
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                              <Building2 className="h-5 w-5" />
+                              {selectedJob.company.name}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span>4.2 rating</span>
+                              <span>•</span>
+                              <span>1,234 reviews</span>
+                            </div>
+                            {selectedJob.company.description && (
+                              <p className="text-gray-700 text-sm mb-3">{selectedJob.company.description}</p>
+                            )}
+                            {selectedJob.company.website && (
+                              <a
+                                href={selectedJob.company.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center gap-1 text-sm font-medium"
+                              >
+                                View company page
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact Information */}
+                    {(selectedJob.contact_email || selectedJob.contact_phone) && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
+                        <div className="space-y-2">
+                          {selectedJob.contact_email && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Mail className="h-4 w-4 text-gray-400" />
+                              <a href={`mailto:${selectedJob.contact_email}`} className="text-primary hover:underline">
+                                {selectedJob.contact_email}
+                              </a>
+                            </div>
+                          )}
+                          {selectedJob.contact_phone && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Phone className="h-4 w-4 text-gray-400" />
+                              <a href={`tel:${selectedJob.contact_phone}`} className="text-primary hover:underline">
+                                {selectedJob.contact_phone}
+                              </a>
+                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Contact Information */}
-                  {(selectedJob.contact_email || selectedJob.contact_phone) && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
-                      <div className="space-y-2">
-                        {selectedJob.contact_email && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Mail className="h-4 w-4 text-gray-400" />
-                            <a href={`mailto:${selectedJob.contact_email}`} className="text-primary hover:underline">
-                              {selectedJob.contact_email}
-                            </a>
-                          </div>
-                        )}
-                        {selectedJob.contact_phone && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Phone className="h-4 w-4 text-gray-400" />
-                            <a href={`tel:${selectedJob.contact_phone}`} className="text-primary hover:underline">
-                              {selectedJob.contact_phone}
-                            </a>
-                          </div>
-                        )}
+                    {/* Tags */}
+                    {selectedJob.tags && selectedJob.tags.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Tags</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedJob.tags.map((tag, index) => (
+                            <Badge key={index} variant="outline" className="text-sm">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Tags */}
-                  {selectedJob.tags && selectedJob.tags.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Tags</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedJob.tags.map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-sm">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+                    {/* Report Job Link */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                      >
+                        <Flag className="h-4 w-4" />
+                        Report job
+                      </button>
                     </div>
-                  )}
-
-                  {/* Report Job Link */}
-                  <div className="pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                    >
-                      <Flag className="h-4 w-4" />
-                      Report job
-                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          </>
+                )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Application Modal */}
+        {selectedJob && (
+          <JobApplicationModal
+            isOpen={showApplicationModal}
+            onClose={() => setShowApplicationModal(false)}
+            job={{
+              id: selectedJob.id,
+              title: selectedJob.title,
+              company: selectedJob.company,
+              contact_email: selectedJob.contact_email,
+              contact_phone: selectedJob.contact_phone,
+              application_instructions: selectedJob.application_instructions,
+            }}
+            onSuccess={() => {
+              fetchJobs()
+            }}
+          />
         )}
-      </div>
 
-      {/* Application Modal */}
-      {selectedJob && (
-        <JobApplicationModal
-          isOpen={showApplicationModal}
-          onClose={() => setShowApplicationModal(false)}
-          job={{
-            id: selectedJob.id,
-            title: selectedJob.title,
-            company: selectedJob.company,
-            contact_email: selectedJob.contact_email,
-            contact_phone: selectedJob.contact_phone,
-            application_instructions: selectedJob.application_instructions,
-          }}
-          onSuccess={() => {
-            fetchJobs()
-          }}
-        />
-      )}
-
-      <style jsx>{`
+        <style jsx>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
@@ -1133,6 +1149,7 @@ export default function JobsPage() {
           animation: shimmer 2s infinite;
         }
       `}</style>
+      </div>
     </div>
   )
 }

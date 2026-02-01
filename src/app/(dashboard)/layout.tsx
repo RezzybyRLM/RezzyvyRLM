@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth/signout'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
@@ -271,17 +272,29 @@ export default function DashboardLayout({
                   className={`flex flex-col items-center justify-center min-w-[80px] h-full px-2 transition-colors relative group ${isActive ? 'text-black' : 'text-gray-500 hover:text-black'
                     }`}
                 >
-                  <div className="relative">
+                  <motion.div
+                    className="relative"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <Icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
                     {item.name === 'Messages' && unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1 border-2 border-white">
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1 border-2 border-white"
+                      >
                         {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
+                      </motion.span>
                     )}
-                  </div>
+                  </motion.div>
                   <span className="text-xs mt-1 font-normal">{item.name}</span>
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+                    <motion.div
+                      layoutId="nav-underline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-black"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
                   )}
                   {!isActive && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-transparent group-hover:bg-gray-200 transition-colors" />
@@ -292,9 +305,11 @@ export default function DashboardLayout({
 
             {/* Profile Dropdown */}
             <div className="relative h-full flex items-center ml-4 pl-4 border-l border-gray-100" ref={profileDropdownRef}>
-              <button
+              <motion.button
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                 className="flex flex-col items-center justify-center transition-colors group text-gray-500 hover:text-black"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {userProfile?.avatar_url ? (
                   <img
@@ -309,104 +324,132 @@ export default function DashboardLayout({
                 )}
                 <div className="flex items-center gap-0.5 mt-1">
                   <span className="text-xs">Me</span>
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className={`w-3 h-3 transition-transform ${profileMenuOpen ? 'rotate-180' : ''}`} />
                 </div>
-              </button>
+              </motion.button>
 
-              {profileMenuOpen && (
-                <div className="absolute top-14 right-0 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="px-4 pb-3 border-b border-gray-100 mb-2">
-                    <div className="flex gap-2">
-                      {userProfile?.avatar_url ? (
-                        <img src={userProfile.avatar_url} className="w-12 h-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"><User className="w-6 h-6 text-gray-400" /></div>
-                      )}
-                      <div className="flex-1 overflow-hidden">
-                        <h3 className="text-sm font-semibold truncate">{userProfile?.full_name || 'User'}</h3>
-                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute top-14 right-0 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-3 z-50 origin-top-right"
+                  >
+                    <div className="px-4 pb-3 border-b border-gray-100 mb-2">
+                      <div className="flex gap-2">
+                        {userProfile?.avatar_url ? (
+                          <img src={userProfile.avatar_url} className="w-12 h-12 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"><User className="w-6 h-6 text-gray-400" /></div>
+                        )}
+                        <div className="flex-1 overflow-hidden">
+                          <h3 className="text-sm font-semibold truncate">{userProfile?.full_name || 'User'}</h3>
+                          <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                        </div>
                       </div>
+                      <Link
+                        href="/profile"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="mt-3 block text-center w-full py-1 text-sm font-semibold text-primary border border-primary rounded-full hover:bg-primary/5 transition-colors"
+                      >
+                        View Profile
+                      </Link>
                     </div>
-                    <Link
-                      href="/profile"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="mt-3 block text-center w-full py-1 text-sm font-semibold text-primary border border-primary rounded-full hover:bg-primary/5 transition-colors"
-                    >
-                      View Profile
-                    </Link>
-                  </div>
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        signOut('/auth/login')
-                        setProfileMenuOpen(false)
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          signOut('/auth/login')
+                          setProfileMenuOpen(false)
+                        }}
+                        className="w-full flex items-center px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </nav>
 
           {/* Mobile Menu Toggle */}
           <div className="lg:hidden flex items-center gap-3">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            </motion.button>
           </div>
         </div>
 
         {/* Mobile Navigation Dropdown */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-100 animate-in slide-in-from-top duration-300 overflow-hidden">
-            <div className="px-4 py-4 space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/5 text-primary' : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden bg-white border-t border-gray-100 overflow-hidden"
+            >
+              <div className="px-4 py-4 space-y-1">
+                {navigation.map((item, idx) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                  return (
+                    <motion.div
+                      key={item.name}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/5 text-primary' : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span>{item.name}</span>
+                        {item.name === 'Messages' && unreadCount > 0 && (
+                          <span className="ml-auto bg-red-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </Link>
+                    </motion.div>
+                  )
+                })}
+                <div className="pt-2 mt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => signOut('/auth/login')}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                   >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.name}</span>
-                    {item.name === 'Messages' && unreadCount > 0 && (
-                      <span className="ml-auto bg-red-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-              <div className="pt-2 mt-2 border-t border-gray-100">
-                <button
-                  onClick={() => signOut('/auth/login')}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Sign Out</span>
-                </button>
+                    <LogOut className="w-5 h-5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <motion.main
+        key={pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="max-w-7xl mx-auto px-4 py-6"
+      >
         <PageLoader>
           {children}
         </PageLoader>
-      </main>
+      </motion.main>
 
       {/* Bottom Nav for Mobile (Optional but good for premium feel) */}
       <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-gray-200 px-4 h-16 flex items-center justify-around z-50 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">

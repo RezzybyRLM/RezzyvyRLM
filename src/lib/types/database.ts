@@ -423,7 +423,12 @@ export type Database = {
           onboarding_completed: boolean | null
           onboarding_completed_at: string | null
           onboarding_step: number | null
+          perm_manage_content: boolean
+          perm_manage_system: boolean
+          perm_manage_users: boolean
+          phone_number: string | null
           preferences: Json | null
+          role: string
           updated_at: string | null
         }
         Insert: {
@@ -436,7 +441,12 @@ export type Database = {
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_step?: number | null
+          perm_manage_content?: boolean
+          perm_manage_system?: boolean
+          perm_manage_users?: boolean
+          phone_number?: string | null
           preferences?: Json | null
+          role?: string
           updated_at?: string | null
         }
         Update: {
@@ -449,7 +459,12 @@ export type Database = {
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_step?: number | null
+          perm_manage_content?: boolean
+          perm_manage_system?: boolean
+          perm_manage_users?: boolean
+          phone_number?: string | null
           preferences?: Json | null
+          role?: string
           updated_at?: string | null
         }
         Relationships: []

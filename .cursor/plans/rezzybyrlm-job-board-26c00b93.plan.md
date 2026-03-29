@@ -166,7 +166,8 @@ Create in `components/ui/`:
 - Validate and sanitize input
 - **IMPORTANT: Limit maxItems to 10** to control Apify costs and API usage
 - Call Apify Indeed Scraper with configuration:
-  ```json
+
+```json
         {
           "position": "Software Engineer",
           "country": "us",
@@ -174,7 +175,10 @@ Create in `components/ui/`:
           "maxItems": 10,  // HARD LIMIT: Max 10 jobs per request
           "date": "7"      // Last 7 days for active jobs
         }
-  ```
+  
+
+```
+
 - Wait for actor run completion
 - Fetch dataset results (maximum 10 jobs)
 - Transform Indeed data to standardized format

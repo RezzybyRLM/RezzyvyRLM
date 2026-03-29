@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getCartItemCount } from '@/lib/cart/actions'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import { signOut } from '@/lib/auth/signout'
+import { canAccessAdminConsole, canManageRoles } from '@/lib/auth/permissions'
 
 interface NavbarProps {
   user?: SupabaseUser | null
@@ -22,6 +23,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const [cartCount, setCartCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -52,13 +54,15 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             .select('role')
             .eq('id', currentUser.id)
             .single()
-          
-          setIsAdmin(userData?.role === 'admin')
+
+          setIsAdmin(canAccessAdminConsole(userData?.role))
+          setIsSuperAdmin(canManageRoles(userData?.role))
         } catch (error) {
           console.error('Failed to get cart count:', error)
         }
       } else {
         setIsAdmin(false)
+        setIsSuperAdmin(false)
       }
     }
 
@@ -72,11 +76,20 @@ export function Navbar({ user: initialUser }: NavbarProps) {
           try {
             const count = await getCartItemCount()
             setCartCount(count)
+            const { data: userData } = await supabase
+              .from('users')
+              .select('role')
+              .eq('id', session.user.id)
+              .single()
+            setIsAdmin(canAccessAdminConsole(userData?.role))
+            setIsSuperAdmin(canManageRoles(userData?.role))
           } catch (error) {
             console.error('Failed to get cart count:', error)
           }
         } else {
           setCartCount(0)
+          setIsAdmin(false)
+          setIsSuperAdmin(false)
         }
       }
     )
@@ -255,6 +268,16 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                         Admin Panel
                       </Link>
                     )}
+                    {isSuperAdmin && (
+                      <Link
+                        href="/admin/roles"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <Shield className="h-4 w-4 mr-3" />
+                        Role management
+                      </Link>
+                    )}
                     <hr className="my-1" />
                     <button
                       onClick={handleSignOut}
@@ -383,6 +406,24 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                     >
                       Dashboard
                     </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Admin Panel
+                      </Link>
+                    )}
+                    {isSuperAdmin && (
+                      <Link
+                        href="/admin/roles"
+                        className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Role management
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         handleSignOut()

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { canManageContent } from '@/lib/auth/permissions'
 
 export interface ContactFormData {
   name: string
@@ -46,11 +47,11 @@ export async function getContactMessages(): Promise<any[]> {
   // Check if user is admin
   const { data: userData } = await supabase
     .from('users')
-    .select('role')
+    .select('role, perm_manage_content, perm_manage_users, perm_manage_system')
     .eq('id', user.id)
     .single()
 
-  if (!userData || (userData as any).role !== 'admin') {
+  if (!userData || !canManageContent(userData.role, userData as any)) {
     throw new Error('Access denied. Admin role required.')
   }
 
@@ -77,11 +78,11 @@ export async function updateContactMessageStatus(id: string, status: string): Pr
   // Check if user is admin
   const { data: userData } = await supabase
     .from('users')
-    .select('role')
+    .select('role, perm_manage_content, perm_manage_users, perm_manage_system')
     .eq('id', user.id)
     .single()
 
-  if (!userData || (userData as any).role !== 'admin') {
+  if (!userData || !canManageContent(userData.role, userData as any)) {
     throw new Error('Access denied. Admin role required.')
   }
 

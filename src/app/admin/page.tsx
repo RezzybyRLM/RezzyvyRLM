@@ -10,17 +10,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { 
-  Mail, 
-  Eye, 
-  Reply, 
-  Archive, 
-  User, 
-  Calendar, 
+import {
+  Mail,
+  Eye,
+  Reply,
+  Archive,
+  User,
+  Calendar,
   MessageSquare,
   Shield,
-  AlertCircle
+  AlertCircle,
+  Users,
 } from 'lucide-react'
+import { canAccessAdminConsole, canManageRoles } from '@/lib/auth/permissions'
 
 interface ContactMessage {
   id: string
@@ -39,6 +41,7 @@ export default function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -52,19 +55,20 @@ export default function AdminPage() {
 
       setUser(user)
 
-      // Check if user is admin
       const { data: userData } = await supabase
         .from('users')
         .select('role')
         .eq('id', user.id)
         .single()
 
-      if (!userData || userData.role !== 'admin') {
+      if (!userData || !canAccessAdminConsole(userData.role)) {
+        setLoading(false)
         router.push('/')
         return
       }
 
       setIsAdmin(true)
+      setIsSuperAdmin(canManageRoles(userData.role))
       await fetchContactMessages()
     }
 
@@ -165,6 +169,12 @@ export default function AdminPage() {
               <Badge className="bg-green-100 text-green-800">
                 Admin Access
               </Badge>
+              {isSuperAdmin && (
+                <Button variant="default" onClick={() => router.push('/admin/roles')}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Role management
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/')}

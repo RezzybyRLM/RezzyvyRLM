@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -17,7 +17,33 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      for (let i = 0; i < 8; i++) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('onboarding_completed')
+            .eq('id', session.user.id)
+            .single()
+          const done = userData?.onboarding_completed ?? false
+          if (!cancelled) router.replace(done ? '/dashboard' : '/onboarding')
+          return
+        }
+        await new Promise((r) => setTimeout(r, 60))
+      }
+      if (!cancelled) setSessionChecked(true)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [router])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,6 +121,15 @@ export default function RegisterPage() {
       setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
+  }
+
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+        <Image src="/logo.png" alt="" width={100} height={100} className="mb-4 object-contain opacity-90" priority />
+        <p className="text-sm text-gray-500">Loading…</p>
+      </div>
+    )
   }
 
   return (

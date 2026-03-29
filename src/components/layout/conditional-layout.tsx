@@ -27,10 +27,12 @@ export function ConditionalLayout({ children, user }: { children: React.ReactNod
   // Check if it's exactly /jobs (listing page) or /jobs/[jobId] (detail page)
   // Both are in (dashboard) folder and should use sidebar
   const isJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
-  
-  const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route)) || isJobsPage
+  const isAdminRoute = pathname.startsWith('/admin')
 
-  if (isDashboardRoute) {
+  const isDashboardRoute =
+    dashboardRoutes.some((route) => pathname.startsWith(route)) || isJobsPage
+
+  if (isDashboardRoute || isAdminRoute) {
     // Return only children for dashboard routes
     return <>{children}</>
   }

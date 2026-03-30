@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
+import { getGeminiTextModelId } from '@/lib/ai/gemini-model'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use Gemini to generate response
     try {
+      const model = genAI.getGenerativeModel({ model: getGeminiTextModelId() })
       const result = await model.generateContent(prompt)
       const response = await result.response
       const text = response.text()

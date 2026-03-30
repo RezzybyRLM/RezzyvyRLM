@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { getGeminiTextModelId } from '@/lib/ai/gemini-model'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
@@ -20,7 +21,7 @@ export interface JobAnalysis {
 }
 
 export class GeminiAI {
-  private _model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+  private _model = genAI.getGenerativeModel({ model: getGeminiTextModelId() })
   
   get model() {
     return this._model

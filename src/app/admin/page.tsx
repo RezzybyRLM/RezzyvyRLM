@@ -21,6 +21,7 @@ import {
   Shield,
   AlertCircle,
   Users,
+  Sparkles,
 } from 'lucide-react'
 import { canAccessAdminConsole, canManageRoles } from '@/lib/auth/permissions'
 
@@ -42,6 +43,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [inboxSummary, setInboxSummary] = useState<string | null>(null)
+  const [inboxSummaryLoading, setInboxSummaryLoading] = useState(false)
+  const [inboxSummaryError, setInboxSummaryError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -74,6 +78,36 @@ export default function AdminPage() {
 
     checkUser()
   }, [router, supabase.auth])
+
+  useEffect(() => {
+    if (!isSuperAdmin || loading) return
+    let cancelled = false
+    setInboxSummaryLoading(true)
+    setInboxSummaryError(null)
+    fetch('/api/admin/contact-messages/summary', { method: 'POST' })
+      .then(async (res) => {
+        const j = await res.json()
+        if (cancelled) return
+        if (!res.ok || !j.success) {
+          setInboxSummaryError(j.error || 'Could not generate summary')
+          setInboxSummary(null)
+          return
+        }
+        setInboxSummary(typeof j.summary === 'string' ? j.summary : null)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setInboxSummaryError(e instanceof Error ? e.message : 'Request failed')
+          setInboxSummary(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setInboxSummaryLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isSuperAdmin, loading])
 
   const fetchContactMessages = async () => {
     try {
@@ -244,6 +278,39 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </div>
+
+        {isSuperAdmin && (
+          <Card className="mb-8 border-violet-200 bg-gradient-to-br from-violet-50/80 to-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-violet-900">
+                <Sparkles className="h-5 w-5 text-violet-600" />
+                AI summary of contact messages
+                <Badge variant="secondary" className="ml-2 font-normal">
+                  Super admin · auto
+                </Badge>
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Generated when you open this page (latest inbox, up to 50 messages).
+              </p>
+            </CardHeader>
+            <CardContent>
+              {inboxSummaryLoading && (
+                <div className="flex items-center gap-3 text-gray-600">
+                  <LoadingSpinner size="sm" />
+                  <span>Generating summary…</span>
+                </div>
+              )}
+              {!inboxSummaryLoading && inboxSummaryError && (
+                <p className="text-sm text-red-600">{inboxSummaryError}</p>
+              )}
+              {!inboxSummaryLoading && !inboxSummaryError && inboxSummary && (
+                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
+                  {inboxSummary}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Contact Messages */}
         <Card>

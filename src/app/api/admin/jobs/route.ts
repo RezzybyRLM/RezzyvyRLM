@@ -21,7 +21,9 @@ export async function GET() {
     const admin = createServiceRoleClient()
     const { data: jobs, error } = await admin
       .from('jobs')
-      .select('id, title, location, salary_range, job_type, is_featured, expires_at, created_at, company_id, companies(name)')
+      .select(
+        'id, title, location, salary_range, job_type, is_featured, expires_at, application_deadline, created_at, company_id, companies(name)'
+      )
       .order('created_at', { ascending: false })
       .limit(300)
 

@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { canAccessAdminConsole } from '@/lib/auth/permissions'
+import { canAccessAdminConsole, canAccessEmployerDashboard } from '@/lib/auth/permissions'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -65,6 +65,7 @@ export async function middleware(request: NextRequest) {
     '/feed',
     '/jobs',
     '/admin',
+    '/settings',
   ]
 
   const authRoutes = ['/auth/login', '/auth/register']
@@ -115,6 +116,15 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/onboarding', request.url))
       }
     }
+  }
+
+  if (
+    user &&
+    onboardingCompleted &&
+    pathname.startsWith('/employer') &&
+    !canAccessEmployerDashboard(appRole)
+  ) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return response

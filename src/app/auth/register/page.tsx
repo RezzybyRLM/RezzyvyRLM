@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { canAccessAdminConsole } from '@/lib/auth/permissions'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -20,6 +20,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [sessionChecked, setSessionChecked] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const postAuthTarget = searchParams.get('redirectTo')?.trim() || ''
 
   useEffect(() => {
     let cancelled = false
@@ -34,7 +36,13 @@ export default function RegisterPage() {
             .single()
           const done = userData?.onboarding_completed ?? false
           const staff = canAccessAdminConsole(userData?.role ?? null)
-          const home = done ? (staff ? '/admin/dashboard' : '/dashboard') : '/onboarding'
+          const joinInvite =
+            postAuthTarget.startsWith('/join/') ? postAuthTarget : null
+          const home = done
+            ? staff
+              ? '/admin/dashboard'
+              : joinInvite || '/dashboard'
+            : joinInvite || '/onboarding'
           if (!cancelled) router.replace(home)
           return
         }
@@ -46,21 +54,19 @@ export default function RegisterPage() {
     return () => {
       cancelled = true
     }
-  }, [router])
+  }, [router, postAuthTarget])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       setLoading(false)
       return
     }
 
-    // Validate password length
     if (password.length < 6) {
       setError('Password must be at least 6 characters long')
       setLoading(false)
@@ -83,38 +89,45 @@ export default function RegisterPage() {
       }
 
       if (data?.user) {
-        // Create user record in users table with onboarding_completed = false
         try {
           const { error: userError } = await supabase
             .from('users')
-            .upsert({
-              id: data.user.id,
-              email: email,
-              onboarding_completed: false,
-              onboarding_step: 0,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'id'
-            })
+            .upsert(
+              {
+                id: data.user.id,
+                email: email,
+                onboarding_completed: false,
+                onboarding_step: 0,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'id',
+              }
+            )
 
           if (userError) {
             console.error('Error creating user record:', userError)
-            // Don't fail the signup, just log the error
           }
         } catch (err) {
           console.error('Error in user record creation:', err)
         }
 
-        // Session is automatically stored by Supabase
+        const next = searchParams.get('redirectTo')?.trim()
         if (data.session) {
-          // User is automatically signed in after registration
-          // Redirect to onboarding if not completed
-          router.push('/onboarding')
+          if (next?.startsWith('/join/')) {
+            router.push(next)
+          } else {
+            router.push('/onboarding')
+          }
           router.refresh()
         } else {
-          // Email confirmation required
-          router.push('/auth/login?message=Check your email to confirm your account')
+          const loginQs = new URLSearchParams()
+          loginQs.set('message', 'Check your email to confirm your account')
+          if (next?.startsWith('/join/')) {
+            loginQs.set('redirectTo', next)
+          }
+          router.push(`/auth/login?${loginQs.toString()}`)
         }
       } else {
         setError('Failed to create account. Please try again.')
@@ -136,10 +149,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
+          <div className="mb-4 flex justify-center">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -149,7 +162,7 @@ export default function RegisterPage() {
               priority
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+          <CardTitle className="text-center text-2xl font-bold">Create an account</CardTitle>
           <CardDescription className="text-center">
             Enter your email below to create your account
           </CardDescription>
@@ -206,12 +219,34 @@ export default function RegisterPage() {
         <CardFooter className="flex flex-col space-y-2 text-center">
           <div className="text-sm text-gray-500">
             Already have an account?{' '}
-            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+            <Link
+              href={
+                postAuthTarget
+                  ? `/auth/login?redirectTo=${encodeURIComponent(postAuthTarget)}`
+                  : '/auth/login'
+              }
+              className="font-medium text-primary hover:underline"
+            >
               Sign in
             </Link>
           </div>
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+          <Image src="/logo.png" alt="" width={100} height={100} className="mb-4 object-contain opacity-90" priority />
+          <p className="text-sm text-gray-500">Loading…</p>
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   )
 }

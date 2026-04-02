@@ -215,6 +215,54 @@ export type Database = {
           },
         ]
       }
+      employer_invites: {
+        Row: {
+          id: string
+          token: string
+          created_by: string | null
+          company_name: string
+          expires_at: string
+          used_at: string | null
+          used_by_user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          token: string
+          created_by?: string | null
+          company_name: string
+          expires_at: string
+          used_at?: string | null
+          used_by_user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          created_by?: string | null
+          company_name?: string
+          expires_at?: string
+          used_at?: string | null
+          used_by_user_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employer_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employer_invites_used_by_user_id_fkey"
+            columns: ["used_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_alerts: {
         Row: {
           created_at: string | null
@@ -438,6 +486,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           email: string
+          employer_company_id: string | null
           full_name: string | null
           id: string
           location: string | null
@@ -456,6 +505,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email: string
+          employer_company_id?: string | null
           full_name?: string | null
           id: string
           location?: string | null
@@ -474,6 +524,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email?: string
+          employer_company_id?: string | null
           full_name?: string | null
           id?: string
           location?: string | null
@@ -488,7 +539,15 @@ export type Database = {
           role?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_employer_company_id_fkey"
+            columns: ["employer_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_applications: {
         Row: {

@@ -65,16 +65,33 @@ export default function NewJobPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     try {
-      // TODO: Implement job creation API call
-      console.log('Creating job:', formData)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Redirect to job management page
+      const salary_range =
+        formData.salaryMin && formData.salaryMax
+          ? `$${formData.salaryMin} – $${formData.salaryMax}`
+          : formData.salaryMin || formData.salaryMax || null
+
+      const res = await fetch('/api/employer/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          location: formData.location,
+          description: formData.description,
+          salary_range,
+          job_type: formData.jobType,
+          is_featured: formData.isFeatured,
+          application_deadline: formData.applicationDeadline || null,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) {
+        console.error(j.error || 'Create failed')
+        return
+      }
       router.push('/employer/manage-jobs')
+      router.refresh()
     } catch (error) {
       console.error('Error creating job:', error)
     } finally {

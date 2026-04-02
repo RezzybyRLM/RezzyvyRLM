@@ -73,29 +73,25 @@ export default function EmployerDashboard() {
           return
         }
 
-        // Get user's company - check if user has a company
-        // For now, we'll get the first company or create a placeholder
-        // In production, you'd have a proper employer_companies junction table
-        const { data: companies } = await supabase
-          .from('companies')
-          .select('id, name')
-          .limit(1)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('employer_company_id, role')
+          .eq('id', user.id)
+          .single()
 
         if (!mounted) {
           setLoading(false)
           return
         }
 
-        // For MVP: Get first company or use a default
-        // In production, link employers to companies properly
-        if (companies && companies.length > 0) {
-          const compId = companies[0].id
+        const compId = profile?.employer_company_id ?? null
+        if (compId) {
           setCompanyId(compId)
 
           // Fetch stats and recent jobs in parallel
           const [statsResponse, jobsResponse] = await Promise.all([
             fetch(`/api/employer/stats?companyId=${compId}`),
-            fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`)
+            fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`),
           ])
 
           if (!mounted) {
@@ -167,15 +163,14 @@ export default function EmployerDashboard() {
   if (!companyId) {
     return (
       <div className="space-y-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-yellow-900 mb-2">Company Profile Required</h3>
-          <p className="text-yellow-800 mb-4">
-            Please complete your company profile to access the employer dashboard.
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-6 shadow-sm backdrop-blur-sm">
+          <h3 className="mb-2 text-lg font-semibold text-amber-950">No employer organization linked</h3>
+          <p className="mb-4 text-amber-900/90">
+            Business accounts are created with a one-time invite from your admin. Ask for a new org invite link, then
+            open it and accept while signed in.
           </p>
-          <Button asChild>
-            <Link href="/employer/profile">
-              Complete Company Profile
-            </Link>
+          <Button asChild variant="outline">
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </div>
       </div>

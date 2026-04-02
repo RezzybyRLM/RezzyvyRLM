@@ -56,15 +56,21 @@ export default function ManageJobsPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        // Get company - for MVP, get first company or create one
-        const { data: companies } = await supabase
-          .from('companies')
-          .select('id, name')
-          .limit(1)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('employer_company_id')
+          .eq('id', user.id)
+          .single()
 
-        if (companies && companies.length > 0) {
-          setCompanyId(companies[0].id)
-          await fetchJobs(companies[0].id, companies[0].name)
+        const compId = profile?.employer_company_id
+        if (compId) {
+          const { data: company } = await supabase.from('companies').select('id, name').eq('id', compId).single()
+          if (company) {
+            setCompanyId(company.id)
+            await fetchJobs(company.id, company.name)
+          } else {
+            setLoading(false)
+          }
         } else {
           setLoading(false)
         }

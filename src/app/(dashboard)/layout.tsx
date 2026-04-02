@@ -20,7 +20,11 @@ import {
   Search,
   LayoutGrid,
   Headphones,
+  Building2,
+  CreditCard,
+  Sparkles,
 } from 'lucide-react'
+import { canAccessEmployerDashboard } from '@/lib/auth/permissions'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
@@ -28,7 +32,7 @@ import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
 
 const iconClass = 'h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.5]'
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
   { name: 'Profile', href: '/profile', icon: UserRound },
   { name: 'Jobs', href: '/jobs', icon: BriefcaseBusiness },
@@ -37,7 +41,7 @@ const navigation = [
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
   { name: 'Job Alerts', href: '/job-alerts', icon: BellRing },
   { name: 'Interview Pro', href: '/interview-pro', icon: Headphones },
-]
+] as const
 
 // Store sidebar state in localStorage for persistence
 const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
@@ -49,6 +53,7 @@ export default function DashboardLayout({
 }) {
   const [user, setUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null)
+  const [appRole, setAppRole] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [initialLoad, setInitialLoad] = useState(true)
@@ -80,6 +85,13 @@ export default function DashboardLayout({
 
   const navIsActive = (href: string) =>
     pathname === href || (href !== '/' && pathname.startsWith(`${href}/`))
+
+  const employerNavItem = { name: 'Employer', href: '/employer', icon: Building2 }
+  const navigation = [
+    baseNavigation[0],
+    ...(canAccessEmployerDashboard(appRole) ? [employerNavItem] : []),
+    ...baseNavigation.slice(1),
+  ]
 
   // Fetch unread message count
   useEffect(() => {
@@ -186,12 +198,13 @@ export default function DashboardLayout({
 
           const { data: profile } = await supabase
             .from('users')
-            .select('full_name, avatar_url')
+            .select('full_name, avatar_url, role')
             .eq('id', authUser.id)
             .single()
 
           if (profile && mounted) {
             setUserProfile(profile as any)
+            setAppRole((profile as { role?: string }).role ?? 'user')
           }
         } else {
           const redirect = encodeURIComponent(pathname || '/dashboard')
@@ -211,15 +224,19 @@ export default function DashboardLayout({
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setUserProfile(null)
+        setAppRole(null)
         router.replace('/auth/login')
       } else if (session?.user) {
         setUser(session.user)
         const { data: profile } = await supabase
           .from('users')
-          .select('full_name, avatar_url')
+          .select('full_name, avatar_url, role')
           .eq('id', session.user.id)
           .single()
-        if (profile && mounted) setUserProfile(profile as any)
+        if (profile && mounted) {
+          setUserProfile(profile as any)
+          setAppRole((profile as { role?: string }).role ?? 'user')
+        }
       }
     })
 
@@ -259,11 +276,11 @@ export default function DashboardLayout({
     <div className="flex min-h-screen overflow-hidden bg-background">
       {/* Sidebar - Desktop (light shell aligned with marketing site) */}
       <aside
-        className={`relative z-40 hidden flex-col border-r border-border bg-white shadow-sm transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex ${
+        className={`relative z-40 hidden flex-col border-r border-white/30 bg-white/55 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex ${
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
         }`}
       >
-        <div className="flex h-16 items-center gap-2 border-b border-border px-3">
+        <div className="flex h-16 items-center gap-2 border-b border-white/25 px-3">
           {!sidebarCollapsed ? (
             <>
               <div className="min-w-0 flex-1">
@@ -375,6 +392,20 @@ export default function DashboardLayout({
                 <Link href="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-background" onClick={() => setProfileMenuOpen(false)}>
                   <UserRound className="h-4 w-4 stroke-[1.5]" /> Profile
                 </Link>
+                <Link
+                  href="/settings/plan"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-background"
+                  onClick={() => setProfileMenuOpen(false)}
+                >
+                  <CreditCard className="h-4 w-4 stroke-[1.5]" /> Plan settings
+                </Link>
+                <Link
+                  href="/plans"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-background"
+                  onClick={() => setProfileMenuOpen(false)}
+                >
+                  <Sparkles className="h-4 w-4 stroke-[1.5]" /> Upgrade
+                </Link>
                 <div className="my-1 h-px bg-border" />
                 <button
                   type="button"
@@ -392,7 +423,7 @@ export default function DashboardLayout({
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-white/90 px-4 shadow-sm backdrop-blur-md md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-white/25 bg-white/70 px-4 shadow-sm backdrop-blur-xl md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
               type="button"
@@ -476,7 +507,7 @@ export default function DashboardLayout({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className="fixed inset-y-0 left-0 z-[60] flex w-[min(100vw-3rem,18rem)] flex-col border-r border-border bg-white shadow-xl lg:hidden"
+              className="fixed inset-y-0 left-0 z-[60] flex w-[min(100vw-3rem,18rem)] flex-col border-r border-white/30 bg-white/85 shadow-xl backdrop-blur-xl lg:hidden"
             >
               <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-4">
                 <DashboardLogo href="/" />
@@ -522,7 +553,7 @@ export default function DashboardLayout({
       </AnimatePresence>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-white/95 px-1 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-white/30 bg-white/80 px-1 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl lg:hidden">
         {navigation.slice(0, 5).map((item) => {
           const Icon = item.icon
           const isActive = navIsActive(item.href)

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Pencil } from 'lucide-react'
 
 type JobRow = {
   id: string
@@ -15,6 +15,7 @@ type JobRow = {
   job_type: string | null
   is_featured: boolean | null
   expires_at: string | null
+  application_deadline: string | null
   created_at: string | null
   companies: { name: string } | { name: string }[] | null
 }
@@ -91,7 +92,9 @@ export default function AdminJobsPage() {
                 <th className="py-2 pr-4 font-medium">Company</th>
                 <th className="py-2 pr-4 font-medium">Location</th>
                 <th className="py-2 pr-4 font-medium">Type</th>
-                <th className="py-2 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium">Deadlines</th>
+                <th className="py-2 pr-4 font-medium">Status</th>
+                <th className="py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -101,7 +104,11 @@ export default function AdminJobsPage() {
                   <td className="py-3 pr-4 text-muted-foreground">{companyName(j)}</td>
                   <td className="py-3 pr-4 text-muted-foreground">{j.location}</td>
                   <td className="py-3 pr-4 text-muted-foreground">{j.job_type || '—'}</td>
-                  <td className="py-3">
+                  <td className="py-3 pr-4 text-xs text-muted-foreground">
+                    <div>Listing: {j.expires_at ? new Date(j.expires_at).toLocaleDateString() : '—'}</div>
+                    <div>Apply by: {j.application_deadline ? new Date(j.application_deadline).toLocaleDateString() : '—'}</div>
+                  </td>
+                  <td className="py-3 pr-4">
                     {j.is_featured ? (
                       <Badge variant="secondary" className="font-normal">
                         Featured
@@ -109,6 +116,14 @@ export default function AdminJobsPage() {
                     ) : (
                       <span className="text-muted-foreground">Standard</span>
                     )}
+                  </td>
+                  <td className="py-3">
+                    <Button variant="outline" size="sm" className="gap-1" asChild>
+                      <Link href={`/admin/jobs/${j.id}/edit`}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </Link>
+                    </Button>
                   </td>
                 </tr>
               ))}

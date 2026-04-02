@@ -1,4 +1,4 @@
-export type AppRole = 'user' | 'admin' | 'super_admin'
+export type AppRole = 'user' | 'employer' | 'admin' | 'super_admin'
 
 export type UserPermissionRow = {
   role: string | null
@@ -29,6 +29,10 @@ export function isStaffRole(role: string | null | undefined): boolean {
 
 export function canAccessAdminConsole(role: string | null | undefined): boolean {
   return isStaffRole(role)
+}
+
+export function canAccessEmployerDashboard(role: string | null | undefined): boolean {
+  return role === 'employer' || role === 'admin' || role === 'super_admin'
 }
 
 /** Contact messages and similar content moderation */

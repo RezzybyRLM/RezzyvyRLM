@@ -424,32 +424,39 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 relative" style={{ zIndex: 0 }}>
-      {/* Sticky Search Bar */}
-      <div className="sticky top-16 z-30 border-b border-gray-200 bg-white shadow-sm">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <form onSubmit={handleSearch} className="flex gap-3 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-x-hidden bg-gray-50">
+      {/* Sticky Search Bar — top-0 inside dashboard main scroll area (header is sibling, not behind this bar) */}
+      <div className="sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm">
+        <div className="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-8">
+          <form
+            onSubmit={handleSearch}
+            className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-3"
+          >
+            <div className="relative min-w-0 flex-1 basis-full sm:basis-[min(100%,20rem)]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Job title, keywords, or company"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 text-base"
+                className="h-12 w-full min-w-0 pl-10 text-base"
               />
             </div>
-            <div className="w-64 relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <div className="relative min-w-0 w-full sm:w-auto sm:min-w-[12rem] sm:max-w-md sm:flex-1">
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Location"
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="pl-10 h-12 text-base"
+                className="h-12 w-full min-w-0 pl-10 text-base"
               />
             </div>
-            <Button type="submit" disabled={loading} className="h-12 px-8">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full shrink-0 px-8 sm:w-auto sm:self-end"
+            >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
@@ -459,7 +466,7 @@ export default function JobsPage() {
           </form>
 
           {/* Quick Filters Bar */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="text-sm text-gray-600 font-medium">Filters:</span>
 
             {/* Date Posted Filter */}
@@ -480,10 +487,10 @@ export default function JobsPage() {
               {showDateDropdown && (
                 <>
                   <div
-                    className="fixed inset-0 z-10"
+                    className="fixed inset-0 z-30"
                     onClick={() => setShowDateDropdown(false)}
                   />
-                  <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20 min-w-[150px]">
+                  <div className="absolute left-0 top-full z-40 mt-1 min-w-[150px] rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                     {(['anytime', 'today', '3days', 'week', 'month'] as DateFilter[]).map((filter) => (
                       <button
                         key={filter}
@@ -527,10 +534,10 @@ export default function JobsPage() {
               {showRemoteDropdown && (
                 <>
                   <div
-                    className="fixed inset-0 z-10"
+                    className="fixed inset-0 z-30"
                     onClick={() => setShowRemoteDropdown(false)}
                   />
-                  <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20 min-w-[150px]">
+                  <div className="absolute left-0 top-full z-40 mt-1 min-w-[150px] rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                     {(['all', 'remote', 'hybrid', 'onsite'] as RemoteFilter[]).map((filter) => (
                       <button
                         key={filter}
@@ -568,10 +575,10 @@ export default function JobsPage() {
               {showSalaryDropdown && (
                 <>
                   <div
-                    className="fixed inset-0 z-10"
+                    className="fixed inset-0 z-30"
                     onClick={() => setShowSalaryDropdown(false)}
                   />
-                  <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20 min-w-[150px]">
+                  <div className="absolute left-0 top-full z-40 mt-1 min-w-[150px] rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                     {(['all', '40k', '60k', '80k', '100k', '120k'] as SalaryFilter[]).map((filter) => (
                       <button
                         key={filter}
@@ -594,7 +601,7 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="flex max-w-full h-[calc(100vh-200px)]">
+      <div className="flex min-h-0 max-w-full flex-1 min-h-[min(70dvh,28rem)] lg:min-h-[calc(100dvh-12rem)]">
         {/* Jobs List - Left Side */}
         <div className={`flex-1 transition-all duration-300 overflow-y-auto ${selectedJob ? 'lg:w-1/2' : 'w-full'
           }`} ref={jobsListRef}>

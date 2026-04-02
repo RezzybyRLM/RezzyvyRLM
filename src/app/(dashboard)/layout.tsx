@@ -1,47 +1,31 @@
 'use client'
 
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef, Fragment, type FormEvent } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   UserRound,
-  FileStack,
-  Bookmark,
-  BellRing,
   LogOut,
   Menu,
   X,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  BriefcaseBusiness,
   MessageSquare,
   Search,
-  LayoutGrid,
-  Headphones,
-  Building2,
   CreditCard,
   Sparkles,
+  BellRing,
 } from 'lucide-react'
-import { canAccessEmployerDashboard } from '@/lib/auth/permissions'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
 import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
+import { getDashboardNavigation, navGroupLabel } from '@/lib/dashboard/navigation'
+import { cn } from '@/lib/utils'
 
 const iconClass = 'h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.5]'
-
-const baseNavigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-  { name: 'Profile', href: '/profile', icon: UserRound },
-  { name: 'Jobs', href: '/jobs', icon: BriefcaseBusiness },
-  { name: 'Messages', href: '/messages', icon: MessageSquare },
-  { name: 'Resume Manager', href: '/resume-manager', icon: FileStack },
-  { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
-  { name: 'Job Alerts', href: '/job-alerts', icon: BellRing },
-  { name: 'Interview Pro', href: '/interview-pro', icon: Headphones },
-] as const
 
 // Store sidebar state in localStorage for persistence
 const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
@@ -86,12 +70,14 @@ export default function DashboardLayout({
   const navIsActive = (href: string) =>
     pathname === href || (href !== '/' && pathname.startsWith(`${href}/`))
 
-  const employerNavItem = { name: 'Employer', href: '/employer', icon: Building2 }
-  const navigation = [
-    baseNavigation[0],
-    ...(canAccessEmployerDashboard(appRole) ? [employerNavItem] : []),
-    ...baseNavigation.slice(1),
-  ]
+  const navigation = getDashboardNavigation(appRole)
+
+  const sidebarAccent =
+    appRole === 'admin' || appRole === 'super_admin'
+      ? 'border-l-[3px] border-l-blue-500/25'
+      : appRole === 'employer'
+        ? 'border-l-[3px] border-l-emerald-500/25'
+        : ''
 
   // Fetch unread message count
   useEffect(() => {
@@ -276,9 +262,11 @@ export default function DashboardLayout({
     <div className="flex min-h-screen overflow-hidden bg-background">
       {/* Sidebar - Desktop (light shell aligned with marketing site) */}
       <aside
-        className={`relative z-40 hidden flex-col border-r border-white/30 bg-white/55 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex ${
-          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
-        }`}
+        className={cn(
+          'relative z-40 hidden flex-col border-r border-white/30 bg-white/55 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64',
+          sidebarAccent
+        )}
       >
         <div className="flex h-16 items-center gap-2 border-b border-white/25 px-3">
           {!sidebarCollapsed ? (
@@ -313,36 +301,47 @@ export default function DashboardLayout({
         </div>
 
         <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
-          {navigation.map((item) => {
+          {navigation.map((item, index) => {
             const Icon = item.icon
             const isActive = navIsActive(item.href)
+            const prev = index > 0 ? navigation[index - 1] : undefined
+            const label = navGroupLabel(item.group)
+            const showSection =
+              !!label &&
+              (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-200 ${
-                  isActive
-                    ? 'bg-primary/10 text-primary border-l-[3px] border-primary -ml-[3px] pl-[calc(0.75rem+3px)]'
-                    : 'border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
-                }`}
-              >
-                <Icon className={`${iconClass} ${isActive ? 'text-primary' : 'text-text/45 group-hover:text-text/70'}`} />
-                {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
-                {item.name === 'Messages' && unreadCount > 0 && (
-                  <span
-                    className={`flex min-w-[1.25rem] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white ${
-                      sidebarCollapsed ? 'absolute right-1 top-1' : 'ml-auto'
-                    }`}
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-                {sidebarCollapsed && (
-                  <div className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-white px-2 py-1 text-xs text-text opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
-                    {item.name}
+              <Fragment key={`${item.href}-${item.name}`}>
+                {!sidebarCollapsed && showSection && (
+                  <div className="px-3 pb-1 pt-3 first:pt-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text/45">{label}</p>
                   </div>
                 )}
-              </Link>
+                <Link
+                  href={item.href}
+                  className={`group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-200 ${
+                    isActive
+                      ? 'border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
+                      : 'border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                  }`}
+                >
+                  <Icon className={`${iconClass} ${isActive ? 'text-primary' : 'text-text/45 group-hover:text-text/70'}`} />
+                  {!sidebarCollapsed && <span className="min-w-0 flex-1 truncate">{item.name}</span>}
+                  {item.name === 'Messages' && unreadCount > 0 && (
+                    <span
+                      className={`flex min-w-[1.25rem] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white ${
+                        sidebarCollapsed ? 'absolute right-1 top-1' : 'ml-auto shrink-0'
+                      }`}
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                  {sidebarCollapsed && (
+                    <div className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-white px-2 py-1 text-xs text-text opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
+                      {item.name}
+                    </div>
+                  )}
+                </Link>
+              </Fragment>
             )
           })}
         </nav>
@@ -521,20 +520,31 @@ export default function DashboardLayout({
                 </button>
               </div>
               <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-                {navigation.map((item) => {
+                {navigation.map((item, index) => {
                   const active = navIsActive(item.href)
+                  const prev = index > 0 ? navigation[index - 1] : undefined
+                  const label = navGroupLabel(item.group)
+                  const showSection =
+                    !!label &&
+                    (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
                   return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                        active ? 'bg-primary/10 text-primary' : 'text-text/70 hover:bg-background'
-                      }`}
-                    >
-                      <item.icon className={`${iconClass} ${active ? 'text-primary' : 'text-text/45'}`} />
-                      {item.name}
-                    </Link>
+                    <Fragment key={`${item.href}-${item.name}`}>
+                      {showSection && (
+                        <div className="px-3 pb-1 pt-3 first:pt-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-text/45">{label}</p>
+                        </div>
+                      )}
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                          active ? 'bg-primary/10 text-primary' : 'text-text/70 hover:bg-background'
+                        }`}
+                      >
+                        <item.icon className={`${iconClass} ${active ? 'text-primary' : 'text-text/45'}`} />
+                        <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                      </Link>
+                    </Fragment>
                   )
                 })}
               </nav>
@@ -559,7 +569,7 @@ export default function DashboardLayout({
           const isActive = navIsActive(item.href)
           return (
             <Link
-              key={item.name}
+              key={`${item.href}-${item.name}`}
               href={item.href}
               className={`flex min-w-[3.5rem] flex-col items-center gap-0.5 py-1 transition-colors duration-200 ${
                 isActive ? 'text-primary' : 'text-text/45'

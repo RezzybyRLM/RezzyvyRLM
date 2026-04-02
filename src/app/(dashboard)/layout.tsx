@@ -1,44 +1,42 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
-  User as UserIcon,
-  FileText,
+  UserRound,
+  FileStack,
   Bookmark,
-  Bell,
-  Mic,
+  BellRing,
   LogOut,
   Menu,
   X,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Briefcase,
+  BriefcaseBusiness,
   MessageSquare,
-  Home,
   Search,
-  LayoutDashboard
+  LayoutGrid,
+  Headphones,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
+import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
+
+const iconClass = 'h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.5]'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Profile', href: '/profile', icon: UserIcon },
-  { name: 'Jobs', href: '/jobs', icon: Briefcase },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+  { name: 'Profile', href: '/profile', icon: UserRound },
+  { name: 'Jobs', href: '/jobs', icon: BriefcaseBusiness },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
-  { name: 'Resume Manager', href: '/resume-manager', icon: FileText },
+  { name: 'Resume Manager', href: '/resume-manager', icon: FileStack },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
-  { name: 'Job Alerts', href: '/job-alerts', icon: Bell },
-  { name: 'Interview Pro', href: '/interview-pro', icon: Mic },
+  { name: 'Job Alerts', href: '/job-alerts', icon: BellRing },
+  { name: 'Interview Pro', href: '/interview-pro', icon: Headphones },
 ]
 
 // Store sidebar state in localStorage for persistence
@@ -70,8 +68,18 @@ export default function DashboardLayout({
   const toggleSidebar = () => {
     const newState = !sidebarCollapsed
     setSidebarCollapsed(newState)
-    localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(newState))
+    localStorage.setItem(SIDEBAR_STATE_KEY, newState ? 'true' : 'false')
   }
+
+  const [headerSearch, setHeaderSearch] = useState('')
+  const headerSearchSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    const q = headerSearch.trim()
+    if (q) router.push(`/jobs?q=${encodeURIComponent(q)}`)
+  }
+
+  const navIsActive = (href: string) =>
+    pathname === href || (href !== '/' && pathname.startsWith(`${href}/`))
 
   // Fetch unread message count
   useEffect(() => {
@@ -235,82 +243,85 @@ export default function DashboardLayout({
 
   if (initialLoad) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center animate-in fade-in duration-500">
-          <div className="relative mx-auto mb-4 flex items-center justify-center">
-            <div className="absolute inset-0 scale-150 rounded-full bg-primary/10 animate-pulse"></div>
-            <Image
-              src="/logo.png"
-              alt="Rezzy Logo"
-              width={120}
-              height={40}
-              className="object-contain animate-bounce transition-all"
-              priority
-            />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex justify-center opacity-90 transition-opacity duration-300">
+            <DashboardLogo priority href="/" />
           </div>
-          <p className="text-gray-400 font-medium tracking-tight">Accessing Rezzy Dashboard</p>
+          <div className="mx-auto mb-3 h-0.5 w-12 rounded-full bg-primary/30" />
+          <p className="text-sm font-medium text-text/60">Loading workspace…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
-      {/* Sidebar - Desktop */}
+    <div className="flex min-h-screen overflow-hidden bg-background">
+      {/* Sidebar - Desktop (light shell aligned with marketing site) */}
       <aside
-        className={`hidden lg:flex flex-col bg-[#0F172A] text-gray-300 transition-all duration-300 ease-in-out z-40 border-r border-white/5 relative shadow-2xl ${sidebarCollapsed ? 'w-20' : 'w-64'
-          }`}
+        className={`relative z-40 hidden flex-col border-r border-border bg-white shadow-sm transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex ${
+          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
+        }`}
       >
-        {/* Sidebar Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
-          <Link href="/" className={`flex items-center gap-2 transition-all ${sidebarCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto'}`}>
-            <Image
-              src="/logo.png"
-              alt="Rezzy Logo"
-              width={80}
-              height={24}
-              className="object-contain brightness-0 invert"
-              priority
-            />
-          </Link>
-          <button
-            onClick={toggleSidebar}
-            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white"
-          >
-            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          </button>
+        <div className="flex h-16 items-center gap-2 border-b border-border px-3">
+          {!sidebarCollapsed ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <DashboardLogo href="/" priority />
+              </div>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="h-5 w-5 stroke-[1.5]" />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-1 justify-center">
+                <DashboardLogo href="/" compact priority />
+              </div>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                aria-label="Expand sidebar"
+              >
+                <ChevronRight className="h-5 w-5 stroke-[1.5]" />
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1.5 scrollbar-thin scrollbar-white/10">
+        <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
           {navigation.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            const isActive = navIsActive(item.href)
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative group h-11 ${isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'hover:bg-white/5 hover:text-white'
-                  }`}
+                className={`group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-200 ${
+                  isActive
+                    ? 'bg-primary/10 text-primary border-l-[3px] border-primary -ml-[3px] pl-[calc(0.75rem+3px)]'
+                    : 'border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                }`}
               >
-                <div className="flex-shrink-0">
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}`} />
-                </div>
-                {!sidebarCollapsed && (
-                  <span className="text-sm font-medium tracking-tight whitespace-nowrap overflow-hidden">
-                    {item.name}
-                  </span>
-                )}
+                <Icon className={`${iconClass} ${isActive ? 'text-primary' : 'text-text/45 group-hover:text-text/70'}`} />
+                {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
                 {item.name === 'Messages' && unreadCount > 0 && (
-                  <span className={`static ml-auto flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-1 ${sidebarCollapsed ? 'absolute top-1 right-1' : ''}`}>
+                  <span
+                    className={`flex min-w-[1.25rem] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white ${
+                      sidebarCollapsed ? 'absolute right-1 top-1' : 'ml-auto'
+                    }`}
+                  >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
-                {/* Tooltip for collapsed sidebar */}
                 {sidebarCollapsed && (
-                  <div className="absolute left-full ml-4 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  <div className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-white px-2 py-1 text-xs text-text opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
                     {item.name}
                   </div>
                 )}
@@ -319,49 +330,58 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/5 bg-white/[0.02]">
+        <div className="relative border-t border-border p-3">
           {!sidebarCollapsed ? (
-            <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group" onClick={() => setProfileMenuOpen(!profileMenuOpen)}>
-              {userProfile?.avatar_url ? (
-                <img src={userProfile.avatar_url} className="w-9 h-9 rounded-full object-cover border border-white/10" />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                  <UserIcon className="w-5 h-5 text-gray-400" />
-                </div>
-              )}
-              <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-bold text-white truncate">{userProfile?.full_name || 'User'}</p>
-                <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-white transition-all ${profileMenuOpen ? 'rotate-180' : ''}`} />
-            </div>
-          ) : (
             <button
-              className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto hover:bg-white/10 transition-colors"
+              type="button"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-background"
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             >
-              <UserIcon className="w-6 h-6 text-gray-400" />
+              {userProfile?.avatar_url ? (
+                <img src={userProfile.avatar_url} alt="" className="h-9 w-9 rounded-full border border-border object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background">
+                  <UserRound className="h-4 w-4 text-text/40 stroke-[1.5]" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-text">{userProfile?.full_name || 'Account'}</p>
+                <p className="truncate text-xs text-text/50">{user?.email}</p>
+              </div>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-text/40 transition-transform ${profileMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background transition-colors hover:bg-background/80"
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              aria-label="Account menu"
+            >
+              <UserRound className="h-5 w-5 text-text/50 stroke-[1.5]" />
             </button>
           )}
 
           <AnimatePresence>
             {profileMenuOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className={`absolute bottom-full left-0 right-0 mb-4 mx-2 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl py-2 z-50 overflow-hidden ${sidebarCollapsed ? 'w-48 -right-40' : ''}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className={`absolute bottom-full z-50 mb-2 overflow-hidden rounded-lg border border-border bg-white py-1 shadow-lg ${
+                  sidebarCollapsed ? 'left-1/2 w-48 -translate-x-1/2' : 'left-2 right-2'
+                }`}
               >
-                <Link href="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
-                  <UserIcon className="w-4 h-4" /> View Profile
+                <Link href="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-background" onClick={() => setProfileMenuOpen(false)}>
+                  <UserRound className="h-4 w-4 stroke-[1.5]" /> Profile
                 </Link>
-                <div className="h-px bg-white/5 my-1" />
+                <div className="my-1 h-px bg-border" />
                 <button
+                  type="button"
                   onClick={() => signOut('/auth/login')}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
                 >
-                  <LogOut className="w-4 h-4" /> Sign Out
+                  <LogOut className="h-4 w-4 stroke-[1.5]" /> Sign out
                 </button>
               </motion.div>
             )}
@@ -372,47 +392,67 @@ export default function DashboardLayout({
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-6 z-30 sticky top-0 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button className="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg" onClick={() => setMobileMenuOpen(true)}>
-              <Menu className="w-6 h-6" />
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-white/90 px-4 shadow-sm backdrop-blur-md md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              type="button"
+              className="rounded-lg p-2 text-text/55 transition-colors hover:bg-background lg:hidden"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5 stroke-[1.5]" />
             </button>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-              <span className="capitalize">{pathname.split('/')[1] || 'Dashboard'}</span>
+            <div className="flex min-w-0 items-center gap-3 lg:hidden">
+              <DashboardLogo href="/" compact />
+            </div>
+            <div className="hidden min-w-0 lg:block">
+              <p className="truncate text-sm font-medium capitalize text-text/60">
+                {pathname.split('/').filter(Boolean).join(' / ') || 'Dashboard'}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-2xl px-3 py-1.5 w-72 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 transition-all group">
-              <Search className="w-4 h-4 text-gray-400 mr-2 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search anything..."
-                className="bg-transparent border-none outline-none text-sm placeholder:text-gray-400 w-full text-gray-900"
-              />
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 relative hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+          <div className="flex items-center gap-2 sm:gap-3">
+            <form
+              onSubmit={headerSearchSubmit}
+              className="hidden min-w-0 items-center rounded-lg border border-border bg-background px-3 py-1.5 transition-shadow focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/15 md:flex md:w-56 lg:w-72"
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            </motion.button>
+              <Search className="mr-2 h-4 w-4 shrink-0 text-text/40 stroke-[1.5]" />
+              <input
+                type="search"
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder="Search jobs…"
+                className="w-full border-0 bg-transparent text-sm text-text placeholder:text-text/40 outline-none"
+                aria-label="Search jobs"
+              />
+            </form>
+            <Link
+              href="/job-alerts"
+              className="rounded-lg p-2 text-text/50 transition-colors hover:bg-background hover:text-primary"
+              aria-label="Job alerts"
+            >
+              <BellRing className="h-5 w-5 stroke-[1.5]" />
+            </Link>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] scrollbar-thin scrollbar-gray-200">
+        <main className="relative flex-1 overflow-y-auto bg-background">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.35]"
+            aria-hidden
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FF6B6B' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="p-6 md:p-8 max-w-[1600px] mx-auto w-full"
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="relative mx-auto w-full max-w-[1600px] p-4 pb-24 md:p-8 md:pb-8 lg:pb-8"
             >
               {children}
             </motion.div>
@@ -435,35 +475,45 @@ export default function DashboardLayout({
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 bg-[#0F172A] z-[60] lg:hidden flex flex-col"
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="fixed inset-y-0 left-0 z-[60] flex w-[min(100vw-3rem,18rem)] flex-col border-r border-border bg-white shadow-xl lg:hidden"
             >
-              <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
-                <Image src="/logo.png" alt="Rezzy" width={100} height={32} className="brightness-0 invert" />
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-xl">
-                  <X className="w-6 h-6" />
+              <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-4">
+                <DashboardLogo href="/" />
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg p-2 text-text/50 transition-colors hover:bg-background"
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5 stroke-[1.5]" />
                 </button>
               </div>
-              <nav className="flex-1 p-4 space-y-1">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${pathname === item.href ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+                {navigation.map((item) => {
+                  const active = navIsActive(item.href)
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                        active ? 'bg-primary/10 text-primary' : 'text-text/70 hover:bg-background'
                       }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium text-sm">{item.name}</span>
-                  </Link>
-                ))}
+                    >
+                      <item.icon className={`${iconClass} ${active ? 'text-primary' : 'text-text/45'}`} />
+                      {item.name}
+                    </Link>
+                  )
+                })}
               </nav>
-              <div className="p-6 border-t border-white/5">
+              <div className="border-t border-border p-4">
                 <button
+                  type="button"
                   onClick={() => signOut('/auth/login')}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 font-medium hover:bg-red-500/10 rounded-xl transition-colors"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                 >
-                  <LogOut className="w-5 h-5" /> Sign Out
+                  <LogOut className="h-4 w-4 stroke-[1.5]" /> Sign out
                 </button>
               </div>
             </motion.aside>
@@ -472,25 +522,27 @@ export default function DashboardLayout({
       </AnimatePresence>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 h-16 flex items-center justify-around px-2 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-white/95 px-1 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md lg:hidden">
         {navigation.slice(0, 5).map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const isActive = navIsActive(item.href)
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center gap-1 min-w-[64px] transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400'}`}
+              className={`flex min-w-[3.5rem] flex-col items-center gap-0.5 py-1 transition-colors duration-200 ${
+                isActive ? 'text-primary' : 'text-text/45'
+              }`}
             >
               <div className="relative">
-                <Icon className={`w-5 h-5 ${isActive ? 'fill-current' : ''}`} />
+                <Icon className="h-[1.125rem] w-[1.125rem] stroke-[1.5]" />
                 {item.name === 'Messages' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">
+                  <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-[8px] font-bold text-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium tracking-tight whitespace-nowrap">{item.name.split(' ')[0]}</span>
+              <span className="max-w-[4.25rem] truncate text-[10px] font-medium">{item.name.split(' ')[0]}</span>
             </Link>
           )
         })}

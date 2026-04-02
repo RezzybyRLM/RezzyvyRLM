@@ -15,11 +15,25 @@ import {
   ChevronRight,
   Headphones,
   Send,
+  Building2,
+  ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 const easeOut = [0.22, 1, 0.36, 1] as const
+
+type DiscoveryJob = {
+  key: string
+  title: string
+  company: string
+  location: string
+  salaryDisplay: string | null
+  logoUrl: string | null
+  href: string
+  external: boolean
+  sourceLabel: string
+}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<{ email?: string | null } | null>(null)
@@ -31,8 +45,92 @@ export default function DashboardPage() {
     applications: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [discoveryJobs, setDiscoveryJobs] = useState<DiscoveryJob[]>([])
   const router = useRouter()
   const supabase = createClient()
+
+  const fetchDiscoveryJobs = async () => {
+    const nowIso = new Date().toISOString()
+    const { data: premium } = await supabase
+      .from('jobs')
+      .select(
+        `
+        id,
+        title,
+        location,
+        salary_range,
+        companies ( name, logo_url )
+      `
+      )
+      .gte('expires_at', nowIso)
+      .order('is_featured', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(4)
+
+    const { data: indeedRows } = await supabase
+      .from('cached_indeed_jobs')
+      .select('id, title, company, location, salary, apply_url, expires_at, scraped_at')
+      .order('scraped_at', { ascending: false })
+      .limit(12)
+
+    const indeedFiltered = (indeedRows || []).filter(row => {
+      if (!row.expires_at) return true
+      return new Date(row.expires_at) > new Date()
+    })
+
+    const out: DiscoveryJob[] = []
+    const premiumList = (premium || []).slice(0, 2)
+    const indeedList = indeedFiltered.slice(0, 2)
+
+    for (const row of premiumList) {
+      const r = row as unknown as {
+        id: string
+        title: string
+        location: string | null
+        salary_range: string | null
+        companies: { name: string; logo_url: string | null } | { name: string; logo_url: string | null }[] | null
+      }
+      const companyRow = Array.isArray(r.companies) ? r.companies[0] : r.companies
+      const companyName = companyRow?.name?.trim() || 'Employer'
+      const salary = r.salary_range?.trim() || null
+      out.push({
+        key: `premium-${r.id}`,
+        title: r.title,
+        company: companyName,
+        location: (r.location && r.location.trim()) || 'Location TBD',
+        salaryDisplay: salary,
+        logoUrl: companyRow?.logo_url || null,
+        href: `/jobs/${r.id}`,
+        external: false,
+        sourceLabel: 'On Rezzy',
+      })
+    }
+
+    for (const row of indeedList) {
+      const r = row as {
+        id: string
+        title: string
+        company: string
+        location: string
+        salary: string | null
+        apply_url: string
+      }
+      const salary = r.salary?.trim() || null
+      out.push({
+        key: `indeed-${r.id}`,
+        title: r.title,
+        company: r.company?.trim() || 'Company',
+        location: (r.location && r.location.trim()) || 'Location TBD',
+        salaryDisplay: salary,
+        logoUrl: null,
+        href: r.apply_url,
+        external: true,
+        sourceLabel: 'Partner listing',
+      })
+    }
+
+    setDiscoveryJobs(out)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -42,7 +140,7 @@ export default function DashboardPage() {
         if (!mounted) return
         if (session?.user) {
           setUser(session.user)
-          await fetchStats(session.user.id)
+          await Promise.all([fetchStats(session.user.id), fetchDiscoveryJobs()])
         } else {
           router.push('/auth/login')
         }
@@ -115,23 +213,6 @@ export default function DashboardPage() {
     },
   ]
 
-  const exampleJobs = [
-    {
-      company: 'Google',
-      role: 'Senior UX Designer',
-      location: 'Mountain View, CA',
-      salary: '$160k – $220k',
-      logo: 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
-    },
-    {
-      company: 'Stripe',
-      role: 'Backend Engineer',
-      location: 'New York, NY',
-      salary: '$170k – $230k',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/1024px-Stripe_Logo%2C_revised_2016.svg.png',
-    },
-  ]
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -193,40 +274,89 @@ export default function DashboardPage() {
             </Link>
           </div>
           <p className="text-sm text-text/55">
-            Examples below—open <span className="font-medium text-text/70">Browse jobs</span> for live listings from our board and partners.
+            Recent roles from our board and partner feed. Open <span className="font-medium text-text/70">Browse jobs</span> for the full search experience.
           </p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {exampleJobs.map((job) => (
-              <Card
-                key={job.company + job.role}
-                className="border border-border bg-white shadow-sm transition-shadow hover:shadow-md"
-              >
-                <CardContent className="p-5">
-                  <div className="flex gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={job.logo} alt="" className="max-h-full max-w-full object-contain" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-text">{job.role}</h3>
-                      <p className="text-sm text-text/55">{job.company}</p>
-                    </div>
+          {discoveryJobs.length === 0 ? (
+            <Card className="border border-border bg-white shadow-sm">
+              <CardContent className="flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-md bg-primary/10 p-2 text-primary">
+                    <BriefcaseBusiness className="h-5 w-5 stroke-[1.5]" aria-hidden />
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="font-normal text-text/70">
-                      {job.location}
-                    </Badge>
-                    <Badge variant="secondary" className="font-normal text-text/70">
-                      {job.salary}
-                    </Badge>
+                  <div>
+                    <p className="font-medium text-text">No listings yet</p>
+                    <p className="mt-1 text-sm text-text/55">
+                      New jobs will show here as they are published or synced.
+                    </p>
                   </div>
-                  <Button variant="ghost" size="sm" className="mt-3 h-8 px-0 text-primary hover:bg-transparent hover:underline" asChild>
-                    <Link href="/jobs">View similar on Rezzy</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+                <Button className="bg-primary text-white hover:bg-primary/90" asChild>
+                  <Link href="/jobs">Browse jobs</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {discoveryJobs.map(job => (
+                <Card
+                  key={job.key}
+                  className="border border-border bg-white shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <CardContent className="p-5">
+                    <div className="flex gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1.5">
+                        {job.logoUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={job.logoUrl} alt="" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <Building2 className="h-6 w-6 text-text/35" aria-hidden />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold leading-snug text-text">{job.title}</h3>
+                        <p className="text-sm text-text/55">{job.company}</p>
+                        <Badge variant="outline" className="mt-2 font-normal text-text/60">
+                          {job.sourceLabel}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="font-normal text-text/70">
+                        {job.location}
+                      </Badge>
+                      {job.salaryDisplay ? (
+                        <Badge variant="secondary" className="font-normal text-text/70">
+                          {job.salaryDisplay}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {job.external ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3 h-8 gap-1 px-0 text-primary hover:bg-transparent hover:underline"
+                        asChild
+                      >
+                        <a href={job.href} target="_blank" rel="noopener noreferrer">
+                          View & apply
+                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3 h-8 px-0 text-primary hover:bg-transparent hover:underline"
+                        asChild
+                      >
+                        <Link href={job.href}>View on Rezzy</Link>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

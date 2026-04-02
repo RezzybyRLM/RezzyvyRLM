@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canManageRoles } from '@/lib/auth/permissions'
+import { AdminRoleBadge, formatAdminTableDate } from '@/components/admin/admin-role-badge'
 
 type UserRow = {
   id: string
@@ -95,27 +95,37 @@ export default function AdminUsersPage() {
           <CardTitle className="text-base font-medium">{users.length} accounts</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
+          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Email</th>
-                <th className="py-2 pr-4 font-medium">Name</th>
-                <th className="py-2 pr-4 font-medium">Role</th>
-                <th className="py-2 font-medium">Joined</th>
+              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-slate-600">
+                <th scope="col" className="whitespace-nowrap px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">
+                  Role
+                </th>
+                <th scope="col" className="whitespace-nowrap px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">
+                  Name
+                </th>
+                <th scope="col" className="min-w-[200px] px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">
+                  Email
+                </th>
+                <th scope="col" className="whitespace-nowrap px-3 py-3 text-xs font-semibold uppercase tracking-wide">
+                  Joined
+                </th>
               </tr>
             </thead>
             <tbody>
               {users.map(u => (
-                <tr key={u.id} className="border-b border-border/60">
-                  <td className="py-3 pr-4 font-medium">{u.email}</td>
-                  <td className="py-3 pr-4 text-muted-foreground">{u.full_name || '—'}</td>
-                  <td className="py-3 pr-4">
-                    <Badge variant="secondary" className="font-normal">
-                      {u.role || 'user'}
-                    </Badge>
+                <tr key={u.id} className="border-b border-slate-100/90 hover:bg-white/60">
+                  <td className="py-3.5 pr-4 align-middle">
+                    <AdminRoleBadge role={u.role} />
                   </td>
-                  <td className="py-3 text-muted-foreground">
-                    {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                  <td className="py-3.5 pr-4 align-middle">
+                    <span className="font-medium text-slate-900">{u.full_name || '—'}</span>
+                  </td>
+                  <td className="py-3.5 pr-4 align-middle">
+                    <span className="break-all text-slate-800 tabular-nums">{u.email}</span>
+                  </td>
+                  <td className="py-3.5 align-middle text-slate-700 tabular-nums">
+                    {formatAdminTableDate(u.created_at)}
                   </td>
                 </tr>
               ))}

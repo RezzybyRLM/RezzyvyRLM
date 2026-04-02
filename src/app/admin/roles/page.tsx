@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Shield, ArrowLeft, Users, AlertCircle } from 'lucide-react'
+import { formatAdminTableDate } from '@/components/admin/admin-role-badge'
 
 type UserRow = {
   id: string
@@ -210,23 +211,25 @@ export default function AdminRolesPage() {
           </div>
         )}
 
-        <Card>
+        <Card className="glass-card border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-medium">
               <Shield className="h-5 w-5" />
-              Users
+              Users &amp; roles
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b text-gray-500">
-                  <th className="py-3 pr-4 font-medium">Email</th>
-                  <th className="py-3 pr-4 font-medium">Role</th>
-                  <th className="py-3 pr-4 font-medium">Users</th>
-                  <th className="py-3 pr-4 font-medium">Content</th>
-                  <th className="py-3 pr-4 font-medium">System</th>
-                  <th className="py-3 font-medium">Actions</th>
+                <tr className="border-b border-slate-200/90 bg-slate-50/80 text-slate-600">
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Role</th>
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Name</th>
+                  <th className="min-w-[200px] px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Email</th>
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Joined</th>
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Users</th>
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Content</th>
+                  <th className="px-3 py-3 pr-4 text-xs font-semibold uppercase tracking-wide">System</th>
+                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,25 +247,30 @@ export default function AdminRolesPage() {
                       : { role: u.role }
                   )
                   return (
-                    <tr key={u.id} className="border-b border-gray-100">
-                      <td className="py-4 pr-4">
-                        <div className="font-medium text-gray-900">{u.email}</div>
-                        {u.full_name && (
-                          <div className="text-xs text-gray-500">{u.full_name}</div>
-                        )}
-                      </td>
-                      <td className="py-4 pr-4">
+                    <tr key={u.id} className="border-b border-slate-100/90 hover:bg-white/60">
+                      <td className="py-4 pr-4 align-top">
                         <select
-                          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-gray-900"
+                          className="w-full min-w-[9.5rem] rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-900 shadow-sm"
                           value={d?.role ?? 'user'}
                           onChange={(e) =>
                             updateDraft(u.id, { role: e.target.value as AppRole })
                           }
+                          aria-label={`Role for ${u.email}`}
                         >
                           <option value="user">User</option>
+                          <option value="employer">Employer</option>
                           <option value="admin">Admin</option>
                           <option value="super_admin">Super admin</option>
                         </select>
+                      </td>
+                      <td className="py-4 pr-4 align-middle">
+                        <span className="font-medium text-slate-900">{u.full_name || '—'}</span>
+                      </td>
+                      <td className="py-4 pr-4 align-middle">
+                        <span className="break-all text-slate-800">{u.email}</span>
+                      </td>
+                      <td className="py-4 pr-4 align-middle tabular-nums text-slate-700">
+                        {formatAdminTableDate(u.created_at)}
                       </td>
                       <td className="py-4 pr-4">
                         <label className="inline-flex cursor-pointer items-center gap-2">

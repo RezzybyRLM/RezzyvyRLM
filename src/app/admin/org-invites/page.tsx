@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Copy, Check } from 'lucide-react'
+import { formatAdminTableDate } from '@/components/admin/admin-role-badge'
 import { Badge } from '@/components/ui/badge'
 
 type InviteRow = {
@@ -136,19 +137,19 @@ export default function OrgInvitesPage() {
         <CardContent className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
-              <tr className="border-b text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Company</th>
-                <th className="py-2 pr-4 font-medium">Created</th>
-                <th className="py-2 pr-4 font-medium">Expires</th>
-                <th className="py-2 font-medium">Status</th>
+              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-slate-600">
+                <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Company</th>
+                <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Created</th>
+                <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-wide">Expires</th>
+                <th className="py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
               </tr>
             </thead>
             <tbody>
               {invites.map(inv => (
-                <tr key={inv.id} className="border-b border-border/60">
-                  <td className="py-3 pr-4 font-medium">{inv.company_name}</td>
-                  <td className="py-3 pr-4 text-muted-foreground">{new Date(inv.created_at).toLocaleString()}</td>
-                  <td className="py-3 pr-4 text-muted-foreground">{new Date(inv.expires_at).toLocaleDateString()}</td>
+                <tr key={inv.id} className="border-b border-slate-100/90 hover:bg-white/60">
+                  <td className="py-3 pr-4 font-medium text-slate-900">{inv.company_name}</td>
+                  <td className="py-3 pr-4 tabular-nums text-slate-700">{formatAdminTableDate(inv.created_at)}</td>
+                  <td className="py-3 pr-4 tabular-nums text-slate-700">{formatAdminTableDate(inv.expires_at)}</td>
                   <td className="py-3">
                     {inv.used_at ? (
                       <Badge className="border-0 bg-emerald-100 font-normal text-emerald-900">Used</Badge>

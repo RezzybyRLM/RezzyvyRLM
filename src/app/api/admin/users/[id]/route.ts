@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { canManageRoles, type AppRole } from '@/lib/auth/permissions'
 
-const ALLOWED_ROLES: AppRole[] = ['user', 'admin', 'super_admin']
+const ALLOWED_ROLES: AppRole[] = ['user', 'employer', 'admin', 'super_admin']
 
 export async function PATCH(
   request: Request,
@@ -43,7 +43,7 @@ export async function PATCH(
       permManageUsers = true
       permManageContent = true
       permManageSystem = true
-    } else if (role === 'user') {
+    } else if (role === 'user' || role === 'employer') {
       permManageUsers = false
       permManageContent = false
       permManageSystem = false

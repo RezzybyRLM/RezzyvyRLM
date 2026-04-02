@@ -31,8 +31,9 @@ export function canAccessAdminConsole(role: string | null | undefined): boolean 
   return isStaffRole(role)
 }
 
+/** Member `/employer` hub — only for employer accounts (not general members or staff). */
 export function canAccessEmployerDashboard(role: string | null | undefined): boolean {
-  return role === 'employer' || role === 'admin' || role === 'super_admin'
+  return role === 'employer'
 }
 
 /** Contact messages and similar content moderation */

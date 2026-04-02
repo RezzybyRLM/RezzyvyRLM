@@ -90,7 +90,12 @@ export default function JobsPage() {
   const [matchedProfileName, setMatchedProfileName] = useState<string | null>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const jobsListRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef(searchQuery)
+  const locationRef = useRef(locationFilter)
   const supabase = createClient()
+
+  searchRef.current = searchQuery
+  locationRef.current = locationFilter
 
   // Load visited jobs from session storage
   useEffect(() => {
@@ -142,10 +147,6 @@ export default function JobsPage() {
   }, [router, searchParams])
 
   useEffect(() => {
-    fetchJobs()
-  }, [])
-
-  useEffect(() => {
     if (selectedJob && detailPanelRef.current) {
       detailPanelRef.current.scrollTo(0, 0)
       markAsVisited(selectedJob.id)
@@ -155,9 +156,12 @@ export default function JobsPage() {
     }
   }, [selectedJob, markAsVisited, updateURL])
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true)
     setError(null)
+
+    const qText = searchRef.current.trim().replace(/[%_]/g, '')
+    const locText = locationRef.current.trim()
 
     try {
       let query = supabase
@@ -173,6 +177,7 @@ export default function JobsPage() {
         `)
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false })
+        .limit(400)
 
       // Apply date filter
       if (dateFilter !== 'anytime') {
@@ -195,20 +200,36 @@ export default function JobsPage() {
         query = query.gte('created_at', cutoffDate.toISOString())
       }
 
-      // Apply remote filter
+      // DB stores lowercase remote_type (e.g. remote, hybrid)
       if (remoteFilter !== 'all') {
-        query = query.eq('remote_type', remoteFilter === 'remote' ? 'Remote' : remoteFilter === 'hybrid' ? 'Hybrid' : 'On-site')
+        if (remoteFilter === 'remote') {
+          query = query.eq('remote_type', 'remote')
+        } else if (remoteFilter === 'hybrid') {
+          query = query.eq('remote_type', 'hybrid')
+        } else {
+          query = query.or('remote_type.ilike.%on-site%,remote_type.ilike.%onsite%')
+        }
       }
 
-      // Apply salary filter (if we have salary data)
-      // Note: This is a simplified version - you'd need to parse salary ranges for real filtering
-
-      if (searchQuery.trim()) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+      const salaryMins: Record<SalaryFilter, number | null> = {
+        all: null,
+        '40k': 40000,
+        '60k': 60000,
+        '80k': 80000,
+        '100k': 100000,
+        '120k': 120000,
+      }
+      const minSal = salaryMins[salaryFilter]
+      if (minSal !== null) {
+        query = query.gte('min_salary', minSal)
       }
 
-      if (locationFilter.trim()) {
-        query = query.ilike('location', `%${locationFilter}%`)
+      if (qText) {
+        query = query.or(`title.ilike.%${qText}%,description.ilike.%${qText}%`)
+      }
+
+      if (locText) {
+        query = query.ilike('location', `%${locText}%`)
       }
 
       const { data, error: fetchError } = await query
@@ -226,7 +247,11 @@ export default function JobsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase, dateFilter, remoteFilter, salaryFilter])
+
+  useEffect(() => {
+    fetchJobs()
+  }, [fetchJobs])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -401,7 +426,7 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-gray-50 relative" style={{ zIndex: 0 }}>
       {/* Sticky Search Bar */}
-      <div className="sticky top-14 bg-white border-b border-gray-200 shadow-sm" style={{ zIndex: 30 }}>
+      <div className="sticky top-16 z-30 border-b border-gray-200 bg-white shadow-sm">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <form onSubmit={handleSearch} className="flex gap-3 mb-4">
             <div className="flex-1 relative">
@@ -466,7 +491,6 @@ export default function JobsPage() {
                         onClick={() => {
                           setDateFilter(filter)
                           setShowDateDropdown(false)
-                          fetchJobs()
                         }}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${dateFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
@@ -491,7 +515,13 @@ export default function JobsPage() {
                 className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
                 <MapPin className="h-4 w-4" />
-                {remoteFilter === 'all' ? 'Remote' : remoteFilter === 'remote' ? 'Remote only' : remoteFilter === 'hybrid' ? 'Hybrid' : 'On-site'}
+                {remoteFilter === 'all'
+                  ? 'Workplace'
+                  : remoteFilter === 'remote'
+                    ? 'Remote only'
+                    : remoteFilter === 'hybrid'
+                      ? 'Hybrid'
+                      : 'On-site'}
                 <ChevronDown className="h-3 w-3" />
               </button>
               {showRemoteDropdown && (
@@ -508,7 +538,6 @@ export default function JobsPage() {
                         onClick={() => {
                           setRemoteFilter(filter)
                           setShowRemoteDropdown(false)
-                          fetchJobs()
                         }}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${remoteFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
@@ -550,7 +579,6 @@ export default function JobsPage() {
                         onClick={() => {
                           setSalaryFilter(filter)
                           setShowSalaryDropdown(false)
-                          fetchJobs()
                         }}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${salaryFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}

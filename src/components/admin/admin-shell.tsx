@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Link2,
+  Compass,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -37,6 +38,7 @@ const nav = [
   { href: '/admin/billing', label: 'Billing', icon: CreditCard },
   { href: '/admin/inbox', label: 'Inbox', icon: Inbox },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
+  { href: '/jobs', label: 'Job board', icon: Compass },
   { href: '/admin/org-invites', label: 'Org invites', icon: Link2 },
 ]
 

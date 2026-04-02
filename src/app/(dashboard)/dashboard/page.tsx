@@ -50,7 +50,6 @@ export default function DashboardPage() {
   const supabase = createClient()
 
   const fetchDiscoveryJobs = async () => {
-    const nowIso = new Date().toISOString()
     const { data: premium } = await supabase
       .from('jobs')
       .select(
@@ -62,7 +61,6 @@ export default function DashboardPage() {
         companies ( name, logo_url )
       `
       )
-      .gte('expires_at', nowIso)
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(4)

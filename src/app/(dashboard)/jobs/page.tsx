@@ -30,6 +30,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { JobApplicationModal } from '@/components/ui/job-application-modal'
 import { findBestMatchingProfile } from '@/lib/jobs/match-score'
+import { normalizeJobRows } from '@/lib/jobs/normalize-job'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface Job {
@@ -170,7 +171,6 @@ export default function JobsPage() {
             website
           )
         `)
-        .gte('expires_at', new Date().toISOString())
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -218,7 +218,7 @@ export default function JobsPage() {
       }
 
       if (data) {
-        setJobs(data as Job[])
+        setJobs(normalizeJobRows(data as Record<string, unknown>[]) as unknown as Job[])
       }
     } catch (err: any) {
       console.error('Error fetching jobs:', err)

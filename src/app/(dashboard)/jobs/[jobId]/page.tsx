@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, MapPin, Briefcase, DollarSign, Calendar, Clock, Mail, Phone, Loader2, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { normalizeJobRow } from '@/lib/jobs/normalize-job'
 
 interface Job {
   id: string
@@ -77,7 +78,7 @@ export default function JobDetailPage() {
       }
 
       if (data) {
-        setJob(data as Job)
+        setJob(normalizeJobRow(data as Record<string, unknown>) as unknown as Job)
       } else {
         setError('Job not found')
       }

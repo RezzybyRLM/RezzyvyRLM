@@ -6,16 +6,14 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Briefcase, 
-  BarChart3, 
-  Settings, 
-  Plus, 
-  Users, 
-  DollarSign,
+import {
+  Briefcase,
+  BarChart3,
+  Settings,
+  Plus,
   TrendingUp,
-  Eye,
-  MousePointer
+  MessageSquare,
+  BriefcaseBusiness,
 } from 'lucide-react'
 
 const employerNavItems = [
@@ -23,6 +21,16 @@ const employerNavItems = [
     name: 'Dashboard',
     href: '/employer',
     icon: BarChart3,
+  },
+  {
+    name: 'Browse jobs',
+    href: '/jobs',
+    icon: BriefcaseBusiness,
+  },
+  {
+    name: 'Messages',
+    href: '/messages',
+    icon: MessageSquare,
   },
   {
     name: 'Manage Jobs',

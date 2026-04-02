@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { canManageRoles } from '@/lib/auth/permissions'
+import { canViewAdminUserDirectory } from '@/lib/auth/permissions'
 
 export async function GET() {
   try {
@@ -19,7 +19,7 @@ export async function GET() {
       .eq('id', user.id)
       .single()
 
-    if (!canManageRoles(me?.role ?? null)) {
+    if (!canViewAdminUserDirectory(me?.role ?? null)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

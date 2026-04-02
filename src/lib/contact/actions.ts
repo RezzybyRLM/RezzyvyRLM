@@ -98,5 +98,5 @@ export async function updateContactMessageStatus(id: string, status: string): Pr
     throw new Error(`Failed to update contact message: ${error.message}`)
   }
 
-  revalidatePath('/admin')
+  revalidatePath('/admin/inbox')
 }

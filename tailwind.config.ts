@@ -24,6 +24,12 @@ const config: Config = {
         background: '#F7F7F7',
         text: '#212121',
         border: '#E5E7EB',
+        foreground: '#111827',
+        'muted-foreground': '#6B7280',
+        muted: {
+          DEFAULT: '#F3F4F6',
+          foreground: '#6B7280',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

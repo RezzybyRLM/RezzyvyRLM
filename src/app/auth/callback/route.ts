@@ -7,7 +7,8 @@ export const runtime = 'nodejs'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const explicitNext = searchParams.get('next')
+  const next = explicitNext ?? '/dashboard'
 
   if (code) {
     const supabase = await createClient()
@@ -41,12 +42,17 @@ export async function GET(request: Request) {
         // Check onboarding status
         const { data: userData } = await supabase
           .from('users')
-          .select('onboarding_completed')
+          .select('onboarding_completed, role')
           .eq('id', user.id)
           .single()
 
         const onboardingCompleted = userData?.onboarding_completed ?? false
-        const redirectPath = onboardingCompleted ? next : '/onboarding'
+        const role = userData?.role ?? 'user'
+        const staff = role === 'admin' || role === 'super_admin'
+        let redirectPath = onboardingCompleted ? next : '/onboarding'
+        if (onboardingCompleted && staff && !explicitNext) {
+          redirectPath = '/admin/dashboard'
+        }
 
         const forwardedHost = request.headers.get('x-forwarded-host')
         const isLocalEnv = process.env.NODE_ENV === 'development'

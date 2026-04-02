@@ -371,6 +371,27 @@ export type Database = {
           },
         ]
       }
+      stripe_events: {
+        Row: {
+          created_at: string
+          id: string
+          payload_summary: Json | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          payload_summary?: Json | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload_summary?: Json | null
+          type?: string
+        }
+        Relationships: []
+      }
       user_plans: {
         Row: {
           api_quota_remaining: number | null

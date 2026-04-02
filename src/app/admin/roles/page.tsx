@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -176,7 +175,7 @@ export default function AdminRolesPage() {
             Role and permission changes are limited to super administrators.
           </p>
           <Button asChild>
-            <Link href="/">Back to site</Link>
+            <Link href="/admin/dashboard">Admin overview</Link>
           </Button>
         </div>
       </div>
@@ -184,32 +183,27 @@ export default function AdminRolesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Rezzy" width={100} height={32} className="object-contain" />
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Users className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Role management</h1>
+            <p className="text-sm text-muted-foreground">Assign roles and permissions</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/dashboard">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Overview
             </Link>
-            <Users className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Role management</h1>
-              <p className="text-gray-600">Assign roles and permissions in Supabase</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/admin">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Admin dashboard
-              </Link>
-            </Button>
-            <Badge className="bg-violet-100 text-violet-900">Super admin</Badge>
-          </div>
+          </Button>
+          <Badge className="bg-violet-100 text-violet-900">Super admin</Badge>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {error}

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { canAccessAdminConsole } from '@/lib/auth/permissions'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -100,6 +101,9 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && user) {
     if (!onboardingCompleted) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+    if (canAccessAdminConsole(appRole)) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     }
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

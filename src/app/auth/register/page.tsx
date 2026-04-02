@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { canAccessAdminConsole } from '@/lib/auth/permissions'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -28,11 +29,13 @@ export default function RegisterPage() {
         if (session?.user) {
           const { data: userData } = await supabase
             .from('users')
-            .select('onboarding_completed')
+            .select('onboarding_completed, role')
             .eq('id', session.user.id)
             .single()
           const done = userData?.onboarding_completed ?? false
-          if (!cancelled) router.replace(done ? '/dashboard' : '/onboarding')
+          const staff = canAccessAdminConsole(userData?.role ?? null)
+          const home = done ? (staff ? '/admin/dashboard' : '/dashboard') : '/onboarding'
+          if (!cancelled) router.replace(home)
           return
         }
         await new Promise((r) => setTimeout(r, 60))

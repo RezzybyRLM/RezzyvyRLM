@@ -280,31 +280,63 @@ export class GeminiVoiceService {
   }
 
   /**
-   * Generate conversational response using Gemini AI and speak it
+   * Generate conversational response (text-only LLM) and play via ElevenLabs when configured, else browser TTS.
    */
-  async generateAndSpeakResponse(userInput: string, conversationContext: string): Promise<string> {
+  async generateAndSpeakResponse(
+    userInput: string,
+    conversationContext: string,
+    jobRole?: string
+  ): Promise<string> {
     if (!this.speechSynthesis) {
       console.error('Speech synthesis not available')
       return ''
     }
 
     try {
-      // Use Gemini to generate a conversational response
-      const aiResponse = await this.generateConversationalResponse(userInput, conversationContext)
-      
-      // Speak the AI response with the current voice profile (now async)
-      await this.speak(aiResponse)
-      
+      const aiResponse = await this.generateConversationalResponse(userInput, conversationContext, jobRole)
+      await this.speakWithPreferredTts(aiResponse)
       return aiResponse
     } catch (error) {
       console.error('Error in Gemini voice service:', error)
-      // Fallback to a generic response
-      const fallbackResponse = "I'm sorry, I didn't catch that. Could you please repeat?"
-      // Apply natural speech patterns even for fallback
+      const fallbackResponse = "Sorry—I didn't catch that. Could you repeat?"
       const enhancedFallback = this.applyNaturalSpeechPatterns(fallbackResponse)
-      await this.speak(enhancedFallback)
+      await this.speakWithPreferredTts(enhancedFallback)
       return enhancedFallback
     }
+  }
+
+  /**
+   * Prefer ElevenLabs when API is configured; otherwise browser speech synthesis.
+   */
+  async speakWithPreferredTts(text: string, onEnd?: () => void): Promise<void> {
+    try {
+      const res = await fetch('/api/voice/elevenlabs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || ''
+        if (ct.includes('audio')) {
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
+          const audio = new Audio(url)
+          audio.onended = () => {
+            URL.revokeObjectURL(url)
+            onEnd?.()
+          }
+          audio.onerror = () => {
+            URL.revokeObjectURL(url)
+            void this.speak(text, undefined, onEnd)
+          }
+          await audio.play()
+          return
+        }
+      }
+    } catch {
+      /* use fallback below */
+    }
+    await this.speak(text, undefined, onEnd)
   }
 
   /**
@@ -382,58 +414,38 @@ export class GeminiVoiceService {
   /**
    * Generate conversational response based on user input
    */
-  private async generateConversationalResponse(userInput: string, conversationContext: string): Promise<string> {
-    const prompt = `
-You are a friendly, professional interview coach conducting a real interview. Your goal is to sound completely natural and human-like in your responses.
-
-Conversation Context: ${conversationContext}
-
-What the candidate just said: "${userInput}"
-
-IMPORTANT GUIDELINES:
-- Respond EXACTLY as a real human interviewer would speak
-- Use natural speech patterns, contractions, and casual transitions
-- Vary your sentence length (mix short and medium sentences)
-- Sound warm, encouraging, and genuinely interested
-- Avoid robotic phrases like "That's a great answer" or "Thank you for sharing"
-- Use phrases like "Right, that makes sense" or "I see what you mean" or "That's interesting"
-- If the answer is good: acknowledge naturally and smoothly transition
-- If it needs work: give gentle, constructive feedback like a real person would
-- Keep it conversational (2-3 sentences, max 150 words)
-- Use natural pauses and flow
-- Don't sound like an AI - sound like a friendly colleague
-
-Example of GOOD natural response:
-"Right, that's a really solid example. I like how you handled that situation. Let's move on to the next question - tell me about a time when you had to work under pressure."
-
-Example of BAD robotic response:
-"That is an excellent answer. Thank you for providing that information. Now I will ask you the next question."
-
-Now generate your response as if you're speaking naturally to a friend:
-`
-
+  private async generateConversationalResponse(
+    userInput: string,
+    conversationContext: string,
+    jobRole?: string
+  ): Promise<string> {
     try {
-      const response = await fetch('/api/ai/gemini-chat', {
+      const response = await fetch('/api/ai/interview-turn', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
-          maxTokens: 300,
+          userText: userInput,
+          conversationContext,
+          jobRole: jobRole || '',
         }),
       })
 
       const data = await response.json()
-      
-      if (data.success && data.text) {
-        return data.text.trim()
+
+      if (response.status === 402 && data.error) {
+        return String(data.error)
       }
-      
-      return "That's an interesting point. Can you tell me more about that?"
+
+      if (data.success && data.replyText) {
+        return String(data.replyText).trim()
+      }
+
+      return "Thanks—could you say a bit more about the outcome or your role in that?"
     } catch (error) {
       console.error('Error generating conversational response:', error)
-      return "Thank you for that answer. Let's move on to the next question."
+      return "Thanks for that. Let's go to the next question."
     }
   }
 

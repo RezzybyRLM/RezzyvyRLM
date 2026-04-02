@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { canAccessAdminConsole } from '@/lib/auth/permissions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -29,12 +30,15 @@ export default function LoginPage() {
         if (session?.user) {
           const { data: userData } = await supabase
             .from('users')
-            .select('onboarding_completed')
+            .select('onboarding_completed, role')
             .eq('id', session.user.id)
             .single()
           const done = userData?.onboarding_completed ?? false
+          const staff = canAccessAdminConsole(userData?.role ?? null)
+          const defaultStaff = staff && !searchParams.get('redirectTo')
+          const target = done ? (defaultStaff ? '/admin/dashboard' : redirectTo) : '/onboarding'
           if (!cancelled) {
-            router.replace(done ? redirectTo : '/onboarding')
+            router.replace(target)
           }
           return
         }
@@ -46,7 +50,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true
     }
-  }, [router, redirectTo])
+  }, [router, redirectTo, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,14 +89,20 @@ export default function LoginPage() {
         try {
           const { data: userData } = await supabase
             .from('users')
-            .select('onboarding_completed')
+            .select('onboarding_completed, role')
             .eq('id', data.user.id)
             .single()
 
           const onboardingCompleted = userData?.onboarding_completed ?? false
-          const finalRedirect = onboardingCompleted ? redirectTo : '/onboarding'
-          
-          // Use window.location for full page reload to ensure cookies are read
+          const staff = canAccessAdminConsole(userData?.role ?? null)
+          const explicitRedirect = searchParams.get('redirectTo')
+          const staffHome = staff && onboardingCompleted && !explicitRedirect
+          const finalRedirect = onboardingCompleted
+            ? staffHome
+              ? '/admin/dashboard'
+              : redirectTo
+            : '/onboarding'
+
           window.location.href = finalRedirect
         } catch (err) {
           console.error('Error checking onboarding status:', err)

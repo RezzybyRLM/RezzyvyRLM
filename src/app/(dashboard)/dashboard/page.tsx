@@ -248,7 +248,7 @@ export default function DashboardPage() {
             transition={{ delay: i * 0.04, duration: 0.28, ease: easeOut }}
           >
             <Link href={stat.href} className="block h-full">
-              <Card className="h-full border border-border bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
+              <Card className="glass-card h-full border-0 shadow-sm transition-shadow duration-200 hover:shadow-md">
                 <CardContent className="flex items-start gap-4 p-5">
                   <div className="rounded-md bg-primary/10 p-2.5 text-primary">
                     <stat.icon className="h-5 w-5 stroke-[1.5]" aria-hidden />
@@ -277,7 +277,7 @@ export default function DashboardPage() {
             Recent roles from our board and partner feed. Open <span className="font-medium text-text/70">Browse jobs</span> for the full search experience.
           </p>
           {discoveryJobs.length === 0 ? (
-            <Card className="border border-border bg-white shadow-sm">
+            <Card className="glass-card border-0 shadow-sm">
               <CardContent className="flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <div className="rounded-md bg-primary/10 p-2 text-primary">
@@ -300,7 +300,7 @@ export default function DashboardPage() {
               {discoveryJobs.map(job => (
                 <Card
                   key={job.key}
-                  className="border border-border bg-white shadow-sm transition-shadow hover:shadow-md"
+                  className="glass-card border-0 shadow-sm transition-shadow hover:shadow-md"
                 >
                   <CardContent className="p-5">
                     <div className="flex gap-3">
@@ -397,7 +397,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-border border-l-[3px] border-l-primary bg-white shadow-sm">
+            <Card className="glass-card border-0 border-l-[3px] border-l-primary shadow-sm">
             <CardContent className="p-5">
               <p className="text-sm font-medium text-text">Complete your profile</p>
               <p className="mt-2 text-sm leading-relaxed text-text/60">

@@ -40,3 +40,8 @@ export function canManageContent(role: string | null | undefined, row?: UserPerm
 export function canManageRoles(role: string | null | undefined): boolean {
   return role === 'super_admin'
 }
+
+/** Read-only user directory in admin console (staff) */
+export function canViewAdminUserDirectory(role: string | null | undefined): boolean {
+  return canAccessAdminConsole(role)
+}

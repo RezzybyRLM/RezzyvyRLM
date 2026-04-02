@@ -183,7 +183,11 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
       // Use Gemini to generate conversational response
       let aiResponse = ''
       if (useGeminiVoice) {
-        aiResponse = await geminiVoiceService.generateAndSpeakResponse(transcript, conversationContext)
+        aiResponse = await geminiVoiceService.generateAndSpeakResponse(
+          transcript,
+          conversationContext,
+          session.jobRole
+        )
       } else {
         // Fallback: analyze response using existing API
         const response = await fetch('/api/ai/interview/analyze', {
@@ -231,7 +235,7 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
         setTimeout(async () => {
           const closingMessage = "Great job! You have completed the interview. Thank you for your time and thoughtful responses."
           if (useGeminiVoice) {
-            await geminiVoiceService.speakWithGemini(closingMessage, 'Interview closing')
+            await geminiVoiceService.speakWithPreferredTts(closingMessage, () => setIsSpeaking(false))
           } else {
             speakQuestion(closingMessage)
           }
@@ -360,8 +364,7 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
       geminiVoiceService.setLanguage(selectedLanguage)
       
       if (useGeminiVoice) {
-        // Use Gemini-powered voice with selected profile
-        await geminiVoiceService.speakWithGemini(question, 'Interview question', () => {
+        await geminiVoiceService.speakWithPreferredTts(question, () => {
           setIsSpeaking(false)
         })
       } else {
@@ -395,7 +398,9 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Interview Pro</h1>
-          <p className="text-gray-600">Practice interviews with AI-powered voice coaching</p>
+          <p className="text-gray-600">
+            Voice practice with browser speech-to-text. Only transcribed text is sent to the assistant; audio is not uploaded.
+          </p>
         </div>
 
         {!session ? (

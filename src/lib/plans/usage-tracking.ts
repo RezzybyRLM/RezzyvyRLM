@@ -79,12 +79,22 @@ export async function getUserUsage(userId: string): Promise<UserUsage | null> {
       .eq('endpoint', '/api/ai/resume-match')
       .gte('timestamp', startOfMonth.toISOString())
 
-    // AI Interview Sessions
-    const { count: aiInterviewSessionsUsed } = await (supabase as any)
+    // AI Interview Sessions (saved sessions + per-turn API usage)
+    const { count: sessionCount } = await (supabase as any)
       .from('interview_sessions')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .gte('created_at', startOfMonth.toISOString())
+
+    const { count: turnCount } = await (supabase as any)
+      .from('api_usage_tracking')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('service', 'gemini')
+      .eq('endpoint', '/api/ai/interview-turn')
+      .gte('timestamp', startOfMonth.toISOString())
+
+    const aiInterviewSessionsUsed = (sessionCount || 0) + (turnCount || 0)
 
     // Job Alerts
     const { count: jobAlertsCount } = await (supabase as any)

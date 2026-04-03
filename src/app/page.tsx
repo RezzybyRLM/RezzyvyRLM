@@ -20,7 +20,6 @@ export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
-  const [currentSlide, setCurrentSlide] = useState(0)
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -34,19 +33,12 @@ export default function HomePage() {
   useEffect(() => {
     setIsVisible(true)
     
-    // Auto-rotate testimonials
     const testimonialInterval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
     }, 5000)
 
-    // Auto-rotate hero slides (logo and text)
-    const heroInterval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % 2)
-    }, 10000)
-
     return () => {
       clearInterval(testimonialInterval)
-      clearInterval(heroInterval)
     }
   }, [])
 
@@ -218,37 +210,18 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
             <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-              {/* Sliding Hero Content */}
-              <div className="relative h-96 md:h-[500px] lg:h-[600px] overflow-hidden">
-                {/* Logo Slide */}
-                <div 
-                  className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ease-in-out ${
-                    currentSlide === 0 
-                      ? 'opacity-100 translate-x-0' 
-                      : 'opacity-0 -translate-x-full'
-                  }`}
-                >
-                  <img 
-                    src="/logo.png" 
-                    alt="Rezzy Logo" 
-                    className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
-                  />
-                </div>
-
-                {/* Text Slide */}
-                <div 
-                  className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-1000 ease-in-out ${
-                    currentSlide === 1 
-                      ? 'opacity-100 translate-x-0' 
-                      : 'opacity-0 -translate-x-full'
-                  }`}
-                >
-                  <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-primary mb-6 leading-tight tracking-tight">
+              {/* Single hero (no rotating slides / slide counters) */}
+              <div className="relative flex min-h-[20rem] flex-col items-center justify-center gap-8 py-8 md:min-h-[28rem] md:py-12">
+                <img
+                  src="/logo.png"
+                  alt="Rezzy Logo"
+                  className="h-40 w-40 object-contain md:h-52 md:w-52 lg:h-64 lg:w-64"
+                />
+                <div className="flex flex-col items-center">
+                  <h1 className="mb-6 text-center text-3xl font-black leading-tight tracking-tight text-primary md:text-5xl lg:text-6xl xl:text-7xl">
                     DYNAMIC | POWERFUL
                   </h1>
-                  
-                  {/* Decorative Line */}
-                  <div className="w-32 h-2 bg-gradient-to-r from-primary to-primary-dark mx-auto mb-8 rounded-full animate-pulse"></div>
+                  <div className="mx-auto h-2 w-32 rounded-full bg-gradient-to-r from-primary to-primary-dark animate-pulse" />
                 </div>
               </div>
               
@@ -402,22 +375,7 @@ export default function HomePage() {
               >
                 <ArrowRight className="h-5 w-5 text-primary rotate-180" />
               </button>
-              
-              {/* Testimonial Indicators */}
-              <div className="flex space-x-2">
-                {testimonials.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentTestimonial(index)}
-                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      index === currentTestimonial 
-                        ? 'bg-primary scale-125' 
-                        : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                  />
-                ))}
-              </div>
-              
+
               <button
                 onClick={() => setCurrentTestimonial((prev) => prev === testimonials.length - 1 ? 0 : prev + 1)}
                 className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"

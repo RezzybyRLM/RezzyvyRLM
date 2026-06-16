@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, ArrowRight, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
   Send, CheckCircle, ShoppingCart, Loader2, Search, MapPin, Star, Building2,
-  Sparkles, TrendingUp, ChevronLeft, ChevronRight,
+  Sparkles, TrendingUp, ChevronLeft, ChevronRight, DollarSign,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { addToCart } from '@/lib/cart/actions'
@@ -38,6 +39,11 @@ export default function HomePage() {
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
   const [contactMessage, setContactMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const supabase = createClient()
+
+  // Scroll-driven parallax (premium "scene moves as you scroll" feel)
+  const { scrollY } = useScroll()
+  const heroImageY = useTransform(scrollY, [0, 700], [0, -70])
+  const heroCardY = useTransform(scrollY, [0, 700], [0, 40])
 
   useEffect(() => {
     const testimonialInterval = setInterval(() => {
@@ -190,7 +196,7 @@ export default function HomePage() {
 
               {/* Right: image */}
               <div className="hidden lg:block">
-                <div className="relative animate-floatY">
+                <motion.div style={{ y: heroImageY }} className="relative">
                   <div className="absolute -inset-4 bg-white/10 rounded-3xl blur-2xl" />
                   <Image
                     src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=900&q=80&auto=format&fit=crop"
@@ -201,7 +207,7 @@ export default function HomePage() {
                     priority
                   />
                   {/* Floating card */}
-                  <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-card-hover p-4 flex items-center gap-3 max-w-[230px] animate-scaleIn">
+                  <motion.div style={{ y: heroCardY }} className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-card-hover p-4 flex items-center gap-3 max-w-[230px] animate-scaleIn">
                     <span className="w-11 h-11 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
                       <TrendingUp className="h-5 w-5" />
                     </span>
@@ -209,8 +215,8 @@ export default function HomePage() {
                       <p className="text-sm font-bold text-gray-900">3 interviews</p>
                       <p className="text-xs text-gray-500">landed this week with Rezzy</p>
                     </div>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -341,6 +347,108 @@ export default function HomePage() {
                 </div>
               </ScrollAnimate>
             </div>
+          </div>
+        </section>
+
+        {/* ============ CINEMATIC SHOWCASE ============ */}
+        <section className="relative overflow-hidden bg-gradient-to-b from-secondary-900 via-secondary-800 to-secondary-900 py-20 md:py-28">
+          {/* Sweeping coral glow arc (ZYRO-style, on brand) */}
+          <div className="pointer-events-none absolute left-1/2 -top-24 h-[28rem] w-[58rem] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,107,107,0.55),rgba(255,107,107,0)_62%)] blur-3xl animate-glow" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] bg-[size:46px_46px]" />
+
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <motion.span
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="inline-block text-primary-300 font-semibold uppercase tracking-[0.2em] text-xs"
+            >
+              The Rezzy experience
+            </motion.span>
+            <motion.h2
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.05 }}
+              className="mt-3 text-4xl md:text-6xl font-extrabold tracking-tight text-white"
+            >
+              Everything in one place
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.12 }}
+              className="mt-4 max-w-2xl mx-auto text-white/70 text-lg"
+            >
+              Search jobs, track applications, optimize your resume, and prep for interviews — in one beautifully simple workspace.
+            </motion.p>
+
+            {/* Browser-frame product mockup that scales in on scroll */}
+            <motion.div
+              initial={{ opacity: 0, y: 70, scale: 0.93 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-12 mx-auto max-w-4xl"
+            >
+              <div className="rounded-2xl border border-white/10 bg-white shadow-2xl overflow-hidden text-left">
+                {/* Browser chrome */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-gray-100 border-b border-gray-200">
+                  <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                  <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                  <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+                  <div className="ml-3 flex-1 max-w-xs h-6 rounded-md bg-white border border-gray-200 flex items-center px-3 text-[11px] text-gray-400">
+                    rezzy.us/jobs
+                  </div>
+                </div>
+                {/* Mock job board UI */}
+                <div className="bg-background p-5 sm:p-6">
+                  {/* search bar */}
+                  <div className="flex gap-2 mb-4">
+                    <div className="flex-1 h-10 rounded-lg bg-white border border-border flex items-center px-3">
+                      <Search className="h-4 w-4 text-gray-300 mr-2" />
+                      <div className="h-2.5 w-32 rounded bg-gray-200" />
+                    </div>
+                    <div className="h-10 w-24 rounded-lg bg-primary-500 flex items-center justify-center text-white text-xs font-semibold">Find jobs</div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {[
+                      { t: 'Senior Software Engineer', c: 'Stripe', s: '$160k–$220k', tag: 'Remote' },
+                      { t: 'Product Designer', c: 'Figma', s: '$130k–$175k', tag: 'Hybrid' },
+                      { t: 'Data Analyst', c: 'Shopify', s: '$95k–$130k', tag: 'Remote' },
+                      { t: 'Marketing Manager', c: 'DoorDash', s: '$110k–$145k', tag: 'Hybrid' },
+                    ].map((j, i) => (
+                      <div key={i} className="rounded-xl bg-white border border-border p-4 hover:border-primary-300 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{j.t}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{j.c}</p>
+                          </div>
+                          <span className="text-[10px] font-semibold text-primary-700 bg-primary-50 rounded-full px-2 py-0.5">{j.tag}</span>
+                        </div>
+                        <div className="mt-3 flex items-center gap-1 text-xs text-gray-600">
+                          <DollarSign className="h-3.5 w-3.5" />{j.s}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mt-10"
+            >
+              <Button size="lg" className="bg-white text-secondary-900 hover:bg-white/90" asChild>
+                <Link href="/jobs"><Search className="mr-2 h-5 w-5" /> Explore the job board</Link>
+              </Button>
+            </motion.div>
           </div>
         </section>
 

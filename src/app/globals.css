@@ -277,6 +277,12 @@ body {
   box-shadow: 0 12px 40px rgba(16, 24, 40, 0.16);
 }
 
+/* Dark glass form input (for immersive sections) */
+.input-dark {
+  @apply w-full px-4 py-3 rounded-lg bg-white/5 border border-white/15 text-white transition-all duration-300;
+  @apply placeholder:text-xs placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400/60 focus:bg-white/[0.08];
+}
+
 @keyframes scaleIn {
   from {
     opacity: 0;

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, ArrowRight, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
   Send, CheckCircle, ShoppingCart, Loader2, Search, MapPin, Star, Building2,
@@ -19,10 +18,11 @@ import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { PageLoader } from '@/components/ui/page-loader'
 import { CountUp } from '@/components/ui/count-up'
 import { Magnetic } from '@/components/ui/magnetic'
+import { CursorGlowCard } from '@/components/ui/cursor-glow-card'
 import { JobShowcase } from '@/components/home/job-showcase'
 
-// WebGL hero is heavy + browser-only — lazy load with SSR disabled for fast TTFB / Lighthouse.
-const HeroCanvas = dynamic(() => import('@/components/home/hero-canvas'), {
+// Continuous, page-wide WebGL backdrop — heavy + browser-only, lazy with SSR off for Core Web Vitals.
+const SiteBackdrop = dynamic(() => import('@/components/home/site-backdrop'), {
   ssr: false,
   loading: () => null,
 })
@@ -134,21 +134,26 @@ export default function HomePage() {
 
   return (
     <PageLoader>
-      <div className="bg-background">
-        {/* ============ HERO (WebGL particle network) ============ */}
-        <section className="relative isolate overflow-hidden bg-[#140d0c]">
-          {/* Lazy, browser-only 3D particle network */}
-          <div className="absolute inset-0 z-0">
-            <HeroCanvas />
-          </div>
-          {/* CSS decorative fallback — renders richly even before/without WebGL */}
-          <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:46px_46px]" />
-          <div className="pointer-events-none absolute -top-24 right-16 z-0 h-80 w-80 rounded-full bg-primary-500/25 blur-3xl animate-blob" />
-          <div className="pointer-events-none absolute bottom-0 right-1/3 z-0 h-72 w-72 rounded-full bg-accent/15 blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
-          {/* Depth + contrast overlays — keep text WCAG AA on top of the canvas */}
-          <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_72%_28%,rgba(255,107,107,0.22),transparent_55%)]" />
-          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-[#140d0c] via-[#140d0c]/85 to-[#140d0c]/25 lg:to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-28 bg-gradient-to-b from-transparent to-[#140d0c]" />
+      <div className="relative isolate min-h-screen bg-[#0b0807] text-white">
+        {/* ---- Continuous full-page WebGL backdrop (fixed, behind everything) ---- */}
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <SiteBackdrop />
+        </div>
+        {/* Fixed ambient radial glows + base wash so depth flows the full page */}
+        <div
+          className="fixed inset-0 z-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(60rem 40rem at 78% 8%, rgba(255,107,107,0.16), transparent 60%), radial-gradient(50rem 40rem at 12% 60%, rgba(211,47,42,0.12), transparent 60%), radial-gradient(60rem 50rem at 60% 100%, rgba(255,132,117,0.10), transparent 60%)',
+          }}
+        />
+        {/* CSS particle fallback grid (renders even before/without WebGL) */}
+        <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:54px_54px]" />
+
+        {/* ============ HERO ============ */}
+        <section className="relative z-10 isolate overflow-hidden">
+          {/* Left-side contrast wash — keeps hero copy WCAG AA over the canvas */}
+          <div className="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-r from-[#0b0807] via-[#0b0807]/80 to-transparent" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -247,12 +252,12 @@ export default function HomePage() {
         </section>
 
         {/* ============ STATS BAND ============ */}
-        <section className="bg-white border-b border-border">
+        <section className="relative z-10 border-y border-white/10 bg-white/[0.03] backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {STATS.map((stat) => (
                 <div key={stat.label} className="flex items-center gap-3">
-                  <span className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 flex-shrink-0">
+                  <span className="w-11 h-11 rounded-xl bg-primary-500/15 border border-white/10 flex items-center justify-center text-primary-300 flex-shrink-0">
                     {stat.icon}
                   </span>
                   <div>
@@ -260,9 +265,9 @@ export default function HomePage() {
                       to={stat.to}
                       suffix={stat.suffix}
                       decimals={stat.decimals ?? 0}
-                      className="block text-xl sm:text-2xl font-extrabold text-gray-900"
+                      className="block text-xl sm:text-2xl font-extrabold text-white"
                     />
-                    <div className="text-sm text-gray-500">{stat.label}</div>
+                    <div className="text-sm text-white/55">{stat.label}</div>
                   </div>
                 </div>
               ))}
@@ -271,8 +276,8 @@ export default function HomePage() {
         </section>
 
         {/* ============ TRUSTED LOGO MARQUEE ============ */}
-        <section className="bg-white py-8 border-b border-border overflow-hidden">
-          <p className="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 mb-6">
+        <section className="relative z-10 py-9 border-b border-white/10 overflow-hidden">
+          <p className="text-center text-xs font-semibold uppercase tracking-wider text-white/40 mb-6">
             Trusted by talent landing roles at
           </p>
           <div className="marquee-mask relative">
@@ -280,7 +285,7 @@ export default function HomePage() {
               {[...TRUSTED_LOGOS, ...TRUSTED_LOGOS].map((name, i) => (
                 <span
                   key={`${name}-${i}`}
-                  className="text-xl md:text-2xl font-bold tracking-tight text-gray-400 hover:text-primary-600 transition-colors whitespace-nowrap select-none"
+                  className="text-xl md:text-2xl font-bold tracking-tight text-white/35 hover:text-primary-300 transition-colors whitespace-nowrap select-none"
                 >
                   {name}
                 </span>
@@ -290,15 +295,15 @@ export default function HomePage() {
         </section>
 
         {/* ============ SERVICES ============ */}
-        <section id="services" className="py-16 md:py-24">
+        <section id="services" className="relative z-10 py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ScrollAnimate animation="fadeInUp">
               <div className="text-center max-w-3xl mx-auto mb-12">
-                <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">What we do</span>
-                <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">
+                <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">What we do</span>
+                <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">
                   Everything you need to land the role
                 </h2>
-                <p className="mt-4 text-lg text-gray-600">
+                <p className="mt-4 text-lg text-white/60">
                   Rezzy is the powerful tool to streamline your employment search — from a standout resume to interview-ready confidence.
                 </p>
               </div>
@@ -307,15 +312,15 @@ export default function HomePage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, index) => (
                 <ScrollAnimate key={index} animation="fadeInUp" delay={index * 80}>
-                  <Card className="h-full group hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300">
-                    <CardContent className="p-6">
-                      <span className="inline-flex w-12 h-12 rounded-xl bg-primary-50 items-center justify-center text-primary-600 group-hover:bg-primary-500 group-hover:text-white transition-colors">
+                  <CursorGlowCard className="h-full transition-transform duration-300 ease-expo hover:-translate-y-1.5">
+                    <div className="p-6">
+                      <span className="inline-flex w-12 h-12 rounded-xl bg-primary-500/15 border border-white/10 items-center justify-center text-primary-300 group-hover:text-white transition-colors">
                         {feature.icon}
                       </span>
-                      <h3 className="mt-4 text-lg font-bold text-gray-900">{feature.title}</h3>
-                      <p className="mt-2 text-gray-600 leading-relaxed text-[15px]">{feature.description}</p>
-                    </CardContent>
-                  </Card>
+                      <h3 className="mt-4 text-lg font-bold text-white">{feature.title}</h3>
+                      <p className="mt-2 text-white/60 leading-relaxed text-[15px]">{feature.description}</p>
+                    </div>
+                  </CursorGlowCard>
                 </ScrollAnimate>
               ))}
             </div>
@@ -323,32 +328,33 @@ export default function HomePage() {
         </section>
 
         {/* ============ WHY CHOOSE US ============ */}
-        <section className="py-16 md:py-24 bg-white">
+        <section className="relative z-10 py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <ScrollAnimate animation="slideInLeft">
                 <div className="relative">
+                  <div className="absolute -inset-4 bg-primary-500/15 rounded-[2rem] blur-3xl" />
                   <Image
                     src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?w=900&q=80&auto=format&fit=crop"
                     alt="Career coaching session"
                     width={720}
                     height={540}
-                    className="rounded-2xl shadow-card object-cover w-full h-[420px]"
+                    className="relative rounded-2xl border border-white/10 shadow-2xl object-cover w-full h-[420px]"
                   />
-                  <div className="absolute -bottom-5 -right-5 bg-secondary text-white rounded-2xl shadow-card-hover p-5 max-w-[200px]">
-                    <p className="text-3xl font-extrabold">97%</p>
-                    <p className="text-sm text-white/80">client satisfaction across our packages</p>
+                  <div className="absolute -bottom-5 -right-5 glass-panel rounded-2xl p-5 max-w-[200px]">
+                    <p className="text-3xl font-extrabold text-white">97%</p>
+                    <p className="text-sm text-white/70">client satisfaction across our packages</p>
                   </div>
                 </div>
               </ScrollAnimate>
 
               <ScrollAnimate animation="slideInRight" delay={150}>
                 <div>
-                  <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Why choose Rezzy</span>
-                  <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">
+                  <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">Why choose Rezzy</span>
+                  <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">
                     An insider's edge on the hiring process
                   </h2>
-                  <p className="mt-4 text-gray-600 leading-relaxed">
+                  <p className="mt-4 text-white/60 leading-relaxed">
                     We are committed to outstanding quality in everything we offer. Our professionalism is backed by years of industry experience and a genuine desire to see every client succeed — with a personal certified resume writer and lightning-fast turnaround.
                   </p>
                   <div className="mt-8 space-y-5">
@@ -359,11 +365,11 @@ export default function HomePage() {
                     ].map((bar) => (
                       <div key={bar.label}>
                         <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-sm font-medium text-gray-700">{bar.label}</span>
-                          <span className="text-sm font-bold text-primary-600">{bar.value}%</span>
+                          <span className="text-sm font-medium text-white/80">{bar.label}</span>
+                          <span className="text-sm font-bold text-primary-300">{bar.value}%</span>
                         </div>
-                        <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${bar.value}%` }} />
+                        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-600" style={{ width: `${bar.value}%` }} />
                         </div>
                       </div>
                     ))}
@@ -375,10 +381,9 @@ export default function HomePage() {
         </section>
 
         {/* ============ CINEMATIC SHOWCASE ============ */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-secondary-900 via-secondary-800 to-secondary-900 py-20 md:py-28">
+        <section className="relative z-10 overflow-hidden py-20 md:py-28">
           {/* Sweeping coral glow arc (ZYRO-style, on brand) */}
-          <div className="pointer-events-none absolute left-1/2 -top-24 h-[28rem] w-[58rem] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,107,107,0.55),rgba(255,107,107,0)_62%)] blur-3xl animate-glow" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] bg-[size:46px_46px]" />
+          <div className="pointer-events-none absolute left-1/2 -top-24 h-[28rem] w-[58rem] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,107,107,0.4),rgba(255,107,107,0)_62%)] blur-3xl animate-glow" />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.span
@@ -457,37 +462,40 @@ export default function HomePage() {
         </section>
 
         {/* ============ PRICING ============ */}
-        <section id="pricing" className="py-16 md:py-24">
+        <section id="pricing" className="relative z-10 py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ScrollAnimate animation="fadeInUp">
               <div className="text-center max-w-3xl mx-auto mb-12">
-                <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Pricing</span>
-                <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Pick the package that fits you</h2>
-                <p className="mt-4 text-lg text-gray-600">Choose and combine what best fits your needs — every plan is tailored to deliver results.</p>
+                <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">Pricing</span>
+                <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">Pick the package that fits you</h2>
+                <p className="mt-4 text-lg text-white/60">Choose and combine what best fits your needs — every plan is tailored to deliver results.</p>
               </div>
             </ScrollAnimate>
 
             <div className="grid gap-6 lg:grid-cols-3 items-start">
               {pricingPlans.map((plan, index) => (
                 <ScrollAnimate key={index} animation="fadeInUp" delay={index * 100}>
-                  <Card className={`relative h-full flex flex-col ${plan.featured ? 'ring-2 ring-primary-500 shadow-card-hover lg:-translate-y-3' : ''}`}>
+                  <CursorGlowCard
+                    glow={420}
+                    className={`h-full flex flex-col transition-transform duration-300 ease-expo hover:-translate-y-2 ${plan.featured ? 'ring-1 ring-primary-400/60 lg:-translate-y-3' : ''}`}
+                  >
                     {plan.featured && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                      <span className="absolute top-4 right-4 bg-primary-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm tracking-wide">
                         MOST POPULAR
                       </span>
                     )}
-                    <CardHeader className="text-center pt-8 pb-4">
-                      <CardTitle className="text-xl font-bold text-gray-900">{plan.name}</CardTitle>
-                      <div className="mt-2 text-4xl font-extrabold text-primary-600">
+                    <div className="text-center pt-8 pb-4 px-6">
+                      <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+                      <div className="mt-2 text-4xl font-extrabold text-white">
                         {plan.price}
-                        {plan.interval && <span className="text-base font-medium text-gray-400">{plan.interval}</span>}
+                        {plan.interval && <span className="text-base font-medium text-white/40">{plan.interval}</span>}
                       </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col">
+                    </div>
+                    <div className="flex-1 flex flex-col px-6 pb-6">
                       <ul className="space-y-3 mb-6 flex-1">
                         {plan.features.map((feature, fi) => (
-                          <li key={fi} className="flex items-start gap-2.5 text-sm text-gray-600">
-                            <CheckCircle className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                          <li key={fi} className="flex items-start gap-2.5 text-sm text-white/70">
+                            <CheckCircle className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
                             <span>{feature}</span>
                           </li>
                         ))}
@@ -495,7 +503,7 @@ export default function HomePage() {
                       <div className="space-y-2.5">
                         <Button
                           className="w-full"
-                          variant={plan.featured ? 'default' : 'secondary'}
+                          variant={plan.featured ? 'default' : 'soft'}
                           onClick={() => handleAddToCart(plan.name, plan.name.toLowerCase().replace(' package', ''), parseInt(plan.price.replace('$', '')))}
                           disabled={addingToCart === plan.name.toLowerCase().replace(' package', '')}
                         >
@@ -505,12 +513,12 @@ export default function HomePage() {
                             <><ShoppingCart className="mr-2 h-4 w-4" /> Add to cart</>
                           )}
                         </Button>
-                        <Button variant="ghost" className="w-full" asChild>
+                        <Button variant="ghost" className="w-full text-white/70 hover:bg-white/10 hover:text-white" asChild>
                           <Link href={plan.link} target="_blank" rel="noopener noreferrer">View details</Link>
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CursorGlowCard>
                 </ScrollAnimate>
               ))}
             </div>
@@ -518,39 +526,37 @@ export default function HomePage() {
         </section>
 
         {/* ============ TESTIMONIALS ============ */}
-        <section className="py-16 md:py-24 bg-white">
+        <section className="relative z-10 py-20 md:py-28">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
-              <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Testimonials</span>
-              <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">What our clients say</h2>
+              <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">Testimonials</span>
+              <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">What our clients say</h2>
             </div>
 
             <div className="relative">
-              <Card className="bg-primary-50/40 border-primary-100">
-                <CardContent className="p-8 md:p-12 text-center">
-                  <Quote className="h-10 w-10 text-primary-300 mx-auto mb-6" />
-                  <p className="text-lg md:text-xl text-gray-700 italic leading-relaxed min-h-[120px]">
-                    "{testimonials[currentTestimonial].content}"
-                  </p>
-                  <div className="mt-6 flex items-center justify-center gap-3">
-                    <span className="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                      <Users className="h-6 w-6" />
-                    </span>
-                    <div className="text-left">
-                      <div className="font-bold text-gray-900">{testimonials[currentTestimonial].name}</div>
-                      <div className="text-sm text-gray-500">{testimonials[currentTestimonial].role}</div>
-                    </div>
+              <div className="glass-panel rounded-2xl p-8 md:p-12 text-center">
+                <Quote className="h-10 w-10 text-primary-400/60 mx-auto mb-6" />
+                <p className="text-lg md:text-xl text-white/85 italic leading-relaxed min-h-[120px]">
+                  "{testimonials[currentTestimonial].content}"
+                </p>
+                <div className="mt-6 flex items-center justify-center gap-3">
+                  <span className="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                    <Users className="h-6 w-6" />
+                  </span>
+                  <div className="text-left">
+                    <div className="font-bold text-white">{testimonials[currentTestimonial].name}</div>
+                    <div className="text-sm text-white/55">{testimonials[currentTestimonial].role}</div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               <div className="flex items-center justify-center gap-4 mt-6">
                 <button
                   onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
-                  className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/15 flex items-center justify-center hover:bg-white/10 hover:border-primary-400 transition-colors"
                   aria-label="Previous testimonial"
                 >
-                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+                  <ChevronLeft className="h-5 w-5 text-white/80" />
                 </button>
                 <div className="flex gap-2">
                   {testimonials.map((_, i) => (
@@ -558,16 +564,16 @@ export default function HomePage() {
                       key={i}
                       onClick={() => setCurrentTestimonial(i)}
                       aria-label={`Testimonial ${i + 1}`}
-                      className={`h-2.5 rounded-full transition-all ${i === currentTestimonial ? 'w-7 bg-primary-500' : 'w-2.5 bg-gray-300 hover:bg-gray-400'}`}
+                      className={`h-2.5 rounded-full transition-all ${i === currentTestimonial ? 'w-7 bg-primary-500' : 'w-2.5 bg-white/25 hover:bg-white/40'}`}
                     />
                   ))}
                 </div>
                 <button
                   onClick={() => setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))}
-                  className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/15 flex items-center justify-center hover:bg-white/10 hover:border-primary-400 transition-colors"
                   aria-label="Next testimonial"
                 >
-                  <ChevronRight className="h-5 w-5 text-gray-600" />
+                  <ChevronRight className="h-5 w-5 text-white/80" />
                 </button>
               </div>
             </div>
@@ -575,9 +581,9 @@ export default function HomePage() {
         </section>
 
         {/* ============ CTA ============ */}
-        <section className="py-16">
+        <section className="relative z-10 py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-12 md:px-12 md:py-16 text-center">
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-12 md:px-12 md:py-16 text-center shadow-[0_20px_80px_rgba(255,107,107,0.25)]">
               <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,white,transparent_45%)]" />
               <div className="relative">
                 <h2 className="text-3xl md:text-4xl font-extrabold text-white">Ready to accelerate your career?</h2>
@@ -596,46 +602,44 @@ export default function HomePage() {
         </section>
 
         {/* ============ CONTACT ============ */}
-        <section className="py-16 md:py-20 bg-white">
+        <section className="relative z-10 py-20 md:py-24">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-8">
-              <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Get in touch</span>
-              <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Contact us</h2>
-              <p className="mt-3 text-gray-600">Have a question? We usually reply within one business day.</p>
+              <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">Get in touch</span>
+              <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">Contact us</h2>
+              <p className="mt-3 text-white/60">Have a question? We usually reply within one business day.</p>
             </div>
 
-            <Card>
-              <CardContent className="p-6 md:p-8">
-                {contactMessage && (
-                  <div className={`mb-6 p-4 rounded-lg text-sm ${contactMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-                    {contactMessage.text}
-                  </div>
-                )}
-                <form onSubmit={handleContactSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Your name *</label>
-                      <input type="text" className="input-professional" placeholder="Jane Doe" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} required />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Your email *</label>
-                      <input type="email" className="input-professional" placeholder="jane@example.com" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} required />
-                    </div>
+            <div className="glass-panel rounded-2xl p-6 md:p-8">
+              {contactMessage && (
+                <div className={`mb-6 p-4 rounded-lg text-sm ${contactMessage.type === 'success' ? 'bg-green-500/15 text-green-200 border border-green-400/30' : 'bg-red-500/15 text-red-200 border border-red-400/30'}`}>
+                  {contactMessage.text}
+                </div>
+              )}
+              <form onSubmit={handleContactSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-1.5">Your name *</label>
+                    <input type="text" className="input-dark" placeholder="Jane Doe" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Subject</label>
-                    <input type="text" className="input-professional" placeholder="How can we help?" value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} />
+                    <label className="block text-sm font-medium text-white/80 mb-1.5">Your email *</label>
+                    <input type="email" className="input-dark" placeholder="jane@example.com" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} required />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Message *</label>
-                    <textarea className="input-professional h-32 resize-none" placeholder="Tell us a bit about what you need…" value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} required />
-                  </div>
-                  <Button type="submit" size="lg" className="w-full" disabled={isSubmittingContact}>
-                    {isSubmittingContact ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending…</>) : (<><Send className="mr-2 h-5 w-5" /> Send message</>)}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-1.5">Subject</label>
+                  <input type="text" className="input-dark" placeholder="How can we help?" value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-1.5">Message *</label>
+                  <textarea className="input-dark h-32 resize-none" placeholder="Tell us a bit about what you need…" value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} required />
+                </div>
+                <Button type="submit" size="lg" className="w-full" disabled={isSubmittingContact}>
+                  {isSubmittingContact ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending…</>) : (<><Send className="mr-2 h-5 w-5" /> Send message</>)}
+                </Button>
+              </form>
+            </div>
           </div>
         </section>
       </div>

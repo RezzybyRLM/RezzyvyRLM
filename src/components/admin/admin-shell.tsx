@@ -165,7 +165,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <aside
           className={cn(
             'glass-admin relative z-20 hidden h-[calc(100vh-3.5rem)] flex-col border-r border-[hsl(var(--glass-border))] py-6 transition-[width] duration-300 ease-out md:flex md:h-screen md:sticky md:top-0',
-            collapsed ? 'w-[4.5rem] px-2' : 'w-60 px-3'
+            collapsed ? 'w-[4.5rem] px-2' : 'w-64 px-3'
           )}
         >
           <div className={cn('mb-6 flex items-center gap-2 px-2', collapsed && 'justify-center px-0')}>

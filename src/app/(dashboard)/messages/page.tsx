@@ -291,6 +291,21 @@ export default function MessagesPage() {
               return [formattedConv, ...prev]
             })
           })
+          // Listen for group membership removal (left group, blocked, or kicked) —
+          // drop the conversation from the sidebar immediately, no reload needed.
+          .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'group_members',
+            filter: `user_id=eq.${user.id}`
+          }, (payload) => {
+            if (!mounted) return
+            const removed = payload.old as any
+            const removedId = removed?.conversation_id
+            if (!removedId) return
+            setConversations(prev => prev.filter(c => c.id !== removedId))
+            setSelectedConversation(prev => (prev === removedId ? null : prev))
+          })
           .on('postgres_changes', {
             event: 'UPDATE',
             schema: 'public',

@@ -16,11 +16,11 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
           {
             'border-transparent bg-primary text-primary-foreground hover:bg-primary/80':
               variant === 'default',
-            'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80':
+            'border-transparent bg-gray-100 text-gray-700 hover:bg-gray-200':
               variant === 'secondary',
             'border-transparent bg-accent text-accent-foreground hover:bg-accent/80':
               variant === 'destructive',
-            'text-foreground': variant === 'outline',
+            'border-border bg-white text-gray-600': variant === 'outline',
             'border-transparent bg-gradient-to-r from-yellow-400 to-orange-500 text-white':
               variant === 'featured',
           },

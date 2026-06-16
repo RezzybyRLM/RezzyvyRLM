@@ -70,6 +70,11 @@ const config: Config = {
         xl: '0.875rem',
         '2xl': '1.25rem',
       },
+      transitionTimingFunction: {
+        expo: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        smooth: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        'in-out-soft': 'cubic-bezier(0.65, 0, 0.35, 1)',
+      },
       boxShadow: {
         card: '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.08)',
         'card-hover': '0 8px 24px rgba(16,24,40,0.10), 0 2px 6px rgba(16,24,40,0.06)',

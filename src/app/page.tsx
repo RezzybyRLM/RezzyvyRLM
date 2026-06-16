@@ -9,14 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, ArrowRight, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
   Send, CheckCircle, ShoppingCart, Loader2, Search, MapPin, Star, Building2,
-  Sparkles, TrendingUp, ChevronLeft, ChevronRight, DollarSign,
+  Sparkles, TrendingUp, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { addToCart } from '@/lib/cart/actions'
 import { submitContactForm } from '@/lib/contact/actions'
+import dynamic from 'next/dynamic'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { PageLoader } from '@/components/ui/page-loader'
 import { CountUp } from '@/components/ui/count-up'
+import { Magnetic } from '@/components/ui/magnetic'
+import { JobShowcase } from '@/components/home/job-showcase'
+
+// WebGL hero is heavy + browser-only — lazy load with SSR disabled for fast TTFB / Lighthouse.
+const HeroCanvas = dynamic(() => import('@/components/home/hero-canvas'), {
+  ssr: false,
+  loading: () => null,
+})
 
 const POPULAR_SEARCHES = ['Remote', 'Software Engineer', 'Nurse', 'Marketing', 'Customer Service', 'Data Analyst']
 
@@ -126,33 +135,37 @@ export default function HomePage() {
   return (
     <PageLoader>
       <div className="bg-background">
-        {/* ============ HERO ============ */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700">
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_0%,white,transparent_35%)]" />
-          {/* Sweeping spotlight glow (premium hero look) */}
-          <div className="pointer-events-none absolute left-1/2 -top-40 h-[34rem] w-[60rem] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.55),rgba(255,255,255,0)_60%)] blur-2xl animate-glow" />
-          {/* Animated ambient blobs */}
-          <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-blob" />
-          <div className="pointer-events-none absolute top-1/3 -right-20 h-72 w-72 rounded-full bg-accent/20 blur-3xl animate-blob" style={{ animationDelay: '3s' }} />
-          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-primary-300/20 blur-3xl animate-blob" style={{ animationDelay: '6s' }} />
-          {/* Subtle grid */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] bg-[size:46px_46px]" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+        {/* ============ HERO (WebGL particle network) ============ */}
+        <section className="relative isolate overflow-hidden bg-[#140d0c]">
+          {/* Lazy, browser-only 3D particle network */}
+          <div className="absolute inset-0 z-0">
+            <HeroCanvas />
+          </div>
+          {/* CSS decorative fallback — renders richly even before/without WebGL */}
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:46px_46px]" />
+          <div className="pointer-events-none absolute -top-24 right-16 z-0 h-80 w-80 rounded-full bg-primary-500/25 blur-3xl animate-blob" />
+          <div className="pointer-events-none absolute bottom-0 right-1/3 z-0 h-72 w-72 rounded-full bg-accent/15 blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
+          {/* Depth + contrast overlays — keep text WCAG AA on top of the canvas */}
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_72%_28%,rgba(255,107,107,0.22),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-[#140d0c] via-[#140d0c]/85 to-[#140d0c]/25 lg:to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-28 bg-gradient-to-b from-transparent to-[#140d0c]" />
+
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
-              {/* Left: copy + search */}
+              {/* Left: copy + search — CSS staggered reveal (resilient; always ends visible) */}
               <div className="text-white">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-sm font-medium backdrop-blur-sm animate-fadeInUp" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
-                  <Sparkles className="h-4 w-4" /> AI-powered job search & career tools
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm text-sm font-medium text-white/90 animate-fadeInUp" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+                  <Sparkles className="h-4 w-4 text-primary-300" /> AI-powered job search & career tools
                 </span>
-                <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight animate-fadeInUp" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+                <h1 className="mt-5 text-4xl sm:text-5xl lg:text-[3.75rem] font-extrabold leading-[1.04] tracking-tight animate-fadeInUp" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
                   Find a job that <span className="text-shine">works for you</span>
                 </h1>
-                <p className="mt-5 text-lg text-white/90 max-w-xl animate-fadeInUp" style={{ animationDelay: '220ms', animationFillMode: 'both' }}>
+                <p className="mt-5 text-lg text-white/70 max-w-xl leading-relaxed animate-fadeInUp" style={{ animationDelay: '0.32s', animationFillMode: 'both' }}>
                   Search thousands of openings, get your resume optimized, and prepare with AI — all in one place. We support, empower, and free your time.
                 </p>
 
                 {/* Search card */}
-                <form onSubmit={handleJobSearch} className="mt-8 bg-white rounded-2xl shadow-card-hover p-3 sm:p-2.5 flex flex-col sm:flex-row gap-2.5 animate-fadeInUp" style={{ animationDelay: '340ms', animationFillMode: 'both' }}>
+                <form onSubmit={handleJobSearch} className="mt-8 glass-panel-light rounded-2xl p-3 sm:p-2.5 flex flex-col sm:flex-row gap-2.5 animate-fadeInUp" style={{ animationDelay: '0.44s', animationFillMode: 'both' }}>
                   <div className="relative flex-1">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
                     <input
@@ -160,33 +173,35 @@ export default function HomePage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Job title or keyword"
-                      className="w-full h-12 pl-11 pr-3 rounded-xl text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
+                      className="w-full h-12 pl-11 pr-3 rounded-xl bg-transparent text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
                     />
                   </div>
-                  <div className="relative flex-1 sm:border-l sm:border-gray-200">
+                  <div className="relative flex-1 sm:border-l sm:border-gray-200/70">
                     <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
                     <input
                       type="text"
                       value={searchLocation}
                       onChange={(e) => setSearchLocation(e.target.value)}
                       placeholder="City, state, or remote"
-                      className="w-full h-12 pl-11 pr-3 rounded-xl text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
+                      className="w-full h-12 pl-11 pr-3 rounded-xl bg-transparent text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
                     />
                   </div>
-                  <Button type="submit" size="lg" className="h-12 sm:w-auto w-full">
-                    <Search className="h-5 w-5 sm:mr-2" />
-                    <span>Find Jobs</span>
-                  </Button>
+                  <Magnetic strength={0.4} className="sm:w-auto w-full">
+                    <Button type="submit" size="lg" className="h-12 w-full transition-transform duration-300 ease-expo">
+                      <Search className="h-5 w-5 sm:mr-2" />
+                      <span>Find Jobs</span>
+                    </Button>
+                  </Magnetic>
                 </form>
 
                 {/* Popular searches */}
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-sm animate-fadeInUp" style={{ animationDelay: '460ms', animationFillMode: 'both' }}>
-                  <span className="text-white/80">Popular:</span>
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-sm animate-fadeInUp" style={{ animationDelay: '0.56s', animationFillMode: 'both' }}>
+                  <span className="text-white/55">Popular:</span>
                   {POPULAR_SEARCHES.map((term) => (
                     <Link
                       key={term}
                       href={`/jobs?q=${encodeURIComponent(term)}`}
-                      className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors backdrop-blur-sm"
+                      className="px-3 py-1 rounded-full bg-white/10 border border-white/10 hover:bg-white/20 text-white/90 transition-colors duration-300 ease-expo backdrop-blur-sm"
                     >
                       {term}
                     </Link>
@@ -194,27 +209,36 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right: image */}
+              {/* Right: image + floating glass card */}
               <div className="hidden lg:block">
-                <motion.div style={{ y: heroImageY }} className="relative">
-                  <div className="absolute -inset-4 bg-white/10 rounded-3xl blur-2xl" />
+                <motion.div
+                  style={{ y: heroImageY }}
+                  className="relative animate-scaleIn"
+                >
+                  <div className="absolute -inset-6 bg-primary-500/25 rounded-[2rem] blur-3xl" />
                   <Image
                     src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=900&q=80&auto=format&fit=crop"
                     alt="Professionals collaborating"
                     width={720}
                     height={560}
-                    className="relative rounded-3xl shadow-2xl object-cover w-full h-[460px]"
+                    className="relative rounded-3xl border border-white/10 shadow-2xl object-cover w-full h-[460px]"
                     priority
                   />
-                  {/* Floating card */}
-                  <motion.div style={{ y: heroCardY }} className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-card-hover p-4 flex items-center gap-3 max-w-[230px] animate-scaleIn">
-                    <span className="w-11 h-11 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
-                      <TrendingUp className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">3 interviews</p>
-                      <p className="text-xs text-gray-500">landed this week with Rezzy</p>
-                    </div>
+                  {/* Floating glassmorphism card (parallax outer, float inner) */}
+                  <motion.div style={{ y: heroCardY }} className="absolute -bottom-6 -left-6 max-w-[230px]">
+                    <motion.div
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                      className="glass-panel rounded-2xl p-4 flex items-center gap-3"
+                    >
+                      <span className="w-11 h-11 rounded-full bg-primary-500/30 border border-white/20 flex items-center justify-center text-white">
+                        <TrendingUp className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-white">3 interviews</p>
+                        <p className="text-xs text-white/70">landed this week with Rezzy</p>
+                      </div>
+                    </motion.div>
                   </motion.div>
                 </motion.div>
               </div>
@@ -252,7 +276,7 @@ export default function HomePage() {
             Trusted by talent landing roles at
           </p>
           <div className="marquee-mask relative">
-            <div className="flex w-max animate-marquee items-center gap-12 pr-12">
+            <div className="ticker-track items-center gap-12 pr-12">
               {[...TRUSTED_LOGOS, ...TRUSTED_LOGOS].map((name, i) => (
                 <span
                   key={`${name}-${i}`}
@@ -413,27 +437,7 @@ export default function HomePage() {
                     </div>
                     <div className="h-10 w-24 rounded-lg bg-primary-500 flex items-center justify-center text-white text-xs font-semibold">Find jobs</div>
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {[
-                      { t: 'Senior Software Engineer', c: 'Stripe', s: '$160k–$220k', tag: 'Remote' },
-                      { t: 'Product Designer', c: 'Figma', s: '$130k–$175k', tag: 'Hybrid' },
-                      { t: 'Data Analyst', c: 'Shopify', s: '$95k–$130k', tag: 'Remote' },
-                      { t: 'Marketing Manager', c: 'DoorDash', s: '$110k–$145k', tag: 'Hybrid' },
-                    ].map((j, i) => (
-                      <div key={i} className="rounded-xl bg-white border border-border p-4 hover:border-primary-300 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-semibold text-gray-900 text-sm">{j.t}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{j.c}</p>
-                          </div>
-                          <span className="text-[10px] font-semibold text-primary-700 bg-primary-50 rounded-full px-2 py-0.5">{j.tag}</span>
-                        </div>
-                        <div className="mt-3 flex items-center gap-1 text-xs text-gray-600">
-                          <DollarSign className="h-3.5 w-3.5" />{j.s}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <JobShowcase />
                 </div>
               </div>
             </motion.div>

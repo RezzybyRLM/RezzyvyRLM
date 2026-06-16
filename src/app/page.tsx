@@ -6,9 +6,9 @@ import Image from 'next/image'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import {
-  Users, ArrowRight, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
+  ArrowRight, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
   Send, CheckCircle, ShoppingCart, Loader2, Search, MapPin, Star, Building2,
-  Sparkles, TrendingUp, ChevronLeft, ChevronRight,
+  Sparkles, TrendingUp,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { addToCart } from '@/lib/cart/actions'
@@ -39,7 +39,6 @@ const STATS = [
 const TRUSTED_LOGOS = ['Stripe', 'Notion', 'Shopify', 'HubSpot', 'DoorDash', 'Figma', 'Airbnb', 'Slack', 'Spotify', 'Uber']
 
 export default function HomePage() {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0)
   const [user, setUser] = useState<any>(null)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,13 +52,6 @@ export default function HomePage() {
   const { scrollY } = useScroll()
   const heroImageY = useTransform(scrollY, [0, 700], [0, -70])
   const heroCardY = useTransform(scrollY, [0, 700], [0, 40])
-
-  useEffect(() => {
-    const testimonialInterval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
-    }, 6000)
-    return () => clearInterval(testimonialInterval)
-  }, [])
 
   useEffect(() => {
     const getUser = async () => {
@@ -134,7 +126,7 @@ export default function HomePage() {
 
   return (
     <PageLoader>
-      <div className="relative isolate min-h-screen bg-[#0b0807] text-white">
+      <div className="relative isolate min-h-screen bg-[#0A0A0A] text-white">
         {/* ---- Continuous full-page WebGL backdrop (fixed, behind everything) ---- */}
         <div className="fixed inset-0 z-0 pointer-events-none">
           <SiteBackdrop />
@@ -153,7 +145,7 @@ export default function HomePage() {
         {/* ============ HERO ============ */}
         <section className="relative z-10 isolate overflow-hidden">
           {/* Left-side contrast wash — keeps hero copy WCAG AA over the canvas */}
-          <div className="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-r from-[#0b0807] via-[#0b0807]/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-r from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -162,8 +154,13 @@ export default function HomePage() {
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm text-sm font-medium text-white/90 animate-fadeInUp" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
                   <Sparkles className="h-4 w-4 text-primary-300" /> AI-powered job search & career tools
                 </span>
-                <h1 className="mt-5 text-4xl sm:text-5xl lg:text-[3.75rem] font-extrabold leading-[1.04] tracking-tight animate-fadeInUp" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
-                  Find a job that <span className="text-shine">works for you</span>
+                <h1 className="mt-5 text-4xl sm:text-5xl lg:text-7xl font-extrabold leading-[1.02] tracking-tight">
+                  {['Find', 'a', 'job', 'that'].map((w, i) => (
+                    <span key={w} className="word-up inline-block" style={{ animationDelay: `${0.2 + i * 0.08}s`, marginRight: '0.25em' }}>{w}</span>
+                  ))}
+                  {['works', 'for', 'you'].map((w, i) => (
+                    <span key={w} className="word-up text-shine inline-block" style={{ animationDelay: `${0.52 + i * 0.08}s`, marginRight: '0.25em' }}>{w}</span>
+                  ))}
                 </h1>
                 <p className="mt-5 text-lg text-white/70 max-w-xl leading-relaxed animate-fadeInUp" style={{ animationDelay: '0.32s', animationFillMode: 'both' }}>
                   Search thousands of openings, get your resume optimized, and prepare with AI — all in one place. We support, empower, and free your time.
@@ -192,7 +189,7 @@ export default function HomePage() {
                     />
                   </div>
                   <Magnetic strength={0.4} className="sm:w-auto w-full">
-                    <Button type="submit" size="lg" className="h-12 w-full transition-transform duration-300 ease-expo">
+                    <Button type="submit" size="lg" className="btn-shimmer h-12 w-full transition-transform duration-300 ease-expo">
                       <Search className="h-5 w-5 sm:mr-2" />
                       <span>Find Jobs</span>
                     </Button>
@@ -312,9 +309,9 @@ export default function HomePage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, index) => (
                 <ScrollAnimate key={index} animation="fadeInUp" delay={index * 80}>
-                  <CursorGlowCard className="h-full transition-transform duration-300 ease-expo hover:-translate-y-1.5">
+                  <CursorGlowCard className="h-full transition-transform duration-300 ease-expo hover:-translate-y-1.5 hover:border-primary-400/40">
                     <div className="p-6">
-                      <span className="inline-flex w-12 h-12 rounded-xl bg-primary-500/15 border border-white/10 items-center justify-center text-primary-300 group-hover:text-white transition-colors">
+                      <span className="icon-spin inline-flex w-12 h-12 rounded-xl bg-primary-500/15 border border-white/10 items-center justify-center text-primary-300 group-hover:text-white group-hover:bg-primary-500/30 transition-colors">
                         {feature.icon}
                       </span>
                       <h3 className="mt-4 text-lg font-bold text-white">{feature.title}</h3>
@@ -461,6 +458,53 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* ============ HOW IT WORKS ============ */}
+        <section className="relative z-10 py-20 md:py-28">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollAnimate animation="fadeInUp">
+              <div className="text-center max-w-3xl mx-auto mb-14">
+                <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">How it works</span>
+                <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">From search to hired in 3 steps</h2>
+              </div>
+            </ScrollAnimate>
+
+            <div className="relative grid gap-10 md:grid-cols-3">
+              {/* Animated connecting line (desktop) */}
+              <div className="hidden md:block pointer-events-none absolute left-[16.6%] right-[16.6%] top-9 h-px">
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ originX: 0 }}
+                  className="h-full w-full bg-gradient-to-r from-primary-500/0 via-primary-500/60 to-primary-500/0"
+                />
+              </div>
+
+              {[
+                { icon: <Search className="h-6 w-6" />, title: 'Search', desc: 'Browse 25,000+ openings or let our AI match you to roles that fit your profile.' },
+                { icon: <Send className="h-6 w-6" />, title: 'Apply', desc: 'Optimize your resume, generate tailored cover letters, and apply in a few clicks.' },
+                { icon: <CheckCircle className="h-6 w-6" />, title: 'Get Hired', desc: 'Prep with AI mock interviews and track every application to the offer stage.' },
+              ].map((step, i) => (
+                <ScrollAnimate key={step.title} animation="fadeInUp" delay={i * 140}>
+                  <div className="relative text-center">
+                    <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
+                      <span className="flex h-16 w-16 items-center justify-center rounded-2xl glass-panel text-primary-300">
+                        {step.icon}
+                      </span>
+                      <span className="absolute -top-2 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary-500 text-white text-xs font-bold shadow-lg">
+                        {i + 1}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white">{step.title}</h3>
+                    <p className="mt-2 text-white/60 leading-relaxed max-w-xs mx-auto">{step.desc}</p>
+                  </div>
+                </ScrollAnimate>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ============ PRICING ============ */}
         <section id="pricing" className="relative z-10 py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -477,7 +521,7 @@ export default function HomePage() {
                 <ScrollAnimate key={index} animation="fadeInUp" delay={index * 100}>
                   <CursorGlowCard
                     glow={420}
-                    className={`h-full flex flex-col transition-transform duration-300 ease-expo hover:-translate-y-2 ${plan.featured ? 'ring-1 ring-primary-400/60 lg:-translate-y-3' : ''}`}
+                    className={`h-full flex flex-col transition-transform duration-300 ease-expo hover:-translate-y-2 ${plan.featured ? 'pulse-glow lg:-translate-y-3 lg:scale-[1.05]' : ''}`}
                   >
                     {plan.featured && (
                       <span className="absolute top-4 right-4 bg-primary-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm tracking-wide">
@@ -525,57 +569,36 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ============ TESTIMONIALS ============ */}
-        <section className="relative z-10 py-20 md:py-28">
+        {/* ============ TESTIMONIALS (auto-scroll carousel) ============ */}
+        <section className="relative z-10 py-20 md:py-28 overflow-hidden">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10">
+            <div className="text-center mb-12">
               <span className="text-primary-300 font-semibold uppercase tracking-[0.18em] text-xs">Testimonials</span>
               <h2 className="mt-3 text-3xl md:text-5xl font-extrabold tracking-tight text-white">What our clients say</h2>
             </div>
+          </div>
 
-            <div className="relative">
-              <div className="glass-panel rounded-2xl p-8 md:p-12 text-center">
-                <Quote className="h-10 w-10 text-primary-400/60 mx-auto mb-6" />
-                <p className="text-lg md:text-xl text-white/85 italic leading-relaxed min-h-[120px]">
-                  "{testimonials[currentTestimonial].content}"
-                </p>
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <span className="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                    <Users className="h-6 w-6" />
-                  </span>
-                  <div className="text-left">
-                    <div className="font-bold text-white">{testimonials[currentTestimonial].name}</div>
-                    <div className="text-sm text-white/55">{testimonials[currentTestimonial].role}</div>
+          <div className="marquee-mask relative">
+            <div className="ticker-track gap-6 pr-6" style={{ animationDuration: '46s' }}>
+              {[...testimonials, ...testimonials].map((t, i) => (
+                <div key={i} className="glass-panel rounded-2xl p-6 w-[340px] sm:w-[400px] shrink-0">
+                  <div className="flex gap-1 mb-4">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star key={s} className="h-4 w-4 fill-primary-400 text-primary-400" />
+                    ))}
+                  </div>
+                  <p className="text-white/80 leading-relaxed text-[15px] line-clamp-5">"{t.content}"</p>
+                  <div className="mt-5 flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-full bg-primary-500/80 flex items-center justify-center text-white font-bold">
+                      {t.name.charAt(0)}
+                    </span>
+                    <div>
+                      <div className="font-semibold text-white text-sm">{t.name}</div>
+                      <div className="text-xs text-white/55">{t.role}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button
-                  onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
-                  className="w-10 h-10 rounded-full bg-white/5 border border-white/15 flex items-center justify-center hover:bg-white/10 hover:border-primary-400 transition-colors"
-                  aria-label="Previous testimonial"
-                >
-                  <ChevronLeft className="h-5 w-5 text-white/80" />
-                </button>
-                <div className="flex gap-2">
-                  {testimonials.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentTestimonial(i)}
-                      aria-label={`Testimonial ${i + 1}`}
-                      className={`h-2.5 rounded-full transition-all ${i === currentTestimonial ? 'w-7 bg-primary-500' : 'w-2.5 bg-white/25 hover:bg-white/40'}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))}
-                  className="w-10 h-10 rounded-full bg-white/5 border border-white/15 flex items-center justify-center hover:bg-white/10 hover:border-primary-400 transition-colors"
-                  aria-label="Next testimonial"
-                >
-                  <ChevronRight className="h-5 w-5 text-white/80" />
-                </button>
-              </div>
+              ))}
             </div>
           </div>
         </section>
@@ -583,17 +606,21 @@ export default function HomePage() {
         {/* ============ CTA ============ */}
         <section className="relative z-10 py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-12 md:px-12 md:py-16 text-center shadow-[0_20px_80px_rgba(255,107,107,0.25)]">
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,white,transparent_45%)]" />
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#120808] px-6 py-14 md:px-12 md:py-20 text-center shadow-[0_20px_80px_rgba(232,96,74,0.25)]">
+              {/* Slow-moving gradient mesh */}
+              <div className="mesh-bg pointer-events-none absolute inset-0 opacity-70" />
+              <div className="pointer-events-none absolute inset-0 bg-[#0A0A0A]/30" />
               <div className="relative">
-                <h2 className="text-3xl md:text-4xl font-extrabold text-white">Ready to accelerate your career?</h2>
-                <p className="mt-3 text-lg text-white/90 max-w-2xl mx-auto">Browse jobs, optimize your resume, and let Rezzy do the heavy lifting.</p>
+                <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white">Your next job is one search away</h2>
+                <p className="mt-3 text-lg text-white/80 max-w-2xl mx-auto">Browse jobs, optimize your resume, and let Rezzy do the heavy lifting.</p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button size="lg" variant="secondary" className="bg-white text-primary-600 hover:bg-white/90" asChild>
+                  <Magnetic strength={0.3} className="sm:w-auto w-full">
+                    <Button size="lg" className="btn-shimmer w-full bg-white text-primary-700 hover:bg-white/90" asChild>
+                      <Link href="/auth/register">Get Started Free <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                    </Button>
+                  </Magnetic>
+                  <Button size="lg" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10" asChild>
                     <Link href="/jobs"><Search className="mr-2 h-5 w-5" /> Browse jobs</Link>
-                  </Button>
-                  <Button size="lg" className="bg-secondary text-white hover:bg-secondary-600" asChild>
-                    <Link href="#pricing">View packages <ArrowRight className="ml-2 h-5 w-5" /></Link>
                   </Button>
                 </div>
               </div>

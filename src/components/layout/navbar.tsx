@@ -30,6 +30,15 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  // Compress + frost the navbar once the user scrolls past the hero fold.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const supabase = createClient()
 
   useEffect(() => {
@@ -122,12 +131,18 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   }
 
   return (
-    <nav className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-border sticky top-0 z-50">
+    <nav
+      className={`sticky top-0 z-50 transition-[background-color,box-shadow,border-color] duration-300 ease-expo ${
+        scrolled
+          ? 'bg-white/80 backdrop-blur-xl shadow-md border-b border-border'
+          : 'bg-white/95 backdrop-blur-sm shadow-sm border-b border-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-3">
+        <div className={`flex items-center justify-between gap-3 transition-[height] duration-300 ease-expo ${scrolled ? 'h-14' : 'h-16'}`}>
           {/* Logo */}
           <Link href="/" className="flex items-center flex-shrink-0 group" aria-label="Rezzy home">
-            <span className="relative w-11 h-11 transition-transform duration-300 group-hover:scale-105">
+            <span className={`relative transition-all duration-300 group-hover:scale-105 ${scrolled ? 'w-9 h-9' : 'w-11 h-11'}`}>
               <Image
                 src="/logo.png"
                 alt="Rezzy"

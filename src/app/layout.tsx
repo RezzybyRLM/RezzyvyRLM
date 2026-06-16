@@ -1,9 +1,11 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Inter } from 'next/font/google'
 import { ConditionalLayout } from '@/components/layout/conditional-layout'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorSuppressor } from '@/components/layout/error-suppressor'
+import { RouteProgress } from '@/components/layout/route-progress'
 import { createClient } from '@/lib/supabase/server'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -63,6 +65,9 @@ export default async function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ErrorSuppressor />
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         <ConditionalLayout user={user}>
           {children}
         </ConditionalLayout>

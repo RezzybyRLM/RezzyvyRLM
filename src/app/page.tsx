@@ -15,15 +15,18 @@ import { addToCart } from '@/lib/cart/actions'
 import { submitContactForm } from '@/lib/contact/actions'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { PageLoader } from '@/components/ui/page-loader'
+import { CountUp } from '@/components/ui/count-up'
 
 const POPULAR_SEARCHES = ['Remote', 'Software Engineer', 'Nurse', 'Marketing', 'Customer Service', 'Data Analyst']
 
 const STATS = [
-  { value: '25,000+', label: 'Open jobs', icon: <Briefcase className="h-5 w-5" /> },
-  { value: '1,200+', label: 'Companies hiring', icon: <Building2 className="h-5 w-5" /> },
-  { value: '50k+', label: 'Resumes optimized', icon: <FileText className="h-5 w-5" /> },
-  { value: '4.9/5', label: 'Client rating', icon: <Star className="h-5 w-5" /> },
+  { to: 25000, suffix: '+', label: 'Open jobs', icon: <Briefcase className="h-5 w-5" /> },
+  { to: 1200, suffix: '+', label: 'Companies hiring', icon: <Building2 className="h-5 w-5" /> },
+  { to: 50, suffix: 'k+', label: 'Resumes optimized', icon: <FileText className="h-5 w-5" /> },
+  { to: 4.9, suffix: '/5', decimals: 1, label: 'Client rating', icon: <Star className="h-5 w-5" /> },
 ]
+
+const TRUSTED_LOGOS = ['Stripe', 'Notion', 'Shopify', 'HubSpot', 'DoorDash', 'Figma', 'Airbnb', 'Slack', 'Spotify', 'Uber']
 
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
@@ -120,10 +123,14 @@ export default function HomePage() {
         {/* ============ HERO ============ */}
         <section className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700">
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_0%,white,transparent_35%)]" />
+          {/* Sweeping spotlight glow (premium hero look) */}
+          <div className="pointer-events-none absolute left-1/2 -top-40 h-[34rem] w-[60rem] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.55),rgba(255,255,255,0)_60%)] blur-2xl animate-glow" />
           {/* Animated ambient blobs */}
           <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-blob" />
           <div className="pointer-events-none absolute top-1/3 -right-20 h-72 w-72 rounded-full bg-accent/20 blur-3xl animate-blob" style={{ animationDelay: '3s' }} />
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-primary-300/20 blur-3xl animate-blob" style={{ animationDelay: '6s' }} />
+          {/* Subtle grid */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] bg-[size:46px_46px]" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left: copy + search */}
@@ -132,7 +139,7 @@ export default function HomePage() {
                   <Sparkles className="h-4 w-4" /> AI-powered job search & career tools
                 </span>
                 <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight animate-fadeInUp" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
-                  Find a job that <span className="text-white/95 underline decoration-white/40 decoration-4 underline-offset-4">works for you</span>
+                  Find a job that <span className="text-shine">works for you</span>
                 </h1>
                 <p className="mt-5 text-lg text-white/90 max-w-xl animate-fadeInUp" style={{ animationDelay: '220ms', animationFillMode: 'both' }}>
                   Search thousands of openings, get your resume optimized, and prepare with AI — all in one place. We support, empower, and free your time.
@@ -219,10 +226,34 @@ export default function HomePage() {
                     {stat.icon}
                   </span>
                   <div>
-                    <div className="text-xl sm:text-2xl font-extrabold text-gray-900">{stat.value}</div>
+                    <CountUp
+                      to={stat.to}
+                      suffix={stat.suffix}
+                      decimals={stat.decimals ?? 0}
+                      className="block text-xl sm:text-2xl font-extrabold text-gray-900"
+                    />
                     <div className="text-sm text-gray-500">{stat.label}</div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============ TRUSTED LOGO MARQUEE ============ */}
+        <section className="bg-white py-8 border-b border-border overflow-hidden">
+          <p className="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 mb-6">
+            Trusted by talent landing roles at
+          </p>
+          <div className="marquee-mask relative">
+            <div className="flex w-max animate-marquee items-center gap-12 pr-12">
+              {[...TRUSTED_LOGOS, ...TRUSTED_LOGOS].map((name, i) => (
+                <span
+                  key={`${name}-${i}`}
+                  className="text-xl md:text-2xl font-bold tracking-tight text-gray-400 hover:text-primary-600 transition-colors whitespace-nowrap select-none"
+                >
+                  {name}
+                </span>
               ))}
             </div>
           </div>

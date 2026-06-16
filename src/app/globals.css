@@ -219,6 +219,38 @@ body {
 }
 .animate-floatY { animation: floatY 5s ease-in-out infinite; }
 
+/* Hero spotlight glow (inspired by premium dark heroes, in coral) */
+@keyframes glowBreath {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.9; transform: translateX(-50%) scale(1.12); }
+}
+.animate-glow { animation: glowBreath 6s ease-in-out infinite; }
+
+/* Headline shine sweep */
+@keyframes shineSweep {
+  0% { background-position: -150% 0; }
+  60%, 100% { background-position: 250% 0; }
+}
+.text-shine {
+  background: linear-gradient(100deg, #ffffff 0%, #ffffff 40%, #FFE4DF 50%, #ffffff 60%, #ffffff 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shineSweep 5s ease-in-out infinite;
+}
+
+/* Infinite logo marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 28s linear infinite; }
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
 @keyframes scaleIn {
   from {
     opacity: 0;

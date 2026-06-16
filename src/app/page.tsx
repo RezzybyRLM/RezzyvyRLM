@@ -48,10 +48,12 @@ export default function HomePage() {
   const [contactMessage, setContactMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const supabase = createClient()
 
-  // Scroll-driven parallax (premium "scene moves as you scroll" feel)
+  // Scroll-driven parallax + scroll-linked hero morph (scales down & fades as you scroll)
   const { scrollY } = useScroll()
   const heroImageY = useTransform(scrollY, [0, 700], [0, -70])
   const heroCardY = useTransform(scrollY, [0, 700], [0, 40])
+  const heroOpacity = useTransform(scrollY, [0, 480], [1, 0])
+  const heroScale = useTransform(scrollY, [0, 480], [1, 0.94])
 
   useEffect(() => {
     const getUser = async () => {
@@ -126,28 +128,28 @@ export default function HomePage() {
 
   return (
     <PageLoader>
-      <div className="relative isolate min-h-screen bg-[#0A0A0A] text-white">
-        {/* ---- Continuous full-page WebGL backdrop (fixed, behind everything) ---- */}
+      <div className="relative isolate min-h-screen bg-[#09090b] text-white">
+        {/* Deep slate vertical wash (#09090b -> #18181b) under the network */}
+        <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-[#09090b] via-[#101013] to-[#18181b]" />
+        {/* ---- Continuous full-page WebGL Plexus backdrop (fixed, behind everything) ---- */}
         <div className="fixed inset-0 z-0 pointer-events-none">
           <SiteBackdrop />
         </div>
-        {/* Fixed ambient radial glows + base wash so depth flows the full page */}
+        {/* Subtle ambient soft-glow lighting (monochrome + a whisper of brand coral) */}
         <div
           className="fixed inset-0 z-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(60rem 40rem at 78% 8%, rgba(255,107,107,0.16), transparent 60%), radial-gradient(50rem 40rem at 12% 60%, rgba(211,47,42,0.12), transparent 60%), radial-gradient(60rem 50rem at 60% 100%, rgba(255,132,117,0.10), transparent 60%)',
+              'radial-gradient(55rem 38rem at 80% 6%, rgba(148,163,184,0.10), transparent 60%), radial-gradient(50rem 40rem at 10% 65%, rgba(255,107,107,0.06), transparent 60%)',
           }}
         />
-        {/* CSS particle fallback grid (renders even before/without WebGL) */}
-        <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:54px_54px]" />
 
         {/* ============ HERO ============ */}
         <section className="relative z-10 isolate overflow-hidden">
           {/* Left-side contrast wash — keeps hero copy WCAG AA over the canvas */}
-          <div className="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-r from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-r from-[#09090b] via-[#09090b]/80 to-transparent" />
 
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+          <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left: copy + search — CSS staggered reveal (resilient; always ends visible) */}
               <div className="text-white">
@@ -245,7 +247,7 @@ export default function HomePage() {
                 </motion.div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* ============ STATS BAND ============ */}

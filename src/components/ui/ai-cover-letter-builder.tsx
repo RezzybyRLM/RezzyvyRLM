@@ -252,9 +252,9 @@ export function AICoverLetterBuilder({
         </div>
 
         {jobDescription && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <Label className="text-blue-900 font-semibold">Job Description</Label>
-            <p className="text-sm text-blue-800 mt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <Label className="text-primary-900 font-semibold">Job Description</Label>
+            <p className="text-sm text-primary-800 mt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
               {jobDescription}
             </p>
           </div>

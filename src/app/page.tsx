@@ -2,44 +2,45 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Users, ArrowRight, Play, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin, Send, CheckCircle, ShoppingCart, Loader2 } from 'lucide-react'
+import {
+  Users, ArrowRight, Quote, FileText, Briefcase, MessageSquare, QrCode, Linkedin,
+  Send, CheckCircle, ShoppingCart, Loader2, Search, MapPin, Star, Building2,
+  Sparkles, TrendingUp, ChevronLeft, ChevronRight,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { addToCart } from '@/lib/cart/actions'
 import { submitContactForm } from '@/lib/contact/actions'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Skeleton } from '@/components/ui/skeleton-loader'
 import { ScrollAnimate } from '@/components/ui/scroll-animate'
 import { PageLoader } from '@/components/ui/page-loader'
 
+const POPULAR_SEARCHES = ['Remote', 'Software Engineer', 'Nurse', 'Marketing', 'Customer Service', 'Data Analyst']
+
+const STATS = [
+  { value: '25,000+', label: 'Open jobs', icon: <Briefcase className="h-5 w-5" /> },
+  { value: '1,200+', label: 'Companies hiring', icon: <Building2 className="h-5 w-5" /> },
+  { value: '50k+', label: 'Resumes optimized', icon: <FileText className="h-5 w-5" /> },
+  { value: '4.9/5', label: 'Client rating', icon: <Star className="h-5 w-5" /> },
+]
+
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
-  const [isVisible, setIsVisible] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
-  const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchLocation, setSearchLocation] = useState('')
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' })
   const [isSubmittingContact, setIsSubmittingContact] = useState(false)
   const [contactMessage, setContactMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    setIsVisible(true)
-    
     const testimonialInterval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
-    }, 5000)
-
-    return () => {
-      clearInterval(testimonialInterval)
-    }
+    }, 6000)
+    return () => clearInterval(testimonialInterval)
   }, [])
 
   useEffect(() => {
@@ -50,20 +51,22 @@ export default function HomePage() {
     getUser()
   }, [supabase.auth])
 
+  const handleJobSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const params = new URLSearchParams()
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (searchLocation.trim()) params.set('location', searchLocation.trim())
+    window.location.href = `/jobs${params.toString() ? `?${params.toString()}` : ''}`
+  }
+
   const handleAddToCart = async (packageName: string, packageType: string, price: number) => {
     if (!user) {
       window.location.href = '/auth/login?redirectTo=/'
       return
     }
-
     setAddingToCart(packageType)
     try {
-      await addToCart({
-        package_name: packageName,
-        package_type: packageType,
-        price: price
-      })
-      // You could add a toast notification here
+      await addToCart({ package_name: packageName, package_type: packageType, price })
     } catch (error) {
       console.error('Failed to add to cart:', error)
     } finally {
@@ -75,11 +78,10 @@ export default function HomePage() {
     e.preventDefault()
     setIsSubmittingContact(true)
     setContactMessage(null)
-
     try {
       const result = await submitContactForm(contactForm)
       if (result.success) {
-        setContactMessage({ type: 'success', text: 'Message sent successfully! We\'ll get back to you soon.' })
+        setContactMessage({ type: 'success', text: "Message sent successfully! We'll get back to you soon." })
         setContactForm({ name: '', email: '', subject: '', message: '' })
       } else {
         setContactMessage({ type: 'error', text: result.error || 'Failed to send message. Please try again.' })
@@ -92,658 +94,408 @@ export default function HomePage() {
   }
 
   const features = [
-    {
-      icon: <FileText className="h-8 w-8" />,
-      title: 'RESUME | COVER LETTER | BIO',
-      description: 'Customizable resumes, cover letters, and bios. Includes: formatting, editing, test layout, and design that resume tracking systems may miss. Available in both MS Word and PDF Documents.'
-    },
-    {
-      icon: <Briefcase className="h-8 w-8" />,
-      title: 'EASY CUSTOMIZABLE TEMPLATES',
-      description: 'Choose from a library of customizable design templates that stand out and get you noticed.'
-    },
-    {
-      icon: <MessageSquare className="h-8 w-8" />,
-      title: 'CAREER | INTERVIEW COACHING',
-      description: 'Sit down with a qualified career coach to empower you to present your best self throughout your employment process and career choices.'
-    },
-    {
-      icon: <QrCode className="h-8 w-8" />,
-      title: 'VCARD PLUS QR CODE',
-      description: 'A virtual electronic representation of resume, cover letter, and bio with a dedicated landing page.'
-    },
-    {
-      icon: <Linkedin className="h-8 w-8" />,
-      title: 'LINKEDIN PROFILE OPTIMIZATION',
-      description: 'Optimize and update your LinkedIn profile content.'
-    },
-    {
-      icon: <Send className="h-8 w-8" />,
-      title: 'APPLICATION PROCESSING SERVICES',
-      description: 'With our RezzyMeUp package, our qualified team will do the applying for you. No more repetitive monotony of filling in online application forms.'
-    }
+    { icon: <FileText className="h-6 w-6" />, title: 'Resume, Cover Letter & Bio', description: 'Customizable resumes, cover letters, and bios with formatting and design built to pass applicant tracking systems. Delivered in MS Word and PDF.' },
+    { icon: <Briefcase className="h-6 w-6" />, title: 'Customizable Templates', description: 'Choose from a library of professional, customizable design templates that stand out and get you noticed.' },
+    { icon: <MessageSquare className="h-6 w-6" />, title: 'Career & Interview Coaching', description: 'Sit down with a qualified career coach to present your best self throughout your employment process and career choices.' },
+    { icon: <QrCode className="h-6 w-6" />, title: 'vCard + QR Code', description: 'A virtual electronic representation of your resume, cover letter, and bio with a dedicated landing page.' },
+    { icon: <Linkedin className="h-6 w-6" />, title: 'LinkedIn Optimization', description: 'Optimize and update your LinkedIn profile content to attract recruiters and opportunities.' },
+    { icon: <Send className="h-6 w-6" />, title: 'Application Processing', description: 'With our RezzyMeUp package, our team applies for you — no more repetitive online application forms.' },
   ]
 
   const testimonials = [
-    {
-      name: 'KYRNDRA D.',
-      role: 'United States Postal Service',
-      content: 'I was pressed for time to update my cover letter. Rezzy delivered exceptional service while providing tips to help me the next time I am in a pinch.'
-    },
-    {
-      name: 'CAROLYN M.',
-      role: 'Associate Director',
-      content: 'I am very impressed with Rezzy, especially how its customer service ensures the right packages and à la carte products are suggested based on professional credentials and positions being sought.'
-    },
-    {
-      name: 'RACHELLE O.',
-      role: 'Behavioral Health',
-      content: 'I was in the market to update my resume and cover letter due to desiring a career change. I have been out of the job field for so long that I did not know where to begin. I came across a very relatable Rezzy explainer video that piqued my interest. I decided to use their resume and cover letter services, and shortly after reviewing the other services offered, I decided to use Rezzy career search, Easy Apply, and Website Apply due to not having adequate time to work a full-time position and look for career opportunities. As a result, I received three different recruiter companies offering direct placement if all goes well with the interview process. I have set in motion to use Rezzy for interview and coaching service to give myself a better chance at nailing these interviews. Thank you for saving me time and rebuilding my confidence.'
-    }
+    { name: 'Kyrndra D.', role: 'United States Postal Service', content: 'I was pressed for time to update my cover letter. Rezzy delivered exceptional service while providing tips to help me the next time I am in a pinch.' },
+    { name: 'Carolyn M.', role: 'Associate Director', content: 'I am very impressed with Rezzy, especially how its customer service ensures the right packages and à la carte products are suggested based on professional credentials and positions being sought.' },
+    { name: 'Rachelle O.', role: 'Behavioral Health', content: 'I came across a relatable Rezzy explainer video that piqued my interest. After using their resume and cover letter services, I received offers from three recruiter companies. Thank you for saving me time and rebuilding my confidence.' },
   ]
 
   const pricingPlans = [
-    {
-      name: 'Essential Package',
-      price: '$200',
-      interval: '',
-      features: [
-        'One-on-One Consultation with Our Resume Writer (Email or zoom call 20 min)',
-        'One Page Resume (Career, Federal, and Curriculum Vitae)',
-        'One Page Bio',
-        'Cover Letter',
-        'Unlimited Revisions for 14 Days',
-        'VcardplusQRcode'
-      ],
-      featured: false,
-      link: 'https://rezzybyrlm.com/product/rezzyme/'
-    },
-    {
-      name: 'Definitive Package',
-      price: '$500',
-      interval: '/ month',
-      features: [
-        'One-on-One Consultation with Our Resume Writer (Email or Zoom call 1hr)',
-        'One Page Resume (Career, Federal, and Curriculum Vitae)',
-        'One Page Bio',
-        'Cover Letter',
-        'Unlimited Revisions for 14 Days',
-        'VcardplusQRcode',
-        'Reference List',
-        'Thank You Letter (3 Options)',
-        'One Additional Resume',
-        'LinkedIn Optimization',
-        'Career Interview Coaching'
-      ],
-      featured: true,
-      link: 'https://rezzybyrlm.com/product/rezzy-definitive/'
-    },
-    {
-      name: 'Accelerated Package',
-      price: '$300',
-      interval: '/ month',
-      features: [
-        'One-on-One Consultation with Our Resume Writer (Email or Zoom call 30 minutes)',
-        'One Page Resume (Career, Federal, and Curriculum Vitae)',
-        'One Page Bio',
-        'Cover Letter',
-        'Unlimited Revisions for 14 Days',
-        'VcardplusQRcode',
-        'Reference List',
-        'Thank You Letter (3 Options)',
-        'One Additional Resume'
-      ],
-      featured: false,
-      link: 'https://rezzybyrlm.com/product/rezzy-accelerated/'
-    }
+    { name: 'Essential Package', price: '$200', interval: '', features: ['One-on-One Consultation (Email or Zoom, 20 min)', 'One Page Resume (Career, Federal, CV)', 'One Page Bio', 'Cover Letter', 'Unlimited Revisions for 14 Days', 'vCard + QR Code'], featured: false, link: 'https://rezzybyrlm.com/product/rezzyme/' },
+    { name: 'Definitive Package', price: '$500', interval: '', features: ['One-on-One Consultation (Email or Zoom, 1hr)', 'One Page Resume (Career, Federal, CV)', 'One Page Bio', 'Cover Letter', 'Unlimited Revisions for 14 Days', 'vCard + QR Code', 'Reference List', 'Thank You Letter (3 Options)', 'One Additional Resume', 'LinkedIn Optimization', 'Career Interview Coaching'], featured: true, link: 'https://rezzybyrlm.com/product/rezzy-definitive/' },
+    { name: 'Accelerated Package', price: '$300', interval: '', features: ['One-on-One Consultation (Email or Zoom, 30 min)', 'One Page Resume (Career, Federal, CV)', 'One Page Bio', 'Cover Letter', 'Unlimited Revisions for 14 Days', 'vCard + QR Code', 'Reference List', 'Thank You Letter (3 Options)', 'One Additional Resume'], featured: false, link: 'https://rezzybyrlm.com/product/rezzy-accelerated/' },
   ]
 
   return (
     <PageLoader>
-    <div className="min-h-screen bg-background">
+      <div className="bg-background">
+        {/* ============ HERO ============ */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_0%,white,transparent_35%)]" />
+          {/* Animated ambient blobs */}
+          <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-blob" />
+          <div className="pointer-events-none absolute top-1/3 -right-20 h-72 w-72 rounded-full bg-accent/20 blur-3xl animate-blob" style={{ animationDelay: '3s' }} />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-primary-300/20 blur-3xl animate-blob" style={{ animationDelay: '6s' }} />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left: copy + search */}
+              <div className="text-white">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-sm font-medium backdrop-blur-sm animate-fadeInUp" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
+                  <Sparkles className="h-4 w-4" /> AI-powered job search & career tools
+                </span>
+                <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight animate-fadeInUp" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+                  Find a job that <span className="text-white/95 underline decoration-white/40 decoration-4 underline-offset-4">works for you</span>
+                </h1>
+                <p className="mt-5 text-lg text-white/90 max-w-xl animate-fadeInUp" style={{ animationDelay: '220ms', animationFillMode: 'both' }}>
+                  Search thousands of openings, get your resume optimized, and prepare with AI — all in one place. We support, empower, and free your time.
+                </p>
 
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 min-h-screen flex items-center overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center">
-            <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-              {/* Single hero (no rotating slides / slide counters) */}
-              <div className="relative flex min-h-[20rem] flex-col items-center justify-center gap-8 py-8 md:min-h-[28rem] md:py-12">
-                <img
-                  src="/logo.png"
-                  alt="Rezzy Logo"
-                  className="h-40 w-40 object-contain md:h-52 md:w-52 lg:h-64 lg:w-64"
-                />
-                <div className="flex flex-col items-center">
-                  <h1 className="mb-6 text-center text-3xl font-black leading-tight tracking-tight text-primary md:text-5xl lg:text-6xl xl:text-7xl">
-                    DYNAMIC | POWERFUL
-                  </h1>
-                  <div className="mx-auto h-2 w-32 rounded-full bg-gradient-to-r from-primary to-primary-dark animate-pulse" />
-                </div>
-              </div>
-              
-              {/* Subheading */}
-              <p className="text-xl md:text-2xl lg:text-3xl text-gray-600 mb-12 max-w-5xl mx-auto leading-relaxed font-light italic">
-                Not just another resume service! We support, empower, and free your time so you can live your life while still actively pursuing your next career move.
-              </p>
-              
-              {/* CTA Button */}
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="h-16 px-12 text-xl font-bold rounded-2xl hover:scale-110 transition-all duration-500 group border-3 border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white shadow-xl hover:shadow-2xl"
-                asChild
-              >
-                <Link href="#services">
-                  LEARN MORE
-                  <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform duration-300" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-gray-400 rounded-full mt-2 animate-pulse"></div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Services Section */}
-      <section id="services" className="section-padding bg-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto container-padding">
-          {/* Section Header */}
-          <ScrollAnimate animation="fadeInUp" delay={0}>
-            <div className="text-center mb-16">
-              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-                Rezzy, The Powerful Tool to Streamline Your Employment Search!
-              </h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
-              <p className="text-responsive-md text-gray-600 max-w-4xl mx-auto italic">
-                We are not just another resume service; we support, empower, and free your time so you can live your life while still actively pursuing your next career move.
-              </p>
-            </div>
-          </ScrollAnimate>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
-            {/* Left Column - Features */}
-            <div className="lg:col-span-1 space-y-12">
-              {features.slice(0, 3).map((feature, index) => (
-                <ScrollAnimate key={index} animation="slideInLeft" delay={index * 100}>
-                  <div className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 hover:shadow-lg">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 animate-float" style={{ animationDelay: `${index * 0.2}s` }}>
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                      <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
-                    </div>
+                {/* Search card */}
+                <form onSubmit={handleJobSearch} className="mt-8 bg-white rounded-2xl shadow-card-hover p-3 sm:p-2.5 flex flex-col sm:flex-row gap-2.5 animate-fadeInUp" style={{ animationDelay: '340ms', animationFillMode: 'both' }}>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Job title or keyword"
+                      className="w-full h-12 pl-11 pr-3 rounded-xl text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
+                    />
                   </div>
-                </ScrollAnimate>
-              ))}
-            </div>
-
-            {/* Center Column - Main Image */}
-            <ScrollAnimate animation="scaleIn" delay={300}>
-              <div className="lg:col-span-1 flex justify-center">
-                <div className="relative w-full max-w-md animate-float">
-                  <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 text-center card-elevated hover:shadow-2xl transition-all duration-500">
-                    <div className="text-6xl mb-4 animate-bounce-custom">💼</div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">EMPOWERED</h3>
-                    <p className="text-gray-600">Your career journey starts here</p>
+                  <div className="relative flex-1 sm:border-l sm:border-gray-200">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchLocation}
+                      onChange={(e) => setSearchLocation(e.target.value)}
+                      placeholder="City, state, or remote"
+                      className="w-full h-12 pl-11 pr-3 rounded-xl text-gray-900 placeholder:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200 text-base"
+                    />
                   </div>
-                </div>
-              </div>
-            </ScrollAnimate>
+                  <Button type="submit" size="lg" className="h-12 sm:w-auto w-full">
+                    <Search className="h-5 w-5 sm:mr-2" />
+                    <span>Find Jobs</span>
+                  </Button>
+                </form>
 
-            {/* Right Column - Features */}
-            <div className="lg:col-span-1 space-y-12">
-              {features.slice(3, 6).map((feature, index) => (
-                <ScrollAnimate key={index} animation="slideInRight" delay={index * 100 + 400}>
-                  <div className="flex items-start space-x-4 group hover:bg-white/50 p-4 rounded-lg transition-all duration-300 hover:shadow-lg">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 animate-float" style={{ animationDelay: `${(index + 3) * 0.2}s` }}>
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                      <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
-                    </div>
-                  </div>
-                </ScrollAnimate>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="section-padding bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
-        {/* Professional Background */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%233b82f6%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M50%200L100%2050L50%20100L0%2050z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30 animate-pulse-custom"></div>
-        
-        <div className="max-w-7xl mx-auto container-padding relative">
-          <ScrollAnimate animation="fadeInUp" delay={0}>
-            <div className="text-center mb-12">
-              <h2 className="text-responsive-xl font-bold text-gray-900 mb-4">What Our Clients Say</h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto rounded-full"></div>
-            </div>
-          </ScrollAnimate>
-          {/* Testimonial Slider */}
-          <ScrollAnimate animation="fadeInUp" delay={200}>
-            <div className="relative max-w-4xl mx-auto">
-              <div className="overflow-hidden rounded-2xl">
-                <div 
-                  className="flex transition-transform duration-700 ease-in-out"
-                  style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
-                >
-                  {testimonials.map((testimonial, index) => (
-                    <div key={index} className="w-full flex-shrink-0 px-4">
-                      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 group card-glass hover:scale-105">
-                      <CardContent className="pt-8 pb-8 px-8">
-                        <div className="text-center">
-                          <Quote className="h-12 w-12 text-primary/20 mx-auto mb-6 animate-pulse" />
-                          <p className="text-lg md:text-xl text-gray-700 mb-8 italic leading-relaxed group-hover:text-gray-900 transition-colors duration-300">
-                            "{testimonial.content}"
-                          </p>
-                          <div className="flex items-center justify-center space-x-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                              <Users className="h-8 w-8 text-primary" />
-                            </div>
-                            <div className="text-left">
-                              <div className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors duration-300">{testimonial.name}</div>
-                              <div className="text-gray-600">{testimonial.role}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                {/* Popular searches */}
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-sm animate-fadeInUp" style={{ animationDelay: '460ms', animationFillMode: 'both' }}>
+                  <span className="text-white/80">Popular:</span>
+                  {POPULAR_SEARCHES.map((term) => (
+                    <Link
+                      key={term}
+                      href={`/jobs?q=${encodeURIComponent(term)}`}
+                      className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors backdrop-blur-sm"
+                    >
+                      {term}
+                    </Link>
                   ))}
                 </div>
               </div>
-              
-              {/* Testimonial Navigation */}
-              <div className="flex justify-center mt-8 space-x-4">
-              <button
-                onClick={() => setCurrentTestimonial((prev) => prev === 0 ? testimonials.length - 1 : prev - 1)}
-                className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-              >
-                <ArrowRight className="h-5 w-5 text-primary rotate-180" />
-              </button>
 
-              <button
-                onClick={() => setCurrentTestimonial((prev) => prev === testimonials.length - 1 ? 0 : prev + 1)}
-                className="w-10 h-10 bg-primary/10 hover:bg-primary/20 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-              >
-                <ArrowRight className="h-5 w-5 text-primary" />
-              </button>
-            </div>
-            </div>
-          </ScrollAnimate>
-        </div>
-      </section>
-
-      {/* Call-to-Action Section */}
-      <section className="section-padding bg-gradient-to-br from-primary via-primary to-secondary relative overflow-hidden">
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90 animate-gradient"></div>
-        
-        <div className="max-w-5xl mx-auto container-padding text-center relative z-10">
-          <ScrollAnimate animation="zoomIn" delay={0}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            {/* Left Column */}
-            <div className="text-left md:text-left">
-              <h2 className="text-responsive-xl font-bold text-white mb-6 leading-tight">
-                CHECK OUT OUR REZZY PACKAGES
-              </h2>
-              <p className="text-responsive-md text-white/90 mb-6">
-                Essential Package | Accelerated Package | Definitive Package
-              </p>
-            </div>
-            
-            {/* Right Column */}
-            <div className="flex justify-center md:justify-end">
-              <Button 
-                size="lg" 
-                variant="secondary" 
-                className="h-14 px-8 text-lg font-semibold rounded-xl hover:scale-105 transition-all duration-300 group bg-white text-primary hover:bg-white/90 shadow-xl hover:shadow-2xl"
-                asChild
-              >
-                <Link href="#pricing">
-                  <Play className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
-                  ORDER NOW
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </Button>
-            </div>
-            </div>
-          </ScrollAnimate>
-        </div>
-      </section>
-
-      {/* Why Choose Us Section */}
-      <section className="section-padding bg-white">
-        <div className="max-w-7xl mx-auto container-padding">
-          <ScrollAnimate animation="fadeInUp" delay={0}>
-            <div className="text-center mb-16">
-              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-                Why Choose Us
-              </h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
-              <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
-                Rezzy has an inside and unique perspective on the hiring process with a proven and extensive selection of services and tools that put you ahead of the competition.
-              </p>
-            </div>
-          </ScrollAnimate>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <ScrollAnimate animation="slideInLeft" delay={200}>
-              <div>
-                <p className="text-lg text-gray-600 mb-6 italic">
-                  We are committed to outstanding quality in all that we offer. Our professionalism is backed by multiple industry experience and a genuine desire to see all our clients succeed. We provide each client with their own personal certified resume writer with lightning-fast turnaround times.
-                </p>
-                <p className="text-lg text-gray-600 mb-8 italic">
-                  Our customized and tailored packages work for you and provide results.
-                </p>
-                
-                {/* Progress Bars */}
-                <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Essential Package</span>
-                    <span className="text-sm font-bold text-primary">97%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill animate-progressFill"
-                      style={{'--progress-width': '97%'} as React.CSSProperties}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Accelerated Package</span>
-                    <span className="text-sm font-bold text-primary">90%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill animate-progressFill"
-                      style={{'--progress-width': '90%'} as React.CSSProperties}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Definitive Package</span>
-                    <span className="text-sm font-bold text-primary">85%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill animate-progressFill"
-                      style={{'--progress-width': '85%'} as React.CSSProperties}
-                    ></div>
+              {/* Right: image */}
+              <div className="hidden lg:block">
+                <div className="relative animate-floatY">
+                  <div className="absolute -inset-4 bg-white/10 rounded-3xl blur-2xl" />
+                  <Image
+                    src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=900&q=80&auto=format&fit=crop"
+                    alt="Professionals collaborating"
+                    width={720}
+                    height={560}
+                    className="relative rounded-3xl shadow-2xl object-cover w-full h-[460px]"
+                    priority
+                  />
+                  {/* Floating card */}
+                  <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-card-hover p-4 flex items-center gap-3 max-w-[230px] animate-scaleIn">
+                    <span className="w-11 h-11 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
+                      <TrendingUp className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">3 interviews</p>
+                      <p className="text-xs text-gray-500">landed this week with Rezzy</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              </div>
-            </ScrollAnimate>
-            <ScrollAnimate animation="slideInRight" delay={400}>
-              <div className="text-center">
-                <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-8 card-elevated hover:shadow-2xl transition-all duration-500 animate-float">
-                  <div className="text-6xl mb-4 animate-bounce-custom">📊</div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Success Rates</h3>
-                  <p className="text-gray-600">Proven results across all our packages</p>
-                </div>
-              </div>
-            </ScrollAnimate>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Pricing Plans Section */}
-      <section id="pricing" className="section-padding bg-gray-50">
-        <div className="max-w-7xl mx-auto container-padding">
-          <ScrollAnimate animation="fadeInUp" delay={0}>
-            <div className="text-center mb-16">
-              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-                Pricing Plans
-              </h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
-              <p className="text-responsive-md text-gray-600 max-w-3xl mx-auto italic">
-                Rezzy offers a variety of packages so our clients can pick and choose what best fits their needs.
-              </p>
-            </div>
-          </ScrollAnimate>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, index) => (
-              <ScrollAnimate key={index} animation="scaleIn" delay={index * 150}>
-                <Card className={`text-center hover:shadow-2xl transition-all duration-500 group hover:-translate-y-4 hover:scale-105 card-professional ${plan.featured ? 'border-2 border-primary shadow-xl ring-2 ring-primary/20' : 'border-0 hover:border-primary/20'}`}>
-                <CardHeader className="pb-4">
-                  {plan.featured && (
-                    <Badge className="mb-4 bg-primary text-white animate-pulse">Most Popular</Badge>
-                  )}
-                  <CardTitle className="text-2xl font-bold group-hover:text-primary transition-colors duration-300">{plan.name}</CardTitle>
-                  <div className="text-4xl md:text-5xl font-bold text-primary mb-2 group-hover:scale-110 transition-transform duration-300">
-                    {plan.price}
-                    <span className="text-lg text-gray-500">{plan.interval}</span>
+        {/* ============ STATS BAND ============ */}
+        <section className="bg-white border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="flex items-center gap-3">
+                  <span className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 flex-shrink-0">
+                    {stat.icon}
+                  </span>
+                  <div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-gray-900">{stat.value}</div>
+                    <div className="text-sm text-gray-500">{stat.label}</div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-300">
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
-                        {feature}
-                      </li>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============ SERVICES ============ */}
+        <section id="services" className="py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollAnimate animation="fadeInUp">
+              <div className="text-center max-w-3xl mx-auto mb-12">
+                <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">What we do</span>
+                <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">
+                  Everything you need to land the role
+                </h2>
+                <p className="mt-4 text-lg text-gray-600">
+                  Rezzy is the powerful tool to streamline your employment search — from a standout resume to interview-ready confidence.
+                </p>
+              </div>
+            </ScrollAnimate>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature, index) => (
+                <ScrollAnimate key={index} animation="fadeInUp" delay={index * 80}>
+                  <Card className="h-full group hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300">
+                    <CardContent className="p-6">
+                      <span className="inline-flex w-12 h-12 rounded-xl bg-primary-50 items-center justify-center text-primary-600 group-hover:bg-primary-500 group-hover:text-white transition-colors">
+                        {feature.icon}
+                      </span>
+                      <h3 className="mt-4 text-lg font-bold text-gray-900">{feature.title}</h3>
+                      <p className="mt-2 text-gray-600 leading-relaxed text-[15px]">{feature.description}</p>
+                    </CardContent>
+                  </Card>
+                </ScrollAnimate>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============ WHY CHOOSE US ============ */}
+        <section className="py-16 md:py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <ScrollAnimate animation="slideInLeft">
+                <div className="relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?w=900&q=80&auto=format&fit=crop"
+                    alt="Career coaching session"
+                    width={720}
+                    height={540}
+                    className="rounded-2xl shadow-card object-cover w-full h-[420px]"
+                  />
+                  <div className="absolute -bottom-5 -right-5 bg-secondary text-white rounded-2xl shadow-card-hover p-5 max-w-[200px]">
+                    <p className="text-3xl font-extrabold">97%</p>
+                    <p className="text-sm text-white/80">client satisfaction across our packages</p>
+                  </div>
+                </div>
+              </ScrollAnimate>
+
+              <ScrollAnimate animation="slideInRight" delay={150}>
+                <div>
+                  <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Why choose Rezzy</span>
+                  <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">
+                    An insider's edge on the hiring process
+                  </h2>
+                  <p className="mt-4 text-gray-600 leading-relaxed">
+                    We are committed to outstanding quality in everything we offer. Our professionalism is backed by years of industry experience and a genuine desire to see every client succeed — with a personal certified resume writer and lightning-fast turnaround.
+                  </p>
+                  <div className="mt-8 space-y-5">
+                    {[
+                      { label: 'Essential Package', value: 97 },
+                      { label: 'Accelerated Package', value: 90 },
+                      { label: 'Definitive Package', value: 85 },
+                    ].map((bar) => (
+                      <div key={bar.label}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-sm font-medium text-gray-700">{bar.label}</span>
+                          <span className="text-sm font-bold text-primary-600">{bar.value}%</span>
+                        </div>
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${bar.value}%` }} />
+                        </div>
+                      </div>
                     ))}
-                  </ul>
-                  <div className="space-y-2">
-                    <Button 
-                      className={`w-full transition-all duration-300 hover:scale-105 ${plan.featured ? 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl' : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'}`}
-                      onClick={() => handleAddToCart(plan.name, plan.name.toLowerCase().replace(' package', ''), parseInt(plan.price.replace('$', '')))}
-                      disabled={addingToCart === plan.name.toLowerCase().replace(' package', '')}
-                    >
-                      {addingToCart === plan.name.toLowerCase().replace(' package', '') ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          ADD TO CART
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      asChild
-                    >
-                      <Link href={plan.link} target="_blank" rel="noopener noreferrer">
-                        VIEW PACKAGE
-                      </Link>
-                    </Button>
+                  </div>
+                </div>
+              </ScrollAnimate>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ PRICING ============ */}
+        <section id="pricing" className="py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollAnimate animation="fadeInUp">
+              <div className="text-center max-w-3xl mx-auto mb-12">
+                <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Pricing</span>
+                <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Pick the package that fits you</h2>
+                <p className="mt-4 text-lg text-gray-600">Choose and combine what best fits your needs — every plan is tailored to deliver results.</p>
+              </div>
+            </ScrollAnimate>
+
+            <div className="grid gap-6 lg:grid-cols-3 items-start">
+              {pricingPlans.map((plan, index) => (
+                <ScrollAnimate key={index} animation="fadeInUp" delay={index * 100}>
+                  <Card className={`relative h-full flex flex-col ${plan.featured ? 'ring-2 ring-primary-500 shadow-card-hover lg:-translate-y-3' : ''}`}>
+                    {plan.featured && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                        MOST POPULAR
+                      </span>
+                    )}
+                    <CardHeader className="text-center pt-8 pb-4">
+                      <CardTitle className="text-xl font-bold text-gray-900">{plan.name}</CardTitle>
+                      <div className="mt-2 text-4xl font-extrabold text-primary-600">
+                        {plan.price}
+                        {plan.interval && <span className="text-base font-medium text-gray-400">{plan.interval}</span>}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col">
+                      <ul className="space-y-3 mb-6 flex-1">
+                        {plan.features.map((feature, fi) => (
+                          <li key={fi} className="flex items-start gap-2.5 text-sm text-gray-600">
+                            <CheckCircle className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="space-y-2.5">
+                        <Button
+                          className="w-full"
+                          variant={plan.featured ? 'default' : 'secondary'}
+                          onClick={() => handleAddToCart(plan.name, plan.name.toLowerCase().replace(' package', ''), parseInt(plan.price.replace('$', '')))}
+                          disabled={addingToCart === plan.name.toLowerCase().replace(' package', '')}
+                        >
+                          {addingToCart === plan.name.toLowerCase().replace(' package', '') ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding…</>
+                          ) : (
+                            <><ShoppingCart className="mr-2 h-4 w-4" /> Add to cart</>
+                          )}
+                        </Button>
+                        <Button variant="ghost" className="w-full" asChild>
+                          <Link href={plan.link} target="_blank" rel="noopener noreferrer">View details</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </ScrollAnimate>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============ TESTIMONIALS ============ */}
+        <section className="py-16 md:py-24 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Testimonials</span>
+              <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">What our clients say</h2>
+            </div>
+
+            <div className="relative">
+              <Card className="bg-primary-50/40 border-primary-100">
+                <CardContent className="p-8 md:p-12 text-center">
+                  <Quote className="h-10 w-10 text-primary-300 mx-auto mb-6" />
+                  <p className="text-lg md:text-xl text-gray-700 italic leading-relaxed min-h-[120px]">
+                    "{testimonials[currentTestimonial].content}"
+                  </p>
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <span className="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                      <Users className="h-6 w-6" />
+                    </span>
+                    <div className="text-left">
+                      <div className="font-bold text-gray-900">{testimonials[currentTestimonial].name}</div>
+                      <div className="text-sm text-gray-500">{testimonials[currentTestimonial].role}</div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-              </ScrollAnimate>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Contact Form Section */}
-      <section className="section-padding bg-white">
-        <div className="max-w-7xl mx-auto container-padding">
-          <ScrollAnimate animation="fadeInUp" delay={0}>
-            <div className="text-center mb-16">
-              <h2 className="text-responsive-xl font-bold text-gray-900 mb-6">
-                Contact Us
-              </h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-6 rounded-full animate-pulse"></div>
+              <div className="flex items-center justify-center gap-4 mt-6">
+                <button
+                  onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
+                  className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                  aria-label="Previous testimonial"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <div className="flex gap-2">
+                  {testimonials.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentTestimonial(i)}
+                      aria-label={`Testimonial ${i + 1}`}
+                      className={`h-2.5 rounded-full transition-all ${i === currentTestimonial ? 'w-7 bg-primary-500' : 'w-2.5 bg-gray-300 hover:bg-gray-400'}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))}
+                  className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                  aria-label="Next testimonial"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
             </div>
-          </ScrollAnimate>
+          </div>
+        </section>
 
-          <ScrollAnimate animation="scaleIn" delay={200}>
-            <div className="max-w-2xl mx-auto">
-              <Card className="shadow-2xl card-elevated hover:shadow-3xl transition-all duration-500">
-              <CardContent className="p-8">
+        {/* ============ CTA ============ */}
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-12 md:px-12 md:py-16 text-center">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,white,transparent_45%)]" />
+              <div className="relative">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white">Ready to accelerate your career?</h2>
+                <p className="mt-3 text-lg text-white/90 max-w-2xl mx-auto">Browse jobs, optimize your resume, and let Rezzy do the heavy lifting.</p>
+                <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button size="lg" variant="secondary" className="bg-white text-primary-600 hover:bg-white/90" asChild>
+                    <Link href="/jobs"><Search className="mr-2 h-5 w-5" /> Browse jobs</Link>
+                  </Button>
+                  <Button size="lg" className="bg-secondary text-white hover:bg-secondary-600" asChild>
+                    <Link href="#pricing">View packages <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ CONTACT ============ */}
+        <section className="py-16 md:py-20 bg-white">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8">
+              <span className="text-primary-600 font-semibold uppercase tracking-wide text-sm">Get in touch</span>
+              <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Contact us</h2>
+              <p className="mt-3 text-gray-600">Have a question? We usually reply within one business day.</p>
+            </div>
+
+            <Card>
+              <CardContent className="p-6 md:p-8">
                 {contactMessage && (
-                  <div className={`mb-6 p-4 rounded-lg ${
-                    contactMessage.type === 'success' 
-                      ? 'bg-green-50 text-green-800 border border-green-200' 
-                      : 'bg-red-50 text-red-800 border border-red-200'
-                  }`}>
+                  <div className={`mb-6 p-4 rounded-lg text-sm ${contactMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
                     {contactMessage.text}
                   </div>
                 )}
-                <form onSubmit={handleContactSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleContactSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Your Name (required)
-                      </label>
-                      <Input 
-                        type="text" 
-                        className="input-professional"
-                        placeholder="Enter your name"
-                        value={contactForm.name}
-                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                        required
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Your name *</label>
+                      <input type="text" className="input-professional" placeholder="Jane Doe" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} required />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Your Email (required)
-                      </label>
-                      <Input 
-                        type="email" 
-                        className="input-professional"
-                        placeholder="Enter your email"
-                        value={contactForm.email}
-                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                        required
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Your email *</label>
+                      <input type="email" className="input-professional" placeholder="jane@example.com" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} required />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject
-                    </label>
-                    <Input 
-                      type="text" 
-                      className="input-professional"
-                      placeholder="Enter subject"
-                      value={contactForm.subject}
-                      onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Subject</label>
+                    <input type="text" className="input-professional" placeholder="How can we help?" value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Your Message
-                    </label>
-                    <textarea 
-                      className="input-professional h-32 resize-none"
-                      placeholder="Enter your message"
-                      value={contactForm.message}
-                      onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                      required
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Message *</label>
+                    <textarea className="input-professional h-32 resize-none" placeholder="Tell us a bit about what you need…" value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} required />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="btn-primary w-full h-12 text-lg"
-                    disabled={isSubmittingContact}
-                  >
-                    {isSubmittingContact ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        SENDING...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-5 w-5" />
-                        SEND
-                      </>
-                    )}
+                  <Button type="submit" size="lg" className="w-full" disabled={isSubmittingContact}>
+                    {isSubmittingContact ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending…</>) : (<><Send className="mr-2 h-5 w-5" /> Send message</>)}
                   </Button>
                 </form>
               </CardContent>
             </Card>
-            </div>
-          </ScrollAnimate>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto container-padding">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Social Links */}
-            <div className="text-center md:text-left">
-              <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
-              <div className="flex justify-center md:justify-start space-x-4">
-                <a 
-                  href="https://www.facebook.com/rezzybyrlm/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors"
-                >
-                  <span className="text-white">📘</span>
-                </a>
-                <a 
-                  href="https://www.instagram.com/rezzybyrlm/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors"
-                >
-                  <span className="text-white">📷</span>
-                </a>
-                <a 
-                  href="https://twitter.com/RezzybyRLM" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors"
-                >
-                  <span className="text-white">🐦</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Menu Footer */}
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-4">Menu</h3>
-              <div className="space-y-2">
-                <Link href="/" className="block text-gray-300 hover:text-white transition-colors">Home</Link>
-                <Link href="/resume-services" className="block text-gray-300 hover:text-white transition-colors">Resume Services</Link>
-                <Link href="/about-us" className="block text-gray-300 hover:text-white transition-colors">About Us</Link>
-                <Link href="/contact-us" className="block text-gray-300 hover:text-white transition-colors">Contact Us</Link>
-                <Link href="/cart" className="block text-gray-300 hover:text-white transition-colors">Cart</Link>
-              </div>
-            </div>
-
-            {/* Cart */}
-            <div className="text-center md:text-right">
-              <h3 className="text-lg font-semibold mb-4">Cart</h3>
-              <p className="text-gray-300">Your cart is empty</p>
-            </div>
           </div>
-
-          <div className="border-t border-gray-700 mt-8 pt-8 text-center">
-            <p className="text-gray-400">
-              Copyright © 2021-2022 Rezzy by RLM, LLC. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </section>
+      </div>
     </PageLoader>
   )
 }

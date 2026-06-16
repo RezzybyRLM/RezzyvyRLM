@@ -21,7 +21,7 @@ export default function AboutPage() {
       description: 'We understand the challenges of job searching and are here to support you every step of the way.'
     },
     {
-      icon: <Target className="h-8 w-8 text-blue-500" />,
+      icon: <Target className="h-8 w-8 text-primary-500" />,
       title: 'Precision Matching',
       description: 'Our AI-powered algorithms ensure you find the perfect job match based on your skills and preferences.'
     },
@@ -123,11 +123,11 @@ export default function AboutPage() {
                   <div className="text-sm font-semibold">Quality Jobs</div>
                 </div>
                 <div className="bg-white rounded-lg p-4 text-center">
-                  <Users className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                  <Users className="h-8 w-8 text-primary-500 mx-auto mb-2" />
                   <div className="text-sm font-semibold">Community</div>
                 </div>
                 <div className="bg-white rounded-lg p-4 text-center">
-                  <Zap className="h-8 w-8 text-purple-500 mx-auto mb-2" />
+                  <Zap className="h-8 w-8 text-accent mx-auto mb-2" />
                   <div className="text-sm font-semibold">Fast Results</div>
                 </div>
               </div>

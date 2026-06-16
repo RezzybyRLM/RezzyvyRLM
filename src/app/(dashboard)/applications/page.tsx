@@ -148,9 +148,9 @@ export default function ApplicationsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'applied':
-        return <Badge className="bg-blue-100 text-blue-800">Applied</Badge>
+        return <Badge className="bg-primary-100 text-primary-800">Applied</Badge>
       case 'interview':
-        return <Badge className="bg-purple-100 text-purple-800">Interview</Badge>
+        return <Badge className="bg-primary-100 text-primary-800">Interview</Badge>
       case 'offer':
         return <Badge className="bg-green-100 text-green-800">Offer</Badge>
       case 'rejected':
@@ -165,9 +165,9 @@ export default function ApplicationsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'applied':
-        return <Clock className="h-4 w-4 text-blue-500" />
+        return <Clock className="h-4 w-4 text-primary-500" />
       case 'interview':
-        return <CheckCircle className="h-4 w-4 text-purple-500" />
+        return <CheckCircle className="h-4 w-4 text-primary-500" />
       case 'offer':
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'rejected':

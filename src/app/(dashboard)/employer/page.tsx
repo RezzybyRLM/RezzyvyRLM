@@ -346,7 +346,7 @@ export default function EmployerDashboard() {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <TrendingUp className="h-5 w-5 text-blue-500 mt-0.5" />
+              <TrendingUp className="h-5 w-5 text-primary-500 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">Views up 12% this month</p>
                 <p className="text-xs text-gray-600">Your job postings are performing well</p>

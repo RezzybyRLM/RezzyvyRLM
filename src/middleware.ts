@@ -63,10 +63,10 @@ export async function middleware(request: NextRequest) {
     '/profiles',
     '/messages',
     '/feed',
-    '/jobs',
     '/admin',
     '/settings',
   ]
+  // Note: '/jobs' is intentionally public so visitors can browse jobs before signing in.
 
   const authRoutes = ['/auth/login', '/auth/register']
 

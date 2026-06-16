@@ -98,7 +98,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--surface-admin))]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" aria-hidden />
       </div>
     )
   }
@@ -107,7 +107,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[hsl(var(--surface-admin))] px-4">
         <p className="text-lg font-medium text-gray-900">You do not have access to the admin console.</p>
-        <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:underline">
+        <Link href="/dashboard" className="text-sm font-medium text-primary-600 hover:underline">
           Go to member dashboard
         </Link>
       </div>
@@ -125,7 +125,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={opts.onNavigate}
           className={cn(
             'group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-            active ? 'bg-blue-600/15 text-blue-800' : 'text-gray-600 hover:bg-white/50 hover:text-gray-900',
+            active ? 'bg-primary-600/15 text-primary-800' : 'text-gray-600 hover:bg-white/50 hover:text-gray-900',
             collapsed && 'justify-center px-2 md:justify-center'
           )}
           title={collapsed ? label : undefined}
@@ -209,7 +209,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className={cn(
                 'mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname === '/admin/roles'
-                  ? 'bg-blue-600/15 text-blue-800'
+                  ? 'bg-primary-600/15 text-primary-800'
                   : 'text-gray-600 hover:bg-white/50 hover:text-gray-900',
                 collapsed && 'justify-center px-2'
               )}
@@ -295,7 +295,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                       onClick={() => setMobileOpen(false)}
                       className={cn(
                         'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                        active ? 'bg-blue-600/15 text-blue-800' : 'text-gray-600 hover:bg-white/50'
+                        active ? 'bg-primary-600/15 text-primary-800' : 'text-gray-600 hover:bg-white/50'
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0 opacity-85" />
@@ -310,7 +310,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     className={cn(
                       'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium',
                       pathname === '/admin/roles'
-                        ? 'bg-blue-600/15 text-blue-800'
+                        ? 'bg-primary-600/15 text-primary-800'
                         : 'text-gray-600 hover:bg-white/50'
                     )}
                   >

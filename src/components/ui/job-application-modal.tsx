@@ -282,7 +282,7 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
               </div>
 
               {/* AI Tips Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-gradient-to-r from-primary-50 to-primary-50 border border-primary-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Lightbulb className="h-5 w-5 text-yellow-500" />
@@ -306,7 +306,7 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
                   </Button>
                 </div>
                 {showAITips && aiTips && (
-                  <div className="mt-3 pt-3 border-t border-blue-200">
+                  <div className="mt-3 pt-3 border-t border-primary-200">
                     {usedFallback && (
                       <p className="text-xs text-amber-600 mb-2 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
@@ -379,9 +379,9 @@ export function JobApplicationModal({ isOpen, onClose, job, onSuccess }: JobAppl
 
               {/* Application Instructions */}
               {job.application_instructions && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">Application Instructions</h4>
-                  <p className="text-sm text-blue-800 whitespace-pre-wrap">{job.application_instructions}</p>
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-primary-900 mb-2">Application Instructions</h4>
+                  <p className="text-sm text-primary-800 whitespace-pre-wrap">{job.application_instructions}</p>
                 </div>
               )}
 

@@ -117,9 +117,9 @@ export function PostCard({
       {/* Content */}
       <div className="px-4 py-2">
         {post.job && (
-          <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100 flex items-center gap-3">
+          <div className="mb-3 p-3 bg-primary-50 rounded-md border border-primary-100 flex items-center gap-3">
             <div className="p-2 bg-white rounded shadow-sm">
-              <Briefcase className="h-5 w-5 text-blue-600" />
+              <Briefcase className="h-5 w-5 text-primary-600" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">{post.job.title}</p>
@@ -130,8 +130,8 @@ export function PostCard({
 
         <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
           {post.content.split(/(#\w+|@\w+)/g).map((part, index) => {
-            if (hashtags.includes(part)) return <span key={index} className="text-blue-600 font-medium hover:underline cursor-pointer">{part}</span>
-            if (mentions.includes(part)) return <span key={index} className="text-blue-600 font-semibold hover:underline cursor-pointer">{part}</span>
+            if (hashtags.includes(part)) return <span key={index} className="text-primary-600 font-medium hover:underline cursor-pointer">{part}</span>
+            if (mentions.includes(part)) return <span key={index} className="text-primary-600 font-semibold hover:underline cursor-pointer">{part}</span>
             return <span key={index}>{part}</span>
           })}
         </p>
@@ -155,18 +155,18 @@ export function PostCard({
           {(post.likes_count > 0) && (
             <>
               <div className="flex -space-x-1">
-                <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center border border-white z-10">
+                <span className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center border border-white z-10">
                   <ThumbsUp className="h-2 w-2 text-white" />
                 </span>
                 {/* Could add heart/clap icons for reaction pile */}
               </div>
-              <span className="hover:text-blue-600 hover:underline cursor-pointer">{post.likes_count}</span>
+              <span className="hover:text-primary-600 hover:underline cursor-pointer">{post.likes_count}</span>
             </>
           )}
         </div>
         <div>
-          {post.comments_count > 0 && <span className="hover:text-blue-600 hover:underline cursor-pointer mr-2">{post.comments_count} comments</span>}
-          <span className="hover:text-blue-600 hover:underline cursor-pointer">0 reposts</span>
+          {post.comments_count > 0 && <span className="hover:text-primary-600 hover:underline cursor-pointer mr-2">{post.comments_count} comments</span>}
+          <span className="hover:text-primary-600 hover:underline cursor-pointer">0 reposts</span>
         </div>
       </div>
 
@@ -174,7 +174,7 @@ export function PostCard({
       <div className="px-2 py-1 flex items-center justify-between">
         <Button
           variant="ghost"
-          className={`flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 ${post.is_liked ? 'text-blue-600' : 'text-gray-600'}`}
+          className={`flex-1 flex gap-2 rounded hover:bg-gray-100 h-12 ${post.is_liked ? 'text-primary-600' : 'text-gray-600'}`}
           onClick={onLike}
         >
           <ThumbsUp className={`h-5 w-5 ${post.is_liked ? 'fill-current' : ''}`} />

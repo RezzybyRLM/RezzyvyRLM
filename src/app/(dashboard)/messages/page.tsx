@@ -1912,7 +1912,7 @@ return (
                         params.set('conversation', conv.id)
                         router.replace(`/messages?${params.toString()}`, { scroll: false })
                       }}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-blue-50' : ''
+                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-primary-50' : ''
                         }`}
                     >
                       <div className="flex items-start gap-3">
@@ -2177,17 +2177,17 @@ return (
                 <div className="border-t p-3 flex-shrink-0 space-y-2">
                   {/* Reply preview */}
                   {replyingTo && (
-                    <div className="bg-blue-50 border-l-4 border-blue-500 p-2 rounded flex items-start justify-between text-xs">
+                    <div className="bg-primary-50 border-l-4 border-primary-500 p-2 rounded flex items-start justify-between text-xs">
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-medium text-blue-900 mb-0.5">
+                        <p className="text-[10px] font-medium text-primary-900 mb-0.5">
                           Replying to {replyingTo.sender.full_name || replyingTo.sender.email.split('@')[0]}
                         </p>
-                        <p className="text-xs text-blue-800 truncate">{replyingTo.content}</p>
+                        <p className="text-xs text-primary-800 truncate">{replyingTo.content}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setReplyingTo(null)}
-                        className="ml-2 text-blue-600 hover:text-blue-800"
+                        className="ml-2 text-primary-600 hover:text-primary-800"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -2196,19 +2196,19 @@ return (
 
                   {/* Forward preview */}
                   {forwardingMessage && (
-                    <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded flex items-start justify-between">
+                    <div className="bg-primary-50 border-l-4 border-primary-500 p-3 rounded flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-purple-900 mb-1">
+                        <p className="text-xs font-medium text-primary-900 mb-1">
                           Forwarding message from {forwardingMessage.sender.full_name || forwardingMessage.sender.email.split('@')[0]}
                         </p>
-                        <p className="text-sm text-purple-800 truncate">
+                        <p className="text-sm text-primary-800 truncate">
                           {forwardingMessage.content || (forwardingMessage.attachment_url ? 'Image' : 'Message')}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setForwardingMessage(null)}
-                        className="ml-2 text-purple-600 hover:text-purple-800"
+                        className="ml-2 text-primary-600 hover:text-primary-800"
                       >
                         <X className="h-4 w-4" />
                       </button>

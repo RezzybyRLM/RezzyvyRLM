@@ -24,11 +24,18 @@ import type { User } from '@supabase/supabase-js'
 import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
 import { getDashboardNavigation, navGroupLabel } from '@/lib/dashboard/navigation'
 import { cn } from '@/lib/utils'
+import { Navbar } from '@/components/layout/navbar'
+import { Footer } from '@/components/layout/footer'
+import { BrandLoader } from '@/components/ui/page-loader'
 
 const iconClass = 'h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.5]'
 
 // Store sidebar state in localStorage for persistence
 const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
+// Cache of the signed-in user's profile for instant render on refresh
+const PROFILE_CACHE_KEY = 'rezzy:profile'
+// Routes inside the dashboard group that are browsable without signing in
+const PUBLIC_PREFIXES = ['/jobs']
 
 export default function DashboardLayout({
   children,
@@ -43,15 +50,37 @@ export default function DashboardLayout({
   const [initialLoad, setInitialLoad] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [publicMode, setPublicMode] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const profileDropdownRef = useRef<HTMLDivElement>(null)
 
+  const isPublicPath = PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  )
+
   // Load sidebar state
   useEffect(() => {
     const collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true'
     setSidebarCollapsed(collapsed)
+  }, [])
+
+  // Instant hydrate from cached profile so a refresh renders immediately
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY)
+      if (raw) {
+        const c = JSON.parse(raw)
+        setUserProfile({ full_name: c.full_name ?? null, avatar_url: c.avatar_url ?? null })
+        setAppRole(c.role ?? 'user')
+        setUser((prev: any) => prev ?? (c.email ? { email: c.email, id: c.id } : prev))
+        setInitialLoad(false)
+      }
+    } catch {
+      /* ignore malformed cache */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const toggleSidebar = () => {
@@ -74,7 +103,7 @@ export default function DashboardLayout({
 
   const sidebarAccent =
     appRole === 'admin' || appRole === 'super_admin'
-      ? 'border-l-[3px] border-l-blue-500/25'
+      ? 'border-l-[3px] border-l-primary-500/25'
       : appRole === 'employer'
         ? 'border-l-[3px] border-l-emerald-500/25'
         : ''
@@ -181,6 +210,7 @@ export default function DashboardLayout({
 
         if (authUser) {
           setUser(authUser)
+          setPublicMode(false)
 
           const { data: profile } = await supabase
             .from('users')
@@ -191,8 +221,30 @@ export default function DashboardLayout({
           if (profile && mounted) {
             setUserProfile(profile as any)
             setAppRole((profile as { role?: string }).role ?? 'user')
+            try {
+              localStorage.setItem(
+                PROFILE_CACHE_KEY,
+                JSON.stringify({
+                  id: authUser.id,
+                  email: authUser.email,
+                  full_name: (profile as any).full_name ?? null,
+                  avatar_url: (profile as any).avatar_url ?? null,
+                  role: (profile as { role?: string }).role ?? 'user',
+                })
+              )
+            } catch {
+              /* storage may be unavailable */
+            }
           }
+        } else if (isPublicPath) {
+          // Browse public pages (e.g. /jobs) without signing in
+          setPublicMode(true)
+          setUser(null)
+          setUserProfile(null)
+          setAppRole(null)
+          try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
         } else {
+          try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
           const redirect = encodeURIComponent(pathname || '/dashboard')
           router.replace(`/auth/login?redirectTo=${redirect}`)
         }
@@ -211,7 +263,12 @@ export default function DashboardLayout({
         setUser(null)
         setUserProfile(null)
         setAppRole(null)
-        router.replace('/auth/login')
+        try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
+        if (isPublicPath) {
+          setPublicMode(true)
+        } else {
+          router.replace('/auth/login')
+        }
       } else if (session?.user) {
         setUser(session.user)
         const { data: profile } = await supabase
@@ -245,15 +302,16 @@ export default function DashboardLayout({
   }, [profileMenuOpen])
 
   if (initialLoad) {
+    return <BrandLoader />
+  }
+
+  // Public browsing (e.g. /jobs while signed out): marketing chrome instead of the app shell
+  if (publicMode && !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mx-auto mb-6 flex justify-center opacity-90 transition-opacity duration-300">
-            <DashboardLogo priority href="/" />
-          </div>
-          <div className="mx-auto mb-3 h-0.5 w-12 rounded-full bg-primary/30" />
-          <p className="text-sm font-medium text-text/60">Loading workspace…</p>
-        </div>
+      <div className="flex min-h-screen flex-col bg-background">
+        <Navbar user={null} />
+        <main className="flex-1">{children}</main>
+        <Footer />
       </div>
     )
   }

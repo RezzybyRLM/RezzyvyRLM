@@ -171,7 +171,7 @@ export default function JobAlertsPage() {
 
   const getFrequencyBadge = (frequency: string) => {
     return frequency === 'daily' 
-      ? <Badge className="bg-blue-100 text-blue-800">Daily</Badge>
+      ? <Badge className="bg-primary-100 text-primary-800">Daily</Badge>
       : <Badge className="bg-green-100 text-green-800">Weekly</Badge>
   }
 

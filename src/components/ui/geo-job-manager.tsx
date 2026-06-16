@@ -104,7 +104,7 @@ export default function GeoJobManager({
     if (location.includes('remote')) {
       return <Badge className="bg-green-100 text-green-800">Remote</Badge>
     } else if (location.includes('hybrid')) {
-      return <Badge className="bg-blue-100 text-blue-800">Hybrid</Badge>
+      return <Badge className="bg-primary-100 text-primary-800">Hybrid</Badge>
     } else {
       return <Badge className="bg-gray-100 text-gray-800">On-site</Badge>
     }

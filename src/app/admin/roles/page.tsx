@@ -200,7 +200,7 @@ export default function AdminRolesPage() {
               Overview
             </Link>
           </Button>
-          <Badge className="bg-violet-100 text-violet-900">Super admin</Badge>
+          <Badge className="bg-primary-100 text-primary-900">Super admin</Badge>
         </div>
       </div>
 

@@ -162,12 +162,12 @@ Generated with AI assistance. Review and customize before submitting.`
         </CardHeader>
         <CardContent className="space-y-6">
           {suggestions && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+              <h4 className="font-semibold text-primary-900 mb-2 flex items-center gap-2">
                 <Wand2 className="h-4 w-4" />
                 AI Suggestions
               </h4>
-              <pre className="text-sm text-blue-800 whitespace-pre-wrap font-sans">{suggestions}</pre>
+              <pre className="text-sm text-primary-800 whitespace-pre-wrap font-sans">{suggestions}</pre>
             </div>
           )}
 
@@ -328,9 +328,9 @@ Generated with AI assistance. Review and customize before submitting.`
         </div>
 
         {jobDescription && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <Label className="text-blue-900 font-semibold">Job Description (for customization)</Label>
-            <p className="text-sm text-blue-800 mt-2 line-clamp-3">{jobDescription}</p>
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <Label className="text-primary-900 font-semibold">Job Description (for customization)</Label>
+            <p className="text-sm text-primary-800 mt-2 line-clamp-3">{jobDescription}</p>
           </div>
         )}
 

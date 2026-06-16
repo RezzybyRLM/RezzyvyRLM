@@ -117,7 +117,7 @@ export function ProfileSelector({ isOpen, onClose, onSelect, jobTitle, companyNa
                     onClick={() => setSelectedProfile(profile.id)}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       selectedProfile === profile.id
-                        ? 'border-primary bg-blue-50'
+                        ? 'border-primary bg-primary-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >

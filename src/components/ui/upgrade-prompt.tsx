@@ -63,7 +63,7 @@ export function UpgradePrompt({
             <X className="h-6 w-6" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
               <Zap className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -73,23 +73,23 @@ export function UpgradePrompt({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <p className="text-gray-700">{message}</p>
           </div>
 
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Upgrade to unlock <span className="text-blue-600">{feature}</span>
+              Upgrade to unlock <span className="text-primary-600">{feature}</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {plans.map((plan) => (
                 <Card
                   key={plan.name}
-                  className={`relative ${plan.highlight ? 'border-blue-500 border-2 shadow-lg' : ''}`}
+                  className={`relative ${plan.highlight ? 'border-primary-500 border-2 shadow-lg' : ''}`}
                 >
                   {plan.highlight && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-blue-600 text-white">Recommended</Badge>
+                      <Badge className="bg-primary-600 text-white">Recommended</Badge>
                     </div>
                   )}
                   <CardHeader>
@@ -109,7 +109,7 @@ export function UpgradePrompt({
                       ))}
                     </ul>
                     <Button
-                      className={`w-full ${plan.highlight ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                      className={`w-full ${plan.highlight ? 'bg-primary-600 hover:bg-primary-700' : ''}`}
                       onClick={onUpgrade}
                     >
                       Choose {plan.name}

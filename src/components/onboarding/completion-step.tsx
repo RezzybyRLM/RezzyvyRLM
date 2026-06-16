@@ -98,25 +98,25 @@ export function CompletionStep({
       </div>
 
       {/* What's Next */}
-      <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+      <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">What's Next?</h3>
         <div className="space-y-2 text-left">
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-medium text-gray-900">Start Browsing Jobs</p>
               <p className="text-sm text-gray-600">Search and apply to jobs that match your profiles</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-medium text-gray-900">Complete Your Profile</p>
               <p className="text-sm text-gray-600">Add more details to make your profile stand out</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-medium text-gray-900">Explore Features</p>
               <p className="text-sm text-gray-600">Try Interview Pro, Job Alerts, and more</p>

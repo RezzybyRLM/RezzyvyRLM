@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Search, User, Menu, X, ShoppingCart, LogOut, Settings, Shield } from 'lucide-react'
+import { Search, User, Menu, X, ShoppingCart, LogOut, Settings, Shield, Briefcase, LayoutDashboard } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCartItemCount } from '@/lib/cart/actions'
@@ -15,6 +14,13 @@ import { canAccessAdminConsole, canManageRoles } from '@/lib/auth/permissions'
 interface NavbarProps {
   user?: SupabaseUser | null
 }
+
+const NAV_LINKS = [
+  { href: '/jobs', label: 'Find Jobs' },
+  { href: '/companies', label: 'Companies' },
+  { href: '/resume-services', label: 'Resume Services' },
+  { href: '/plans', label: 'Pricing' },
+]
 
 export function Navbar({ user: initialUser }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -27,28 +33,21 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const supabase = createClient()
 
   useEffect(() => {
-    // If initialUser is provided, we can skip the initial fetch or just update cart/admin status
     if (initialUser) {
       setUser(initialUser)
     }
 
-    // Get initial user session if not provided or to ensure freshness
     const getUser = async () => {
-      // If we already have initialUser, we might not need to fetch immediately, 
-      // but fetching ensures we have the latest client-side state if it drifted.
-      // However, to avoid flickering, relying on initialUser is better.
-      
       const currentUser = initialUser || (await supabase.auth.getUser()).data.user
       if (!initialUser && currentUser) {
         setUser(currentUser)
       }
-      
+
       if (currentUser) {
         try {
           const count = await getCartItemCount()
           setCartCount(count)
-          
-          // Check if user is admin
+
           const { data: userData } = await supabase
             .from('users')
             .select('role')
@@ -68,7 +67,6 @@ export function Navbar({ user: initialUser }: NavbarProps) {
 
     getUser()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null)
@@ -97,7 +95,6 @@ export function Navbar({ user: initialUser }: NavbarProps) {
     return () => subscription.unsubscribe()
   }, [supabase.auth])
 
-  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isUserMenuOpen) {
@@ -125,177 +122,125 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+    <nav className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex items-center justify-between h-16 gap-3">
           {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center group">
-              <div className="relative w-12 h-12 transition-transform duration-300 group-hover:scale-110">
-                <Image
-                  src="/logo.png"
-                  alt="Rezzy Logo"
-                  width={48}
-                  height={48}
-                  className="object-contain"
-                  priority
-                  onError={(e) => {
-                    // Fallback to text if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = '<div class="text-2xl font-bold text-primary">Rezzy</div>';
-                    }
-                  }}
-                />
-              </div>
-            </Link>
+          <Link href="/" className="flex items-center flex-shrink-0 group" aria-label="Rezzy home">
+            <span className="relative w-11 h-11 transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Rezzy"
+                width={44}
+                height={44}
+                className="object-contain"
+                priority
+              />
+            </span>
+          </Link>
+
+          {/* Desktop search */}
+          <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-sm">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search jobs, companies…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 rounded-full bg-gray-100 border border-transparent text-sm text-gray-900 placeholder:text-xs placeholder:text-gray-400 focus:bg-white focus:border-primary-400 focus:ring-2 focus:ring-primary-100 focus:outline-none transition-colors"
+              />
+            </div>
+          </form>
+
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1 lg:gap-2">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-full transition-colors whitespace-nowrap"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
 
-          {/* Spacer between logo and navigation */}
-          <div className="w-4" />
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/"
-              className="text-gray-700 hover:text-primary transition-colors font-medium"
-            >
-              Home
-            </Link>
-            <Link
-              href="/jobs"
-              className="text-gray-700 hover:text-primary transition-colors font-medium"
-            >
-              Jobs
-            </Link>
-            <Link
-              href="/resume-services"
-              className="text-gray-700 hover:text-primary transition-colors"
-            >
-              Resume Services
-            </Link>
-            <Link
-              href="/about-us"
-              className="text-gray-700 hover:text-primary transition-colors"
-            >
-              About Us
-            </Link>
-            <Link
-              href="/contact-us"
-              className="text-gray-700 hover:text-primary transition-colors"
-            >
-              Contact Us
-            </Link>
+          {/* Right actions */}
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
             <Link
               href="/cart"
-              className="text-gray-700 hover:text-primary transition-colors"
+              className="relative p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Cart"
             >
-              Cart
-            </Link>
-          </div>
-
-          {/* Search Bar */}
-          <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search jobs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4"
-                />
-              </div>
-            </form>
-          </div>
-
-          {/* Auth Buttons and User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Cart Icon */}
-            <Link href="/cart" className="relative p-2 text-gray-700 hover:text-primary transition-colors">
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-semibold">
                   {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </Link>
 
             {user ? (
-              /* User Menu */
               <div className="relative" data-user-menu>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-primary transition-colors"
+                  className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
+                  <span className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-semibold">
                       {user.email?.charAt(0).toUpperCase() || 'U'}
                     </span>
-                  </div>
-                  <span className="text-sm font-medium">{user.email?.split('@')[0] || 'User'}</span>
+                  </span>
+                  <span className="text-sm font-medium text-gray-800 max-w-[120px] truncate hidden lg:inline">
+                    {user.email?.split('@')[0] || 'User'}
+                  </span>
                 </button>
 
-                {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-large border border-gray-200 py-1 z-50">
-                    <Link
-                      href="/profile"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4 mr-3" />
-                      Profile
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <Settings className="h-4 w-4 mr-3" />
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-card-hover border border-border py-1.5 z-50">
+                    <div className="px-4 py-2 border-b border-border mb-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.email?.split('@')[0]}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <Link href="/dashboard" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
+                      <LayoutDashboard className="h-4 w-4 mr-3 text-gray-400" />
                       Dashboard
                     </Link>
+                    <Link href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
+                      <User className="h-4 w-4 mr-3 text-gray-400" />
+                      Profile
+                    </Link>
+                    <Link href="/applications" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
+                      <Briefcase className="h-4 w-4 mr-3 text-gray-400" />
+                      My Applications
+                    </Link>
                     {isAdmin && (
-                      <Link
-                        href="/admin"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Shield className="h-4 w-4 mr-3" />
+                      <Link href="/admin" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
+                        <Shield className="h-4 w-4 mr-3 text-gray-400" />
                         Admin Panel
                       </Link>
                     )}
                     {isSuperAdmin && (
-                      <Link
-                        href="/admin/roles"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Shield className="h-4 w-4 mr-3" />
+                      <Link href="/admin/roles" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
+                        <Settings className="h-4 w-4 mr-3 text-gray-400" />
                         Role management
                       </Link>
                     )}
-                    <hr className="my-1" />
-                    <button
-                      onClick={handleSignOut}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <LogOut className="h-4 w-4 mr-3" />
+                    <hr className="my-1 border-border" />
+                    <button onClick={handleSignOut} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <LogOut className="h-4 w-4 mr-3 text-gray-400" />
                       Sign Out
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              /* Sign In / Get Started */
-              <div className="flex items-center space-x-3">
-                <Button variant="ghost" asChild>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
                   <Link href="/auth/login">Sign In</Link>
                 </Button>
-                <Button asChild>
+                <Button size="sm" asChild>
                   <Link href="/auth/register">Get Started</Link>
                 </Button>
               </div>
@@ -303,148 +248,73 @@ export function Navbar({ user: initialUser }: NavbarProps) {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
+          <div className="flex items-center gap-1 md:hidden">
+            <Link href="/cart" className="relative p-2 text-gray-600 hover:text-primary-600 rounded-full" aria-label="Cart">
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 bg-accent text-white text-[10px] rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center font-semibold">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
               )}
-            </Button>
+            </Link>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Menu"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
-              {/* Mobile Search */}
-              <form onSubmit={handleSearch} className="mb-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    type="text"
-                    placeholder="Search jobs..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4"
-                  />
-                </div>
-              </form>
-
-              {/* Mobile Links */}
-              <Link
-                href="/"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link
-                href="/jobs"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Jobs
-              </Link>
-              <Link
-                href="/resume-services"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Resume Services
-              </Link>
-              <Link
-                href="/about-us"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                About Us
-              </Link>
-              <Link
-                href="/contact-us"
-                className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Contact Us
-              </Link>
-
-              {/* Mobile Cart */}
-              <Link
-                href="/cart"
-                className="flex items-center px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Cart
-                {cartCount > 0 && (
-                  <span className="ml-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                    {cartCount > 99 ? '99+' : cartCount}
-                  </span>
-                )}
-              </Link>
-
-              {/* Mobile Auth Buttons */}
-              <div className="pt-4 space-y-2">
-                {user ? (
-                  <>
-                    <Link
-                      href="/profile"
-                      className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    {isAdmin && (
-                      <Link
-                        href="/admin"
-                        className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Admin Panel
-                      </Link>
-                    )}
-                    {isSuperAdmin && (
-                      <Link
-                        href="/admin/roles"
-                        className="block px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Role management
-                      </Link>
-                    )}
-                    <button
-                      onClick={() => {
-                        handleSignOut()
-                        setIsMenuOpen(false)
-                      }}
-                      className="block w-full text-left px-3 py-2 text-gray-700 hover:text-primary transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Button variant="ghost" className="w-full justify-start" asChild>
-                      <Link href="/auth/login">Sign In</Link>
-                    </Button>
-                    <Button className="w-full" asChild>
-                      <Link href="/auth/register">Get Started</Link>
-                    </Button>
-                  </>
-                )}
+          <div className="md:hidden border-t border-border py-3 space-y-1">
+            <form onSubmit={handleSearch} className="mb-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search jobs, companies…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 rounded-full bg-gray-100 text-sm text-gray-900 placeholder:text-gray-500 focus:bg-white focus:ring-2 focus:ring-primary-200 focus:outline-none"
+                />
               </div>
+            </form>
+
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="pt-3 border-t border-border space-y-1">
+              {user ? (
+                <>
+                  <Link href="/dashboard" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
+                  <Link href="/profile" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Profile</Link>
+                  <Link href="/applications" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>My Applications</Link>
+                  {isAdmin && (
+                    <Link href="/admin" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Admin Panel</Link>
+                  )}
+                  <button onClick={() => { handleSignOut(); setIsMenuOpen(false) }} className="block w-full text-left px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg">Sign Out</button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 px-1 pt-1">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+                  </Button>
+                  <Button className="w-full" asChild>
+                    <Link href="/auth/register" onClick={() => setIsMenuOpen(false)}>Get Started</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

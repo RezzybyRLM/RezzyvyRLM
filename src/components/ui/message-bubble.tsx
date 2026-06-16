@@ -356,7 +356,7 @@ export function MessageBubble({
             message.id.startsWith('temp-') ? (
               <Check className={`h-3.5 w-3.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             ) : (message.read_by && message.read_by.length > 0) || message.is_read ? (
-              <CheckCheck className="h-3.5 w-3.5 text-sky-400" />
+              <CheckCheck className="h-3.5 w-3.5 text-primary-400" />
             ) : (
               <CheckCheck className={`h-3.5 w-3.5 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} />
             )
@@ -486,8 +486,8 @@ export function MessageBubble({
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="bg-sky-50 p-2 rounded-full">
-                      <CheckCheck className="h-5 w-5 text-sky-400" />
+                    <div className="bg-primary-50 p-2 rounded-full">
+                      <CheckCheck className="h-5 w-5 text-primary-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">Read</p>

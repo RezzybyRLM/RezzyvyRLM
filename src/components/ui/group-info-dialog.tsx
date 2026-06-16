@@ -412,7 +412,7 @@ export function GroupInfoDialog({ conversationId, isOpen, onClose, onUpdate }: G
                                                     </Avatar>
                                                     <span className="text-sm">{user.full_name || user.email}</span>
                                                 </div>
-                                                <UserPlus className="h-3 w-3 text-blue-500" />
+                                                <UserPlus className="h-3 w-3 text-primary-500" />
                                             </div>
                                         ))}
                                     </div>
@@ -437,7 +437,7 @@ export function GroupInfoDialog({ conversationId, isOpen, onClose, onUpdate }: G
                                                 </div>
                                                 <div className="text-xs text-gray-500 flex items-center gap-1">
                                                     {member.role === 'admin' ? (
-                                                        <span className="text-blue-600 font-semibold flex items-center">
+                                                        <span className="text-primary-600 font-semibold flex items-center">
                                                             <Shield className="h-3 w-3 mr-0.5" /> Group Admin
                                                         </span>
                                                     ) : (

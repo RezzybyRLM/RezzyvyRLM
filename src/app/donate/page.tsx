@@ -216,8 +216,8 @@ export default function DonatePage() {
                   </div>
 
                   <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Code className="h-4 w-4 text-blue-600" />
+                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Code className="h-4 w-4 text-primary-600" />
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">Improve AI Features</h4>
@@ -228,8 +228,8 @@ export default function DonatePage() {
                   </div>
 
                   <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Server className="h-4 w-4 text-purple-600" />
+                    <div className="w-8 h-8 bg-secondary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Server className="h-4 w-4 text-secondary" />
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">Maintain Infrastructure</h4>

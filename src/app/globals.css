@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom CSS Variables for Professional Color Palette */
+/* Custom CSS Variables — Rezzy brand palette (coral / brown / red) */
 :root {
-  --primary: 59 130 246; /* LinkedIn Blue #3B82F6 */
-  --primary-dark: 29 78 216; /* Darker Blue #1D4ED8 */
-  --secondary: 139 92 246; /* Purple #8B5CF6 */
-  --accent: 245 101 101; /* Brand Orange #F56565 */
-  --success: 34 197 94; /* Green #22C55E */
+  --primary: 255 107 107; /* Coral #FF6B6B */
+  --primary-dark: 211 47 42; /* Deep coral/red #D32F2A */
+  --secondary: 93 64 55; /* Warm dark brown #5D4037 */
+  --accent: 217 4 41; /* Feather red #D90429 */
+  --success: 22 163 74; /* Green #16A34A */
   --warning: 245 158 11; /* Amber #F59E0B */
   --error: 239 68 68; /* Red #EF4444 */
   --gray-50: 249 250 251;
@@ -52,7 +52,7 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: rgb(var(--gray-900));
-  background-color: rgb(var(--gray-50));
+  background-color: #F3F2EF;
 }
 
 /* Custom Animations */
@@ -188,6 +188,36 @@ body {
     transform: translateY(-10px);
   }
 }
+
+/* Loader animations */
+@keyframes loaderBar {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+@keyframes loaderDot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes loaderPulse {
+  0%, 100% { transform: scale(0.92); }
+  50% { transform: scale(1); }
+}
+.animate-loader-bar { animation: loaderBar 1s ease-in-out infinite; }
+.animate-loader-dot { animation: loaderDot 0.9s ease-in-out infinite; }
+.animate-loader-pulse { animation: loaderPulse 1.1s ease-in-out infinite; }
+
+/* Homepage hero ambience */
+@keyframes blobDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -18px) scale(1.08); }
+  66% { transform: translate(-18px, 14px) scale(0.96); }
+}
+.animate-blob { animation: blobDrift 14s ease-in-out infinite; }
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-floatY { animation: floatY 5s ease-in-out infinite; }
 
 @keyframes scaleIn {
   from {
@@ -343,19 +373,19 @@ body {
 
 /* Professional Button Styles */
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105;
+  @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105;
 }
 
 .btn-secondary {
-  @apply bg-white border-2 border-gray-300 hover:border-blue-500 text-gray-700 hover:text-blue-600 font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300;
+  @apply bg-white border-2 border-gray-300 hover:border-primary-400 text-gray-700 hover:text-primary-600 font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300;
 }
 
 .btn-outline {
-  @apply border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300;
+  @apply border-2 border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300;
 }
 
 .btn-ghost {
-  @apply text-blue-600 bg-blue-100 font-medium py-2 px-4 rounded-lg transition-all duration-300 border border-blue-200;
+  @apply text-primary-700 bg-primary-100 font-medium py-2 px-4 rounded-lg transition-all duration-300 border border-primary-200;
 }
 
 /* Card Styles */
@@ -373,7 +403,7 @@ body {
 
 /* Form Styles */
 .input-professional {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white text-gray-900;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white text-gray-900 placeholder:text-xs placeholder:text-gray-400;
 }
 
 .input-floating {
@@ -381,7 +411,7 @@ body {
 }
 
 .input-floating input {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white;
 }
 
 .input-floating label {
@@ -390,7 +420,7 @@ body {
 
 .input-floating input:focus + label,
 .input-floating input:not(:placeholder-shown) + label {
-  @apply -top-2 left-2 text-xs text-blue-600 bg-white px-2;
+  @apply -top-2 left-2 text-xs text-primary-600 bg-white px-2;
 }
 
 /* Progress Bar Styles */
@@ -399,7 +429,7 @@ body {
 }
 
 .progress-fill {
-  @apply h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-1000 ease-out;
+  @apply h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-1000 ease-out;
 }
 
 /* Loading States */
@@ -444,7 +474,7 @@ body {
 
 /* Focus States */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
 }
 
 /* Scrollbar Styling */

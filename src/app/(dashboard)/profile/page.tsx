@@ -667,7 +667,7 @@ export default function ProfilePage() {
                       <TrendingUp className="h-4 w-4 text-gray-500" />
                       <span className="text-sm text-gray-600">Account type</span>
                     </div>
-                    <Badge className="bg-blue-100 text-blue-700 border-0">Free</Badge>
+                    <Badge className="bg-primary-100 text-primary-700 border-0">Free</Badge>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
@@ -710,7 +710,7 @@ export default function ProfilePage() {
           {userProfiles.length === 0 ? (
             <Card className="card-professional">
               <CardContent className="p-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-6">
                   <Briefcase className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">No profiles yet</h3>
@@ -788,7 +788,7 @@ export default function ProfilePage() {
                               <Badge 
                                 key={index} 
                                 variant="outline" 
-                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                className="text-xs bg-primary-50 text-primary-700 border-primary-200"
                               >
                                 {skill}
                               </Badge>

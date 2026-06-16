@@ -22,7 +22,7 @@ export function StripeStatusBanner() {
 
   if (!live) {
     return (
-      <Alert className="border-blue-200 bg-blue-50/90 text-blue-950">
+      <Alert className="border-primary-200 bg-primary-50/90 text-primary-900">
         <AlertDescription>Stripe test keys are loaded. Card charges are simulated.</AlertDescription>
       </Alert>
     )

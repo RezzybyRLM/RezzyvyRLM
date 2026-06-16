@@ -499,7 +499,7 @@ export default function JobsPage() {
                           setDateFilter(filter)
                           setShowDateDropdown(false)
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${dateFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${dateFilter === filter ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700'
                           }`}
                       >
                         {filter === 'anytime' ? 'Any time' : filter === 'today' ? 'Today' : filter === '3days' ? 'Past 3 days' : filter === 'week' ? 'Past week' : 'Past month'}
@@ -546,7 +546,7 @@ export default function JobsPage() {
                           setRemoteFilter(filter)
                           setShowRemoteDropdown(false)
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${remoteFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${remoteFilter === filter ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700'
                           }`}
                       >
                         {filter === 'all' ? 'All' : filter === 'remote' ? 'Remote' : filter === 'hybrid' ? 'Hybrid' : 'On-site'}
@@ -587,7 +587,7 @@ export default function JobsPage() {
                           setSalaryFilter(filter)
                           setShowSalaryDropdown(false)
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${salaryFilter === filter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${salaryFilter === filter ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700'
                           }`}
                       >
                         {filter === 'all' ? 'Any salary' : `$${filter}+`}
@@ -651,7 +651,7 @@ export default function JobsPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-0">
+                  <div className="space-y-3">
                     {jobs.map((job, index) => {
                       const isSelected = selectedJob?.id === job.id
                       const isVisited = visitedJobs.has(job.id)
@@ -660,35 +660,30 @@ export default function JobsPage() {
                       return (
                         <motion.div
                           key={job.id}
-                          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          whileHover={{ scale: 1.01, backgroundColor: 'rgba(59, 130, 246, 0.03)' }}
-                          whileTap={{ scale: 0.99 }}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.3) }}
                           onClick={() => handleJobClick(job)}
-                          className={`relative border-l-4 cursor-pointer transition-all duration-300 ${isSelected
-                            ? 'border-l-blue-600 bg-blue-50 shadow-md ring-1 ring-blue-600/10'
-                            : 'border-l-transparent border-b border-gray-200 bg-white'
-                            } ${isVisited && !isSelected ? 'opacity-90' : ''}`}
+                          className={`group relative rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-card-hover ${isSelected
+                            ? 'border-primary-500 ring-1 ring-primary-500 shadow-card-hover'
+                            : 'border-border hover:border-primary-200'
+                            } ${isVisited && !isSelected ? 'bg-gray-50/60' : ''}`}
                         >
                           {isSelected && (
-                            <motion.div
-                              layoutId="active-job-indicator"
-                              className="absolute inset-0 bg-blue-100/10 pointer-events-none"
-                            />
+                            <span className="absolute left-0 top-4 bottom-4 w-1 rounded-r bg-primary-500" />
                           )}
                           <div className="p-5">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className={`text-lg font-semibold line-clamp-2 transition-colors ${isSelected
-                                    ? 'text-blue-600'
-                                    : 'text-black'
+                                    ? 'text-primary-600'
+                                    : 'text-gray-900 group-hover:text-primary-600'
                                     }`}>
                                     {job.title}
                                   </h3>
                                   {job.is_featured && (
-                                    <Badge className="bg-primary text-white text-xs px-2 py-0.5">
+                                    <Badge className="bg-primary-500 text-white text-xs px-2 py-0.5">
                                       Featured
                                     </Badge>
                                   )}
@@ -736,9 +731,9 @@ export default function JobsPage() {
                               </div>
                               <button
                                 onClick={(e) => handleBookmark(job, e)}
-                                className={`flex-shrink-0 p-2 rounded-md transition-colors ${isBookmarked
-                                  ? 'text-yellow-500 hover:text-yellow-600'
-                                  : 'text-gray-400 hover:text-gray-600'
+                                className={`flex-shrink-0 p-2 rounded-full transition-colors ${isBookmarked
+                                  ? 'text-primary-600 hover:text-primary-700 bg-primary-50'
+                                  : 'text-gray-400 hover:text-primary-600 hover:bg-gray-100'
                                   }`}
                                 type="button"
                               >
@@ -847,7 +842,7 @@ export default function JobsPage() {
                           </div>
                         </div>
                       ) : matchScore !== null ? (
-                        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="mb-4 p-4 bg-primary-50 rounded-lg border border-primary-100">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-gray-700">Match Score</p>
@@ -858,7 +853,7 @@ export default function JobsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className="text-2xl font-bold text-blue-600">
+                              <div className="text-2xl font-bold text-primary-600">
                                 {matchScore}%
                               </div>
                               <div className="w-16 h-16 relative">
@@ -881,10 +876,10 @@ export default function JobsPage() {
                                     fill="none"
                                     strokeDasharray={`${2 * Math.PI * 28}`}
                                     strokeDashoffset={`${2 * Math.PI * 28 * (1 - matchScore / 100)}`}
-                                    className={`transition-all duration-500 ${matchScore >= 80 ? 'text-green-500' :
-                                      matchScore >= 60 ? 'text-blue-500' :
-                                        matchScore >= 40 ? 'text-yellow-500' :
-                                          'text-orange-500'
+                                    className={`transition-all duration-500 ${matchScore >= 80 ? 'text-success' :
+                                      matchScore >= 60 ? 'text-primary-500' :
+                                        matchScore >= 40 ? 'text-warning' :
+                                          'text-accent'
                                       }`}
                                   />
                                 </svg>
@@ -903,7 +898,7 @@ export default function JobsPage() {
                       <div className="flex gap-3">
                         <Button
                           onClick={() => setShowApplicationModal(true)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                          className="flex-1"
                           type="button"
                         >
                           <Mail className="mr-2 h-4 w-4" />
@@ -913,7 +908,7 @@ export default function JobsPage() {
                           variant="outline"
                           size="icon"
                           onClick={(e) => handleBookmark(selectedJob, e)}
-                          className={bookmarkedJobs.has(selectedJob.id) ? 'text-yellow-500' : ''}
+                          className={bookmarkedJobs.has(selectedJob.id) ? 'text-primary-600 bg-primary-50' : ''}
                           type="button"
                         >
                           <Bookmark className={`h-4 w-4 ${bookmarkedJobs.has(selectedJob.id) ? 'fill-current' : ''}`} />
@@ -1002,7 +997,7 @@ export default function JobsPage() {
                     {selectedJob.application_instructions && (
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-3">How to Apply</h3>
-                        <div className="text-gray-700 whitespace-pre-wrap bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="text-gray-700 whitespace-pre-wrap bg-primary-50 border border-primary-100 rounded-lg p-4">
                           {selectedJob.application_instructions}
                         </div>
                       </div>
@@ -1041,7 +1036,7 @@ export default function JobsPage() {
                                 href={selectedJob.company.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center gap-1 text-sm font-medium"
+                                className="text-primary-600 hover:underline flex items-center gap-1 text-sm font-medium"
                               >
                                 View company page
                                 <ExternalLink className="h-4 w-4" />

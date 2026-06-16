@@ -173,7 +173,7 @@ export default function ApplicationsReceivedPage() {
       case 'rejected':
         return <Badge className="bg-red-100 text-red-800">Rejected</Badge>
       case 'interview':
-        return <Badge className="bg-blue-100 text-blue-800">Interview</Badge>
+        return <Badge className="bg-primary-100 text-primary-800">Interview</Badge>
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
       default:

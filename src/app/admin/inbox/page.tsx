@@ -67,7 +67,7 @@ export default function AdminInboxPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      new: { color: 'bg-blue-100 text-blue-800', label: 'New' },
+      new: { color: 'bg-primary-100 text-primary-800', label: 'New' },
       read: { color: 'bg-yellow-100 text-yellow-800', label: 'Read' },
       replied: { color: 'bg-green-100 text-green-800', label: 'Replied' },
       archived: { color: 'bg-gray-100 text-gray-800', label: 'Archived' },

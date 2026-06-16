@@ -427,7 +427,7 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
                     setSelectedLanguage(e.target.value)
                     geminiVoiceService.setLanguage(e.target.value)
                   }}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <option key={lang.code} value={lang.code}>
@@ -452,7 +452,7 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
                       onClick={() => setSelectedVoiceProfile(profile)}
                       className={`p-3 border rounded-lg text-left transition-colors ${
                         selectedVoiceProfile.name === profile.name
-                          ? 'border-blue-600 bg-blue-50'
+                          ? 'border-primary-600 bg-primary-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -496,9 +496,9 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-medium text-blue-900 mb-2">How it works:</h3>
-                <ul className="text-sm text-blue-800 space-y-1">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <h3 className="font-medium text-primary-900 mb-2">How it works:</h3>
+                <ul className="text-sm text-primary-800 space-y-1">
                   <li>• AI will ask you interview questions for your selected role</li>
                   <li>• Speak your answers naturally - AI will listen and analyze</li>
                   <li>• Get instant feedback and tips for improvement</li>

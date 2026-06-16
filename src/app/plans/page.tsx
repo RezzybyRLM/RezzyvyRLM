@@ -257,12 +257,12 @@ export default function PlansPage() {
       <Card
         key={plan.name}
         className={`glass-card relative flex flex-col border-0 shadow-lg transition-shadow hover:shadow-xl ${
-          plan.highlight ? 'ring-2 ring-blue-500/40 md:scale-[1.02]' : ''
+          plan.highlight ? 'ring-2 ring-primary-500/40 md:scale-[1.02]' : ''
         }`}
       >
         {plan.popular ? (
           <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
-            <span className={chipClass + ' bg-blue-600 text-white border-blue-500/30'}>Most popular</span>
+            <span className={chipClass + ' bg-primary-500 text-white border-primary-500/30'}>Most popular</span>
           </div>
         ) : null}
         <CardHeader className="pb-2">
@@ -289,7 +289,7 @@ export default function PlansPage() {
               plan.isFree
                 ? 'bg-slate-700 hover:bg-slate-800'
                 : plan.highlight
-                  ? 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-primary-500 hover:bg-primary-600'
                   : 'bg-slate-900 hover:bg-slate-800'
             }`}
             onClick={() => handleSelectPlan(plan)}
@@ -318,7 +318,7 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100/90 via-white to-blue-50/80">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50/60 via-white to-secondary-50/40">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.12),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.08),transparent_45%)]" />
       <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <div className="mb-8 max-w-2xl mx-auto">
@@ -343,11 +343,11 @@ export default function PlansPage() {
             </p>
           ) : null}
           <p className="mt-3 text-sm text-slate-500">
-            <Link href="/settings/plan" className="font-medium text-blue-600 underline-offset-4 hover:underline">
+            <Link href="/settings/plan" className="font-medium text-primary-600 underline-offset-4 hover:underline">
               Plan settings
             </Link>
             {' · '}
-            <Link href="/dashboard" className="font-medium text-blue-600 underline-offset-4 hover:underline">
+            <Link href="/dashboard" className="font-medium text-primary-600 underline-offset-4 hover:underline">
               Back to dashboard
             </Link>
           </p>
@@ -385,8 +385,8 @@ export default function PlansPage() {
 
         <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="glass-card rounded-xl p-6 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
-              <Zap className="h-6 w-6 text-blue-600" />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-500/10">
+              <Zap className="h-6 w-6 text-primary-600" />
             </div>
             <h3 className="mb-2 text-base font-semibold text-slate-900">Fast checkout</h3>
             <p className="text-sm text-slate-600">Stripe-hosted payment page; cards handled by Stripe.</p>
@@ -399,8 +399,8 @@ export default function PlansPage() {
             <p className="text-sm text-slate-600">Labels and chips use high-contrast text for readability.</p>
           </div>
           <div className="glass-card rounded-xl p-6 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10">
-              <Shield className="h-6 w-6 text-violet-600" />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10">
+              <Shield className="h-6 w-6 text-secondary" />
             </div>
             <h3 className="mb-2 text-base font-semibold text-slate-900">Secure</h3>
             <p className="text-sm text-slate-600">Subscriptions and one-time packages both use Checkout.</p>

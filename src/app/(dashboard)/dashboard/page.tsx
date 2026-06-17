@@ -151,7 +151,7 @@ export default function DashboardPage() {
     return () => {
       mounted = false
     }
-  }, [router, supabase])
+  }, [supabase])
 
   const fetchStats = async (userId: string) => {
     const [resumeResult, bookmarkResult, alertResult, interviewResult, applicationsResult] =

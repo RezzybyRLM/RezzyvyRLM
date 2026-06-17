@@ -57,7 +57,7 @@ export default function BookmarksPage() {
     }
 
     fetchBookmarks()
-  }, [router, supabase])
+  }, [supabase])
 
   const handleRemoveBookmark = async (bookmarkId: string) => {
     try {

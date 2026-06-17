@@ -189,7 +189,7 @@ export default function ProfilePage() {
       mounted = false
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [router, supabase])
+  }, [supabase])
 
   const handleSetDefaultProfile = async (profileId: string) => {
     try {

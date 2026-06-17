@@ -153,7 +153,7 @@ export default function ResumeManagerPage() {
     return () => {
       mounted = false
     }
-  }, [router, supabase])
+  }, [supabase])
 
   const fetchResumes = async () => {
     try {

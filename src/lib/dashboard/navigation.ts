@@ -11,6 +11,7 @@ import {
   Building2,
   Shield,
   ClipboardList,
+  Send,
 } from 'lucide-react'
 
 export type DashboardNavGroup = 'main' | 'hiring' | 'staff'
@@ -26,6 +27,7 @@ const MAIN: DashboardNavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutGrid, group: 'main' },
   { name: 'Profile', href: '/profile', icon: UserRound, group: 'main' },
   { name: 'Jobs', href: '/job-board', icon: BriefcaseBusiness, group: 'main' },
+  { name: 'Applications', href: '/applications', icon: Send, group: 'main' },
   { name: 'Messages', href: '/messages', icon: MessageSquare, group: 'main' },
   { name: 'Resume Manager', href: '/resume-manager', icon: FileStack, group: 'main' },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark, group: 'main' },

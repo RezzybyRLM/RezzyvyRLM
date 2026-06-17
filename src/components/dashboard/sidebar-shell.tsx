@@ -19,7 +19,15 @@ import {
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
+
+// WebGL ambient is client-only (three.js) and purely decorative — load it lazily
+// so it never blocks first paint or SSR.
+const DashboardAmbient = dynamic(
+  () => import('@/components/dashboard/dashboard-ambient'),
+  { ssr: false }
+)
 import { getDashboardNavigation, navGroupLabel } from '@/lib/dashboard/navigation'
 import { cn } from '@/lib/utils'
 
@@ -174,7 +182,13 @@ export function SidebarShell({
   }, [profileMenuOpen])
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-background">
+    <div className="relative flex min-h-screen overflow-hidden bg-background">
+      {/* Brand WebGL ambient — subtle coral/brown haze behind the glass chrome,
+          shown to every user type. Fixed + low opacity so it never competes with
+          content and stays cheap while scrolling. */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-60" aria-hidden>
+        <DashboardAmbient />
+      </div>
       {/* Sidebar - Desktop */}
       <aside
         className={cn(
@@ -330,7 +344,7 @@ export function SidebarShell({
       </aside>
 
       {/* Main Container */}
-      <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-white/25 bg-white/70 px-4 shadow-sm backdrop-blur-xl md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
@@ -376,7 +390,7 @@ export function SidebarShell({
           </div>
         </header>
 
-        <main className="relative flex-1 overflow-y-auto bg-background">
+        <main className="relative flex-1 overflow-y-auto bg-background/70">
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.35]"
             aria-hidden

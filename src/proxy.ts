@@ -1,21 +1,48 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { canAccessAdminConsole, canAccessEmployerDashboard } from '@/lib/auth/permissions'
+import {
+  canAccessAdminConsole,
+  canAccessEmployerDashboard,
+  isStaffRole,
+} from '@/lib/auth/permissions'
 
 /**
  * Server auth gate (Next 16 `proxy` convention, formerly `middleware`).
  *
- * This is the SINGLE source of truth for auth redirects. It runs on every
- * matched request, validates the session via getUser() and — critically —
- * writes refreshed auth cookies onto the response. That means an expired access
- * token is transparently refreshed here (as long as the refresh token is still
- * valid), so a hard refresh or returning after a long idle "just works" with no
- * client redirect, flash, or loop. Client pages/layouts NEVER redirect on auth.
+ * SINGLE source of truth for auth redirects. It runs on every matched request,
+ * validates the session with `getUser()` and writes refreshed auth cookies onto
+ * the response — so an expired access token is transparently refreshed here (as
+ * long as the refresh token is valid). A hard refresh after a long idle "just
+ * works": no client redirect, no flash, no loop. Pages/layouts NEVER redirect
+ * on auth; they trust the cookies this gate already settled.
  */
+
+/** Routes that require a signed-in user. `/jobs` & `/job-board` stay public so
+ *  visitors can browse before signing in. */
+const PROTECTED = [
+  '/onboarding',
+  '/dashboard',
+  '/profile',
+  '/profiles',
+  '/resume-manager',
+  '/bookmarks',
+  '/job-alerts',
+  '/interview-pro',
+  '/employer',
+  '/cart',
+  '/applications',
+  '/messages',
+  '/feed',
+  '/admin',
+  '/settings',
+]
+const AUTH_ROUTES = ['/auth/login', '/auth/register']
+
+const startsWithAny = (pathname: string, prefixes: string[]) =>
+  prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(p))
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  })
+  let response = NextResponse.next({ request: { headers: request.headers } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,14 +53,8 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value)
-          })
-
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
-
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request: { headers: request.headers } })
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, {
               ...options,
@@ -55,86 +76,69 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const isProtected = startsWithAny(pathname, PROTECTED)
+  const isAuthRoute = startsWithAny(pathname, AUTH_ROUTES)
 
-  // Routes that require a signed-in user. `/jobs` and `/job-board` are
-  // intentionally public so visitors can browse before signing in.
-  const protectedRoutes = [
-    '/onboarding',
-    '/dashboard',
-    '/profile',
-    '/profiles',
-    '/resume-manager',
-    '/bookmarks',
-    '/job-alerts',
-    '/interview-pro',
-    '/employer',
-    '/cart',
-    '/applications',
-    '/messages',
-    '/feed',
-    '/admin',
-    '/settings',
-  ]
-  const authRoutes = ['/auth/login', '/auth/register']
-
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
-
-  // 1) Guests hitting a protected route → login, remembering where they wanted
-  //    to go so they return there afterwards.
-  if (isProtectedRoute && !user) {
+  // 1) Guest hitting a protected route → login, remembering the destination.
+  if (isProtected && !user) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  let onboardingCompleted: boolean | null = null
-  let appRole: string | null = null
+  // No signed-in user past this point means a public route → let it through.
+  if (!user) return response
 
-  if (user && (isAuthRoute || (isProtectedRoute && !pathname.startsWith('/onboarding')))) {
+  // Resolve onboarding + role once, only when a redirect decision needs it.
+  const needsProfile = isAuthRoute || (isProtected && !pathname.startsWith('/onboarding'))
+  let onboardingCompleted: boolean | null = null
+  let role = 'user'
+
+  if (needsProfile) {
     try {
-      const { data: userData } = await supabase
+      const { data } = await supabase
         .from('users')
         .select('onboarding_completed, role')
         .eq('id', user.id)
         .single()
-      onboardingCompleted = userData?.onboarding_completed ?? false
-      appRole = userData?.role ?? 'user'
+      onboardingCompleted = data?.onboarding_completed ?? false
+      role = data?.role ?? 'user'
     } catch (error) {
-      console.error('proxy: error reading user row', error)
+      console.error('proxy: failed to read user row', error)
       onboardingCompleted = false
-      appRole = 'user'
+      role = 'user'
     }
   }
 
-  // 2) Signed-in users shouldn't sit on login/register — send them home.
-  if (isAuthRoute && user) {
-    if (!onboardingCompleted) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
-    if (canAccessAdminConsole(appRole)) {
+  const staff = isStaffRole(role)
+
+  // 2) Signed-in users never sit on login/register → send them where they belong.
+  if (isAuthRoute) {
+    if (!onboardingCompleted) return NextResponse.redirect(new URL('/onboarding', request.url))
+    if (canAccessAdminConsole(role)) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     }
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // 3) Force incomplete onboarding before the rest of the app (staff may reach
-  //    /admin first).
-  if (isProtectedRoute && user && !pathname.startsWith('/onboarding')) {
-    if (onboardingCompleted === false) {
-      const staff = appRole === 'admin' || appRole === 'super_admin'
-      if (!(pathname.startsWith('/admin') && staff)) {
-        return NextResponse.redirect(new URL('/onboarding', request.url))
-      }
+  // 3) Force onboarding before the rest of the app (staff may reach /admin first).
+  if (isProtected && !pathname.startsWith('/onboarding') && onboardingCompleted === false) {
+    const adminAndStaff = pathname.startsWith('/admin') && staff
+    if (!adminAndStaff) {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
     }
   }
 
-  // 4) Employer workspace is employer-only.
+  // 4) Admin console is staff-only — bounce everyone else to their dashboard.
+  if (pathname.startsWith('/admin') && !canAccessAdminConsole(role)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // 5) Employer workspace is employer-only.
   if (
-    user &&
-    onboardingCompleted &&
     pathname.startsWith('/employer') &&
-    !canAccessEmployerDashboard(appRole)
+    onboardingCompleted &&
+    !canAccessEmployerDashboard(role)
   ) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

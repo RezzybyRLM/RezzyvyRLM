@@ -137,9 +137,15 @@ export default function MessagesPage() {
     let conversationsChannel: any = null
 
     const initialize = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // Resolve auth from the persisted session (never a blocking network
+      // getUser() that can return a transient null). Only a genuinely absent
+      // session is "signed out" — and then we send the visitor back to
+      // /messages after login, so an admin testing the member site is never
+      // bounced to the admin overview.
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) {
-        router.push('/auth/login')
+        router.replace(`/auth/login?redirectTo=${encodeURIComponent('/messages')}`)
         return
       }
       if (!mounted) return

@@ -33,9 +33,10 @@ export default function BookmarksPage() {
 
   useEffect(() => {
     const fetchBookmarks = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) {
-        router.push('/auth/login')
+        router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
         return
       }
 

@@ -4,36 +4,19 @@ import { usePathname } from 'next/navigation'
 import { Navbar } from './navbar'
 import { Footer } from './footer'
 import { User } from '@supabase/supabase-js'
+import { isDashboardPath } from '@/lib/dashboard/routes'
 
 export function ConditionalLayout({ children, user }: { children: React.ReactNode, user?: User | null }) {
   const pathname = usePathname()
 
-  // Dashboard routes that should not show navbar/footer (use sidebar instead)
-  // These routes are in the (dashboard) folder group and use DashboardLayout
-  const dashboardRoutes = [
-    '/dashboard',
-    '/profile',
-    '/resume-manager',
-    '/bookmarks',
-    '/job-alerts',
-    '/interview-pro',
-    '/employer',
-    '/feed',
-    '/messages',
-    '/applications',
-    '/profiles',
-  ]
-
-  // Check if it's exactly /jobs (listing page) or /jobs/[jobId] (detail page)
-  // Both are in (dashboard) folder and should use sidebar
-  const isJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
+  // Routes in the (dashboard) group and /admin own their own chrome (the
+  // dashboard sidebar or the marketing navbar via (dashboard)/layout.tsx, or
+  // the AdminShell). Returning bare children here is what prevents a second,
+  // stacked navbar from rendering on top of them.
   const isAdminRoute = pathname.startsWith('/admin')
 
-  const isDashboardRoute =
-    dashboardRoutes.some((route) => pathname.startsWith(route)) || isJobsPage
-
-  if (isDashboardRoute || isAdminRoute) {
-    // Return only children for dashboard routes
+  if (isDashboardPath(pathname) || isAdminRoute) {
+    // Return only children for dashboard/admin routes
     return <>{children}</>
   }
 

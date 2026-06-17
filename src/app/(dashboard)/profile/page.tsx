@@ -106,18 +106,19 @@ export default function ProfilePage() {
           }
         }, 10000)
 
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
+
         if (!mounted) {
           if (timeoutId) clearTimeout(timeoutId)
           setLoading(false)
           return
         }
 
-        if (userError || !user) {
+        if (!user) {
           if (mounted) {
             if (timeoutId) clearTimeout(timeoutId)
-            router.push('/auth/login')
+            router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
             setLoading(false)
           }
           return

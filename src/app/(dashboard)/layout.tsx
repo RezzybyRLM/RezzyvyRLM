@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
 import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
 import { getDashboardNavigation, navGroupLabel } from '@/lib/dashboard/navigation'
+import { canAccessAdminConsole, canAccessEmployerDashboard } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { Navbar } from '@/components/layout/navbar'
 import { Footer } from '@/components/layout/footer'
@@ -34,8 +35,14 @@ const iconClass = 'h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.5]'
 const SIDEBAR_STATE_KEY = 'dashboard-sidebar-collapsed'
 // Cache of the signed-in user's profile for instant render on refresh
 const PROFILE_CACHE_KEY = 'rezzy:profile'
-// Routes inside the dashboard group that are browsable without signing in
-const PUBLIC_PREFIXES = ['/jobs']
+// Admin console caches the role under its own key. We read it as a fallback so
+// an admin arriving from /admin keeps the sidebar instead of flashing the
+// member navbar before the profile fetch resolves. Keep in sync with admin-shell.
+const ADMIN_ROLE_CACHE_KEY = 'rezzy:adminRole'
+// Routes inside the dashboard group that are browsable without signing in.
+// These render the marketing navbar for guests and the dashboard sidebar for
+// signed-in users.
+const PUBLIC_PREFIXES = ['/jobs', '/job-board']
 
 export default function DashboardLayout({
   children,
@@ -50,7 +57,6 @@ export default function DashboardLayout({
   const [initialLoad, setInitialLoad] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [publicMode, setPublicMode] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -76,6 +82,11 @@ export default function DashboardLayout({
         setAppRole(c.role ?? 'user')
         setUser((prev: any) => prev ?? (c.email ? { email: c.email, id: c.id } : prev))
         setInitialLoad(false)
+      } else {
+        // No member profile cache, but the admin console may have cached a staff
+        // role — use it so admins render the sidebar straight away.
+        const adminRole = localStorage.getItem(ADMIN_ROLE_CACHE_KEY)
+        if (adminRole) setAppRole(adminRole)
       }
     } catch {
       /* ignore malformed cache */
@@ -93,7 +104,7 @@ export default function DashboardLayout({
   const headerSearchSubmit = (e: FormEvent) => {
     e.preventDefault()
     const q = headerSearch.trim()
-    if (q) router.push(`/jobs?q=${encodeURIComponent(q)}`)
+    if (q) router.push(`/job-board?q=${encodeURIComponent(q)}`)
   }
 
   const navIsActive = (href: string) =>
@@ -192,12 +203,24 @@ export default function DashboardLayout({
 
     // Fetch profile in the background — never blocks the shell from rendering.
     const loadProfile = async (authUser: User) => {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('full_name, avatar_url, role')
         .eq('id', authUser.id)
-        .single()
-      if (!profile || !mounted) return
+        .maybeSingle()
+      if (!mounted) return
+      if (error) {
+        // Transient fetch failure — keep whatever role we already have (e.g. an
+        // admin role hydrated from cache) instead of downgrading to a member
+        // and flipping an admin into the member navbar.
+        return
+      }
+      if (!profile) {
+        // Genuinely no profile row yet — treat as a regular member so we
+        // resolve the chrome (navbar vs sidebar) instead of hanging on loader.
+        setAppRole('user')
+        return
+      }
       setUserProfile(profile as any)
       setAppRole((profile as { role?: string }).role ?? 'user')
       try {
@@ -219,7 +242,6 @@ export default function DashboardLayout({
     const onAuthed = (authUser: User) => {
       if (!mounted) return
       setUser(authUser)
-      setPublicMode(false)
       setInitialLoad(false) // render immediately; profile hydrates in the background
       void loadProfile(authUser)
     }
@@ -231,7 +253,8 @@ export default function DashboardLayout({
       setAppRole(null)
       try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
       if (isPublicPath) {
-        setPublicMode(true)
+        // Guest browsing a public page (e.g. /jobs, /job-board): render the
+        // marketing navbar layout (decided below by role), no redirect.
         setInitialLoad(false)
       } else {
         const redirect = encodeURIComponent(pathname || '/dashboard')
@@ -272,9 +295,13 @@ export default function DashboardLayout({
       }
     })
 
-    // 3) Safety net: never let the workspace hang on the loader.
+    // 3) Safety net: never let the workspace hang on the loader. Also resolve a
+    //    still-unknown role to a regular member so the chrome decision (navbar
+    //    vs sidebar) can settle.
     const safety = setTimeout(() => {
-      if (mounted) setInitialLoad(false)
+      if (!mounted) return
+      setInitialLoad(false)
+      setAppRole((prev) => prev ?? 'user')
     }, 2500)
 
     return () => {
@@ -300,11 +327,22 @@ export default function DashboardLayout({
     return <BrandLoader />
   }
 
-  // Public browsing (e.g. /jobs while signed out): marketing chrome instead of the app shell
-  if (publicMode && !user) {
+  // Wait until we know an authed user's role before choosing chrome, so we
+  // never flash the navbar at an admin or the sidebar at a member.
+  if (user && appRole === null) {
+    return <BrandLoader />
+  }
+
+  // Only staff (admin/super_admin) and employers use the dashboard sidebar.
+  // Everyone else — guests and regular members — gets the marketing navbar
+  // layout (the same chrome as the homepage), on every page.
+  const usesSidebar =
+    canAccessAdminConsole(appRole) || canAccessEmployerDashboard(appRole)
+
+  if (!usesSidebar) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Navbar user={null} />
+        <Navbar user={user as User | null} />
         <main className="flex-1">{children}</main>
         <Footer />
       </div>

@@ -39,7 +39,7 @@ const nav = [
   { href: '/admin/billing', label: 'Billing', icon: CreditCard },
   { href: '/admin/inbox', label: 'Inbox', icon: Inbox },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
-  { href: '/jobs', label: 'Job board', icon: Compass },
+  { href: '/job-board', label: 'Job board', icon: Compass },
   { href: '/admin/org-invites', label: 'Org invites', icon: Link2 },
 ]
 

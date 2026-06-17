@@ -140,7 +140,7 @@ export default function DashboardPage() {
           setUser(session.user)
           await Promise.all([fetchStats(session.user.id), fetchDiscoveryJobs()])
         } else {
-          router.push('/auth/login')
+          router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
@@ -232,7 +232,7 @@ export default function DashboardPage() {
             <Link href="/profile">Edit profile</Link>
           </Button>
           <Button className="bg-primary text-white hover:bg-primary/90" asChild>
-            <Link href="/jobs">Browse jobs</Link>
+            <Link href="/job-board">Browse jobs</Link>
           </Button>
         </div>
       </section>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
         <div className="space-y-4 xl:col-span-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-text">Job discovery</h2>
-            <Link href="/jobs" className="text-sm font-medium text-primary hover:underline">
+            <Link href="/job-board" className="text-sm font-medium text-primary hover:underline">
               Open job search
             </Link>
           </div>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <Button className="bg-primary text-white hover:bg-primary/90" asChild>
-                  <Link href="/jobs">Browse jobs</Link>
+                  <Link href="/job-board">Browse jobs</Link>
                 </Button>
               </CardContent>
             </Card>

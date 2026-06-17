@@ -80,7 +80,7 @@ export default function ResumeManagerPage() {
           if (userError || !userData) {
             if (mounted) {
               clearTimeout(safetyTimeout)
-              router.push('/auth/login')
+              router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
               setLoading(false)
             }
             return

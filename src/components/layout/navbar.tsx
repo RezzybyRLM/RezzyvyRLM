@@ -3,20 +3,21 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Search, User, Menu, X, ShoppingCart, LogOut, Settings, Shield, Briefcase, LayoutDashboard } from 'lucide-react'
+import { Search, Menu, X, ShoppingCart, LogOut, Settings, Briefcase } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCartItemCount } from '@/lib/cart/actions'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import { signOut } from '@/lib/auth/signout'
-import { canAccessAdminConsole, canManageRoles } from '@/lib/auth/permissions'
+import { canManageRoles } from '@/lib/auth/permissions'
+import { getDashboardNavigation } from '@/lib/dashboard/navigation'
 
 interface NavbarProps {
   user?: SupabaseUser | null
 }
 
 const NAV_LINKS = [
-  { href: '/jobs', label: 'Find Jobs' },
+  { href: '/job-board', label: 'Find Jobs' },
   { href: '/companies', label: 'Companies' },
   { href: '/resume-services', label: 'Resume Services' },
   { href: '/plans', label: 'Pricing' },
@@ -28,8 +29,8 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const [user, setUser] = useState<SupabaseUser | null>(initialUser || null)
   const [cartCount, setCartCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [role, setRole] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
 
   // Compress + frost the navbar once the user scrolls past the hero fold.
@@ -63,14 +64,14 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             .eq('id', currentUser.id)
             .single()
 
-          setIsAdmin(canAccessAdminConsole(userData?.role))
           setIsSuperAdmin(canManageRoles(userData?.role))
+          setRole(userData?.role ?? 'user')
         } catch (error) {
           console.error('Failed to get cart count:', error)
         }
       } else {
-        setIsAdmin(false)
         setIsSuperAdmin(false)
+        setRole(null)
       }
     }
 
@@ -88,15 +89,15 @@ export function Navbar({ user: initialUser }: NavbarProps) {
               .select('role')
               .eq('id', session.user.id)
               .single()
-            setIsAdmin(canAccessAdminConsole(userData?.role))
             setIsSuperAdmin(canManageRoles(userData?.role))
+            setRole(userData?.role ?? 'user')
           } catch (error) {
             console.error('Failed to get cart count:', error)
           }
         } else {
           setCartCount(0)
-          setIsAdmin(false)
           setIsSuperAdmin(false)
+          setRole(null)
         }
       }
     )
@@ -126,9 +127,15 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      window.location.href = `/jobs?q=${encodeURIComponent(searchQuery.trim())}`
+      window.location.href = `/job-board?q=${encodeURIComponent(searchQuery.trim())}`
     }
   }
+
+  // Full member navigation for logged-in users (Dashboard, Profile, Jobs,
+  // Messages, Resume Manager, Bookmarks, Job Alerts, Interview Pro, plus
+  // role-specific items). Regular members rely on this menu instead of a
+  // sidebar, so it must expose every member destination.
+  const memberNav = getDashboardNavigation(role)
 
   return (
     <nav
@@ -213,29 +220,26 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-card-hover border border-border py-1.5 z-50">
+                  <div className="absolute right-0 mt-2 w-60 max-h-[80vh] overflow-y-auto bg-white rounded-xl shadow-card-hover border border-border py-1.5 z-50">
                     <div className="px-4 py-2 border-b border-border mb-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{user.email?.split('@')[0]}</p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
-                    <Link href="/dashboard" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
-                      <LayoutDashboard className="h-4 w-4 mr-3 text-gray-400" />
-                      Dashboard
-                    </Link>
-                    <Link href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
-                      <User className="h-4 w-4 mr-3 text-gray-400" />
-                      Profile
-                    </Link>
+                    {memberNav.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <item.icon className="h-4 w-4 mr-3 text-gray-400" />
+                        {item.name}
+                      </Link>
+                    ))}
                     <Link href="/applications" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
                       <Briefcase className="h-4 w-4 mr-3 text-gray-400" />
                       My Applications
                     </Link>
-                    {isAdmin && (
-                      <Link href="/admin" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
-                        <Shield className="h-4 w-4 mr-3 text-gray-400" />
-                        Admin Panel
-                      </Link>
-                    )}
                     {isSuperAdmin && (
                       <Link href="/admin/roles" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
                         <Settings className="h-4 w-4 mr-3 text-gray-400" />
@@ -312,11 +316,23 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             <div className="pt-3 border-t border-border space-y-1">
               {user ? (
                 <>
-                  <Link href="/dashboard" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
-                  <Link href="/profile" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Profile</Link>
-                  <Link href="/applications" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>My Applications</Link>
-                  {isAdmin && (
-                    <Link href="/admin" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Admin Panel</Link>
+                  {memberNav.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-3 px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <item.icon className="h-5 w-5 text-gray-400" />
+                      {item.name}
+                    </Link>
+                  ))}
+                  <Link href="/applications" className="flex items-center gap-3 px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>
+                    <Briefcase className="h-5 w-5 text-gray-400" />
+                    My Applications
+                  </Link>
+                  {isSuperAdmin && (
+                    <Link href="/admin/roles" className="block px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>Role management</Link>
                   )}
                   <button onClick={() => { handleSignOut(); setIsMenuOpen(false) }} className="block w-full text-left px-3 py-2.5 text-base font-medium text-gray-800 hover:bg-gray-50 rounded-lg">Sign Out</button>
                 </>

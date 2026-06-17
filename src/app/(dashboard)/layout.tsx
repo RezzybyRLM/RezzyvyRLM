@@ -239,19 +239,26 @@ export default function DashboardLayout({
       }
     }
 
-    // 1) Source of truth: getSession() reads the persisted session from storage
-    //    (refreshing if needed). Only this decides the "no session" path, so a
-    //    transient INITIAL_SESSION(null) during navigation can't false-redirect.
+    // A Supabase auth cookie means the visitor is signed in even if getSession()
+    // hasn't resolved yet — so we never flash the public/guest job board to a
+    // logged-in user. Public chrome is only for visitors with no auth cookie.
+    const hasAuthCookie =
+      typeof document !== 'undefined' && /(?:^|;\s*)sb-[^=]*-auth-token/.test(document.cookie)
+
+    // 1) Source of truth: getSession() reads the persisted session (refreshing
+    //    if needed). A null here only means "guest" when there's also no auth
+    //    cookie; otherwise it's a transient race and we wait for the auth event.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return
       if (session?.user) {
         onAuthed(session.user)
-      } else if (isPublicPath) {
-        // Logged-out browsing of a public page (e.g. /jobs)
+      } else if (isPublicPath && !hasAuthCookie) {
+        // Genuinely logged-out browsing of a public page (e.g. /jobs)
         onNoSession()
       }
-      // On a protected path a null here is a transient client race — middleware
-      // already gated auth, so don't redirect; wait for the auth event / safety.
+      // Otherwise (protected path, or public path with an auth cookie) a null is
+      // a transient client race — middleware already gated protected routes, so
+      // don't redirect/flip to guest; wait for the auth event / safety net.
     })
 
     // 2) React to live auth changes only; redirect to login solely on a real

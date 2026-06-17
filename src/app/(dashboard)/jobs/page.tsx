@@ -332,12 +332,19 @@ export default function JobsPage() {
     setSelectedJob(null)
   }
 
+  // Send a guest to sign in, returning them to exactly where they were on the
+  // job board afterwards (never the homepage).
+  const signInToContinue = (jobId?: string) => {
+    const here = jobId ? `/jobs?vjk=${jobId}` : `${window.location.pathname}${window.location.search}`
+    window.location.href = `/auth/login?redirectTo=${encodeURIComponent(here)}`
+  }
+
   const handleBookmark = async (job: Job, e: React.MouseEvent) => {
     e.stopPropagation()
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert('Please sign in to bookmark jobs')
+        signInToContinue(job.id)
         return
       }
 
@@ -897,7 +904,14 @@ export default function JobsPage() {
 
                       <div className="flex gap-3">
                         <Button
-                          onClick={() => setShowApplicationModal(true)}
+                          onClick={async () => {
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (!user) {
+                              signInToContinue(selectedJob.id)
+                              return
+                            }
+                            setShowApplicationModal(true)
+                          }}
                           className="flex-1"
                           type="button"
                         >

@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 
 const ADMIN_SIDEBAR_KEY = 'admin-sidebar-collapsed'
+const ADMIN_ROLE_KEY = 'rezzy:adminRole'
 
 const nav = [
   { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -55,6 +56,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const v = localStorage.getItem(ADMIN_SIDEBAR_KEY) === 'true'
     setCollapsed(v)
+    // Instant render from a cached admin role (validated in the background below)
+    try {
+      const cachedRole = localStorage.getItem(ADMIN_ROLE_KEY)
+      if (cachedRole && canAccessAdminConsole(cachedRole)) {
+        setIsSuperAdmin(canManageRoles(cachedRole))
+        setReady(true)
+      }
+    } catch {
+      /* storage unavailable */
+    }
   }, [])
 
   const toggleCollapsed = () => {
@@ -65,24 +76,59 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+
+    // Validate the session's role in the background. We resolve auth from the
+    // persisted session (getSession / INITIAL_SESSION) — no blocking network
+    // getUser() — so a refresh never hangs on the loader.
+    const validate = async (sessionUserId: string | null) => {
+      if (sessionUserId === null) {
+        try { localStorage.removeItem(ADMIN_ROLE_KEY) } catch {}
         router.replace('/auth/login?redirectTo=' + encodeURIComponent(pathname || '/admin/dashboard'))
         return
       }
-      const { data: row } = await supabase.from('users').select('role').eq('id', user.id).single()
+      const { data: row } = await supabase.from('users').select('role').eq('id', sessionUserId).single()
       if (cancelled) return
-      if (!row?.role || !canAccessAdminConsole(row.role)) {
+      const role = row?.role
+      if (!role || !canAccessAdminConsole(role)) {
+        try { localStorage.removeItem(ADMIN_ROLE_KEY) } catch {}
         setForbidden(true)
         setReady(true)
         return
       }
-      setIsSuperAdmin(canManageRoles(row.role))
+      try { localStorage.setItem(ADMIN_ROLE_KEY, role) } catch {}
+      setForbidden(false)
+      setIsSuperAdmin(canManageRoles(role))
       setReady(true)
-    })()
+    }
+
+    // 1) Instant: persisted session from storage (positive hits only).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session?.user) void validate(session.user.id)
+    })
+
+    // 2) Canonical signal — INITIAL_SESSION fires on mount with the restored
+    //    session or null; then live events.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+      if (event === 'SIGNED_OUT') {
+        try { localStorage.removeItem(ADMIN_ROLE_KEY) } catch {}
+        router.replace('/auth/login')
+      } else if (session?.user) {
+        void validate(session.user.id)
+      } else if (event === 'INITIAL_SESSION') {
+        void validate(null)
+      }
+    })
+
+    // 3) Safety net: never hang on the loader.
+    const safety = setTimeout(() => {
+      if (!cancelled) setReady(true)
+    }, 2500)
+
     return () => {
       cancelled = true
+      clearTimeout(safety)
+      subscription.unsubscribe()
     }
   }, [supabase, router, pathname])
 

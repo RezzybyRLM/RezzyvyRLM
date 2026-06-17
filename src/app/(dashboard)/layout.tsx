@@ -189,105 +189,88 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let mounted = true
-    const initializeUser = async () => {
+
+    // Fetch profile in the background — never blocks the shell from rendering.
+    const loadProfile = async (authUser: User) => {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, avatar_url, role')
+        .eq('id', authUser.id)
+        .single()
+      if (!profile || !mounted) return
+      setUserProfile(profile as any)
+      setAppRole((profile as { role?: string }).role ?? 'user')
       try {
-        let authUser: User | null = null
-        for (let attempt = 0; attempt < 10; attempt++) {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.user) {
-            authUser = session.user
-            break
-          }
-          const { data: { user: validated } } = await supabase.auth.getUser()
-          if (validated) {
-            authUser = validated
-            break
-          }
-          await new Promise((r) => setTimeout(r, 80))
-        }
-
-        if (!mounted) return
-
-        if (authUser) {
-          setUser(authUser)
-          setPublicMode(false)
-
-          const { data: profile } = await supabase
-            .from('users')
-            .select('full_name, avatar_url, role')
-            .eq('id', authUser.id)
-            .single()
-
-          if (profile && mounted) {
-            setUserProfile(profile as any)
-            setAppRole((profile as { role?: string }).role ?? 'user')
-            try {
-              localStorage.setItem(
-                PROFILE_CACHE_KEY,
-                JSON.stringify({
-                  id: authUser.id,
-                  email: authUser.email,
-                  full_name: (profile as any).full_name ?? null,
-                  avatar_url: (profile as any).avatar_url ?? null,
-                  role: (profile as { role?: string }).role ?? 'user',
-                })
-              )
-            } catch {
-              /* storage may be unavailable */
-            }
-          }
-        } else if (isPublicPath) {
-          // Browse public pages (e.g. /jobs) without signing in
-          setPublicMode(true)
-          setUser(null)
-          setUserProfile(null)
-          setAppRole(null)
-          try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
-        } else {
-          try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
-          const redirect = encodeURIComponent(pathname || '/dashboard')
-          router.replace(`/auth/login?redirectTo=${redirect}`)
-        }
-      } catch (error) {
-        console.error('Error:', error)
-      } finally {
-        if (mounted) setInitialLoad(false)
+        localStorage.setItem(
+          PROFILE_CACHE_KEY,
+          JSON.stringify({
+            id: authUser.id,
+            email: authUser.email,
+            full_name: (profile as any).full_name ?? null,
+            avatar_url: (profile as any).avatar_url ?? null,
+            role: (profile as { role?: string }).role ?? 'user',
+          })
+        )
+      } catch {
+        /* storage may be unavailable */
       }
     }
 
-    initializeUser()
+    const onAuthed = (authUser: User) => {
+      if (!mounted) return
+      setUser(authUser)
+      setPublicMode(false)
+      setInitialLoad(false) // render immediately; profile hydrates in the background
+      void loadProfile(authUser)
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const onNoSession = () => {
+      if (!mounted) return
+      setUser(null)
+      setUserProfile(null)
+      setAppRole(null)
+      try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
+      if (isPublicPath) {
+        setPublicMode(true)
+        setInitialLoad(false)
+      } else {
+        const redirect = encodeURIComponent(pathname || '/dashboard')
+        router.replace(`/auth/login?redirectTo=${redirect}`)
+      }
+    }
+
+    // 1) Instant: read the persisted session straight from local storage (no
+    //    network validation). Only acts on a positive hit so a hydration race
+    //    can't cause a false "logged out" redirect.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted && session?.user) onAuthed(session.user)
+    })
+
+    // 2) Canonical signal: onAuthStateChange fires INITIAL_SESSION on mount with
+    //    the restored session (or null), then live SIGNED_IN / SIGNED_OUT /
+    //    TOKEN_REFRESHED events — the reliable, fast logged-in/out check.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
       if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUserProfile(null)
-        setAppRole(null)
-        try { localStorage.removeItem(PROFILE_CACHE_KEY) } catch {}
-        if (isPublicPath) {
-          setPublicMode(true)
-        } else {
-          router.replace('/auth/login')
-        }
+        onNoSession()
       } else if (session?.user) {
-        setUser(session.user)
-        const { data: profile } = await supabase
-          .from('users')
-          .select('full_name, avatar_url, role')
-          .eq('id', session.user.id)
-          .single()
-        if (profile && mounted) {
-          setUserProfile(profile as any)
-          setAppRole((profile as { role?: string }).role ?? 'user')
-        }
+        onAuthed(session.user)
+      } else if (event === 'INITIAL_SESSION') {
+        onNoSession()
       }
     })
 
+    // 3) Safety net: never let the workspace hang on the loader.
+    const safety = setTimeout(() => {
+      if (mounted) setInitialLoad(false)
+    }, 2500)
+
     return () => {
       mounted = false
+      clearTimeout(safety)
       subscription.unsubscribe()
     }
-  }, [router, supabase, pathname])
+  }, [router, supabase, pathname, isPublicPath])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

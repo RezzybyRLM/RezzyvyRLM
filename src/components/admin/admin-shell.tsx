@@ -81,9 +81,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     // persisted session (getSession / INITIAL_SESSION) — no blocking network
     // getUser() — so a refresh never hangs on the loader.
     const validate = async (sessionUserId: string | null) => {
+      // Middleware already gates /admin/* for authenticated users, so a falsy
+      // session here is a transient client race — never redirect to login on it
+      // (that would bounce an authed admin to the overview). Genuine sign-out is
+      // handled by the SIGNED_OUT event below.
       if (sessionUserId === null) {
-        try { localStorage.removeItem(ADMIN_ROLE_KEY) } catch {}
-        router.replace('/auth/login?redirectTo=' + encodeURIComponent(pathname || '/admin/dashboard'))
         return
       }
       const { data: row } = await supabase.from('users').select('role').eq('id', sessionUserId).single()

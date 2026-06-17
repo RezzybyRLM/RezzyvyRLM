@@ -244,11 +244,18 @@ export default function DashboardLayout({
     //    transient INITIAL_SESSION(null) during navigation can't false-redirect.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return
-      if (session?.user) onAuthed(session.user)
-      else onNoSession()
+      if (session?.user) {
+        onAuthed(session.user)
+      } else if (isPublicPath) {
+        // Logged-out browsing of a public page (e.g. /jobs)
+        onNoSession()
+      }
+      // On a protected path a null here is a transient client race — middleware
+      // already gated auth, so don't redirect; wait for the auth event / safety.
     })
 
-    // 2) React to live auth changes only (never treat a null here as logout).
+    // 2) React to live auth changes only; redirect to login solely on a real
+    //    SIGNED_OUT (never on a transient null).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
       if (event === 'SIGNED_OUT') {

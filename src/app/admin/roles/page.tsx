@@ -91,15 +91,19 @@ export default function AdminRolesPage() {
   useEffect(() => {
     let cancelled = false
     const gate = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.replace('/auth/login?redirectTo=/admin/roles')
+      // Auth is already enforced by middleware for /admin/*; resolve the user
+      // from the persisted session and never redirect to login on a transient
+      // null (that bounces an authed admin to the overview).
+      const { data: { session } } = await supabase.auth.getSession()
+      const uid = session?.user?.id
+      if (!uid) {
+        setLoading(false)
         return
       }
       const { data: me } = await supabase
         .from('users')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', uid)
         .single()
       if (cancelled) return
       if (!canManageRoles(me?.role ?? null)) {

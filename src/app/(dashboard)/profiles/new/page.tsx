@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, X, Trash2, Loader2, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
 
 const EXPERIENCE_LEVELS = ['Entry', 'Mid-Level', 'Senior', 'Executive']
@@ -93,7 +94,7 @@ export default function NewProfilePage() {
 
   const fetchResumes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await resolveSessionUser(supabase)
       if (!user) return
 
       const { data } = await supabase
@@ -113,7 +114,7 @@ export default function NewProfilePage() {
 
   const fetchCertificates = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await resolveSessionUser(supabase)
       if (!user) return
 
       const { data } = await supabase

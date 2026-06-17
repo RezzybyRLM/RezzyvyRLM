@@ -5,20 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Plus, 
-  Bell, 
-  MapPin, 
-  Calendar,
-  Trash2,
-  Edit,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Mail,
-  Loader2
-} from 'lucide-react'
+import { Plus, Bell, MapPin, Calendar, Trash2, CheckCircle, XCircle, Mail, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 
 interface JobAlert {
   id: string
@@ -35,60 +24,33 @@ export default function JobAlertsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [newAlert, setNewAlert] = useState({
-    search_query: '',
-    location: '',
-    frequency: 'daily' as 'daily' | 'weekly',
-  })
+  const [newAlert, setNewAlert] = useState({ search_query: '', location: '', frequency: 'daily' as 'daily' | 'weekly' })
   const supabase = createClient()
 
   useEffect(() => {
     let mounted = true
-
     const fetchAlerts = async () => {
       try {
-        setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await resolveSessionUser(supabase)
         if (!user) return
-
         const response = await fetch('/api/job-alerts')
         const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to fetch job alerts')
-        }
-
-        if (mounted && result.success) {
-          setAlerts(result.alerts || [])
-        }
+        if (!response.ok) throw new Error(result.error || 'Failed to fetch job alerts')
+        if (mounted && result.success) setAlerts(result.alerts || [])
       } catch (error) {
         console.error('Error fetching job alerts:', error)
-        if (mounted) {
-          // Fallback to empty array on error
-          setAlerts([])
-        }
+        if (mounted) setAlerts([])
       } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+        if (mounted) setLoading(false)
       }
     }
-
     fetchAlerts()
-
-    return () => {
-      mounted = false
-    }
+    return () => { mounted = false }
   }, [supabase])
 
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!newAlert.search_query.trim()) {
-      alert('Please enter a job title or keywords')
-      return
-    }
-
+    if (!newAlert.search_query.trim()) { alert('Please enter a job title or keywords'); return }
     try {
       setSaving(true)
       const response = await fetch('/api/job-alerts', {
@@ -96,21 +58,15 @@ export default function JobAlertsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newAlert),
       })
-
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create job alert')
-      }
-
+      if (!response.ok) throw new Error(result.error || 'Failed to create job alert')
       if (result.success && result.alert) {
-        setAlerts(prev => [result.alert, ...prev])
+        setAlerts((prev) => [result.alert, ...prev])
         setNewAlert({ search_query: '', location: '', frequency: 'daily' })
         setShowCreateForm(false)
       }
     } catch (error) {
-      console.error('Error creating job alert:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create job alert. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to create job alert.')
     } finally {
       setSaving(false)
     }
@@ -118,152 +74,99 @@ export default function JobAlertsPage() {
 
   const handleToggleAlert = async (alertId: string) => {
     try {
-      const alert = alerts.find(a => a.id === alertId)
-      if (!alert) return
-
+      const a = alerts.find((x) => x.id === alertId)
+      if (!a) return
       const response = await fetch(`/api/job-alerts/${alertId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !alert.is_active }),
+        body: JSON.stringify({ is_active: !a.is_active }),
       })
-
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update job alert')
-      }
-
-      if (result.success && result.alert) {
-        setAlerts(prev => prev.map(a => 
-          a.id === alertId ? result.alert : a
-        ))
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to update job alert')
+      if (result.success && result.alert) setAlerts((prev) => prev.map((x) => (x.id === alertId ? result.alert : x)))
     } catch (error) {
-      console.error('Error toggling job alert:', error)
       alert(error instanceof Error ? error.message : 'Failed to update job alert')
     }
   }
 
   const handleDeleteAlert = async (alertId: string) => {
-    if (!confirm('Are you sure you want to delete this job alert?')) {
-      return
-    }
-
+    if (!confirm('Delete this job alert?')) return
     try {
-      const response = await fetch(`/api/job-alerts/${alertId}`, {
-        method: 'DELETE',
-      })
-
+      const response = await fetch(`/api/job-alerts/${alertId}`, { method: 'DELETE' })
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete job alert')
-      }
-
-      if (result.success) {
-        setAlerts(prev => prev.filter(alert => alert.id !== alertId))
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to delete job alert')
+      if (result.success) setAlerts((prev) => prev.filter((x) => x.id !== alertId))
     } catch (error) {
-      console.error('Error deleting job alert:', error)
       alert(error instanceof Error ? error.message : 'Failed to delete job alert')
     }
   }
 
-  const getFrequencyBadge = (frequency: string) => {
-    return frequency === 'daily' 
-      ? <Badge className="bg-primary-100 text-primary-800">Daily</Badge>
-      : <Badge className="bg-green-100 text-green-800">Weekly</Badge>
-  }
-
-  const getStatusIcon = (isActive: boolean) => {
-    return isActive 
-      ? <CheckCircle className="h-4 w-4 text-green-500" />
-      : <XCircle className="h-4 w-4 text-red-500" />
-  }
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Job Alerts</h1>
-          <p className="text-gray-600">Get notified when new jobs match your criteria</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-text">Job alerts</h1>
+          <p className="mt-1 text-sm text-text/60">Get notified when new jobs match your criteria.</p>
         </div>
-        <Button onClick={() => setShowCreateForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Alert
-        </Button>
+        {!showCreateForm && (
+          <Button onClick={() => setShowCreateForm(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Create alert
+          </Button>
+        )}
       </div>
 
-      {/* Create Alert Form */}
       {showCreateForm && (
-        <Card>
+        <Card className="border border-border bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Create New Job Alert</CardTitle>
+            <CardTitle>Create a new job alert</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateAlert} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Title or Keywords *
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-text/70">Job title or keywords *</label>
                   <Input
                     value={newAlert.search_query}
-                    onChange={(e) => setNewAlert(prev => ({ ...prev, search_query: e.target.value }))}
-                    placeholder="e.g., Software Engineer, Product Manager"
+                    onChange={(e) => setNewAlert((p) => ({ ...p, search_query: e.target.value }))}
+                    placeholder="e.g. Software Engineer"
+                    className="border-border"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-text/70">Location</label>
                   <Input
                     value={newAlert.location}
-                    onChange={(e) => setNewAlert(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="e.g., San Francisco, CA or Remote"
+                    onChange={(e) => setNewAlert((p) => ({ ...p, location: e.target.value }))}
+                    placeholder="e.g. Remote or San Francisco, CA"
+                    className="border-border"
                   />
                 </div>
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Frequency
-                </label>
+                <label className="mb-1 block text-sm font-medium text-text/70">Frequency</label>
                 <select
                   value={newAlert.frequency}
-                  onChange={(e) => setNewAlert(prev => ({ ...prev, frequency: e.target.value as 'daily' | 'weekly' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(e) => setNewAlert((p) => ({ ...p, frequency: e.target.value as 'daily' | 'weekly' }))}
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                 </select>
               </div>
-
               <div className="flex items-center gap-2">
                 <Button type="submit" disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Bell className="h-4 w-4 mr-2" />
-                      Create Alert
-                    </>
-                  )}
+                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : <><Bell className="mr-2 h-4 w-4" />Create alert</>}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)} disabled={saving}>
+                <Button type="button" variant="outline" className="border-border" onClick={() => setShowCreateForm(false)} disabled={saving}>
                   Cancel
                 </Button>
               </div>
@@ -272,112 +175,56 @@ export default function JobAlertsPage() {
         </Card>
       )}
 
-      {/* Alerts List */}
-      <div className="space-y-4">
-        {alerts.map((alert) => (
-          <Card key={alert.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{alert.search_query}</h3>
-                    {getFrequencyBadge(alert.frequency)}
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(alert.is_active)}
-                      <span className="text-sm text-gray-600 capitalize">
-                        {alert.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {alert.location || 'Anywhere'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Created {new Date(alert.created_at).toLocaleDateString()}
-                    </span>
-                    {alert.last_sent_at && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        Last sent {new Date(alert.last_sent_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-sm text-gray-600">
-                    <p>
-                      {alert.frequency === 'daily' 
-                        ? 'You\'ll receive daily emails with new job matches.'
-                        : 'You\'ll receive weekly emails with new job matches.'
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 ml-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleToggleAlert(alert.id)}
-                  >
-                    {alert.is_active ? 'Pause' : 'Activate'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteAlert(alert.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {alerts.length === 0 && (
-        <Card>
+      {alerts.length === 0 ? (
+        <Card className="border border-border bg-white shadow-sm">
           <CardContent className="p-12 text-center">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Bell className="h-6 w-6 text-gray-400" />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Bell className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No job alerts yet</h3>
-            <p className="text-gray-600 mb-4">
-              Create your first job alert to get notified about new opportunities.
-            </p>
+            <h3 className="mb-2 text-lg font-medium text-text">No job alerts yet</h3>
+            <p className="mb-4 text-sm text-text/55">Create your first alert to get notified about new opportunities.</p>
             <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Alert
+              <Plus className="mr-2 h-4 w-4" /> Create your first alert
             </Button>
           </CardContent>
         </Card>
+      ) : (
+        <div className="space-y-4">
+          {alerts.map((a) => (
+            <Card key={a.id} className="border border-border bg-white shadow-sm">
+              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold text-text">{a.search_query}</h3>
+                    <Badge className={a.frequency === 'daily' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-800'}>
+                      {a.frequency === 'daily' ? 'Daily' : 'Weekly'}
+                    </Badge>
+                    <span className="inline-flex items-center gap-1 text-sm text-text/60">
+                      {a.is_active ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-text/40" />}
+                      {a.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text/60">
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{a.location || 'Anywhere'}</span>
+                    <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Created {new Date(a.created_at).toLocaleDateString()}</span>
+                    {a.last_sent_at && (
+                      <span className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />Last sent {new Date(a.last_sent_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="outline" size="sm" className="border-border" onClick={() => handleToggleAlert(a.id)}>
+                    {a.is_active ? 'Pause' : 'Activate'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-border text-red-600 hover:text-red-700" onClick={() => handleDeleteAlert(a.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
-
-      {/* Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tips for Better Job Alerts</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-sm text-gray-600">
-            <p className="font-medium mb-1">Use specific keywords</p>
-            <p>Instead of "developer", try "React Developer" or "Full Stack Engineer" for more targeted results.</p>
-          </div>
-          <div className="text-sm text-gray-600">
-            <p className="font-medium mb-1">Include location preferences</p>
-            <p>Specify cities or "Remote" to get relevant job matches.</p>
-          </div>
-          <div className="text-sm text-gray-600">
-            <p className="font-medium mb-1">Choose the right frequency</p>
-            <p>Daily alerts for urgent searches, weekly for broader monitoring.</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

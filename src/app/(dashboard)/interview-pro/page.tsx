@@ -8,6 +8,7 @@ import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
 import { Mic, MicOff, Play, Pause, RotateCcw, Volume2, VolumeX, Loader2, Save } from 'lucide-react'
 import { geminiVoiceService, VOICE_PROFILES, VoiceProfile, SUPPORTED_LANGUAGES } from '@/lib/voice/gemini-voice'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { canPerformAction } from '@/lib/plans/usage-tracking'
 
 interface InterviewSession {
@@ -319,29 +320,19 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
     }
   }
 
-  // Load user plan on mount and check access
+  // Load user plan on mount. The proxy already gates this route, so we never
+  // redirect here (a null is a transient refresh race). No plan row → default to
+  // Free and let the in-page usage gating / UpgradePrompt handle limits.
   useEffect(() => {
     const loadPlan = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        // Not logged in, redirect to login
-        window.location.href = '/auth/login?redirectTo=/interview-pro'
-        return
-      }
-
+      const user = await resolveSessionUser(supabase)
+      if (!user) return
       const { data: plan } = await (supabase as any)
         .from('user_plans')
         .select('plan_type')
         .eq('user_id', user.id)
-        .single()
-
-      if (!plan) {
-        // No plan, redirect to plans page
-        window.location.href = '/plans?redirectTo=/interview-pro'
-        return
-      }
-
-      setCurrentPlan(plan.plan_type || 'Free')
+        .maybeSingle()
+      setCurrentPlan(plan?.plan_type || 'Free')
     }
     loadPlan()
   }, [supabase])

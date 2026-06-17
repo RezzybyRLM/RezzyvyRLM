@@ -869,6 +869,23 @@ export default function MessagesPage() {
     }
   }, [selectedConversation, currentUserId, setupRealtimeSubscription])
 
+  // Realtime resilience: Supabase sockets drop when a tab sleeps. When the tab
+  // becomes visible again (e.g. coming back after a long time), resubscribe the
+  // channels for the open conversation so chat keeps working without a reload.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && selectedConversation && currentUserId) {
+        setupRealtimeSubscription(selectedConversation)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [selectedConversation, currentUserId, setupRealtimeSubscription])
+
   // Fetch conversation details if it's not in the list yet (newly created)
   useEffect(() => {
     if (!selectedConversation || !currentUserId || loading) return

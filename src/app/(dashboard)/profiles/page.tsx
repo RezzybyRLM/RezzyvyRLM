@@ -16,8 +16,8 @@ import {
   Loader2
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 interface Profile {
   id: string
@@ -41,7 +41,6 @@ export default function ProfilesPage() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const supabase = createClient()
-  const router = useRouter()
 
   useEffect(() => {
     fetchProfiles()
@@ -58,11 +57,11 @@ export default function ProfilesPage() {
         setLoading(false)
       }, 10000) // 10 second timeout
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      const user = await resolveSessionUser(supabase)
       if (!user) {
+        // Middleware gates this route; a null here is transient. Don't
+        // self-redirect to login (it loops). Just stop loading.
         if (timeoutId) clearTimeout(timeoutId)
-        router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
         setLoading(false)
         return
       }

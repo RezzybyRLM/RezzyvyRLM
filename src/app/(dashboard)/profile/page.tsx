@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +28,6 @@ import {
   X
 } from 'lucide-react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface UserProfile {
@@ -66,7 +66,6 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState(false)
   const [deletingProfile, setDeletingProfile] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   const fetchUserProfiles = async () => {
@@ -106,8 +105,7 @@ export default function ProfilePage() {
           }
         }, 10000)
 
-        const { data: { session } } = await supabase.auth.getSession()
-        const user = session?.user
+        const user = await resolveSessionUser(supabase)
 
         if (!mounted) {
           if (timeoutId) clearTimeout(timeoutId)
@@ -116,11 +114,10 @@ export default function ProfilePage() {
         }
 
         if (!user) {
-          if (mounted) {
-            if (timeoutId) clearTimeout(timeoutId)
-            router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
-            setLoading(false)
-          }
+          // Middleware gates this route; a null here is transient. Don't
+          // self-redirect to login (it loops). Just stop loading.
+          if (timeoutId) clearTimeout(timeoutId)
+          setLoading(false)
           return
         }
 

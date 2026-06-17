@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,6 @@ export default function DashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const [discoveryJobs, setDiscoveryJobs] = useState<DiscoveryJob[]>([])
-  const router = useRouter()
   const supabase = createClient()
 
   const fetchDiscoveryJobs = async () => {
@@ -134,14 +133,14 @@ export default function DashboardPage() {
     let mounted = true
     const getUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const sessionUser = await resolveSessionUser(supabase)
         if (!mounted) return
-        if (session?.user) {
-          setUser(session.user)
-          await Promise.all([fetchStats(session.user.id), fetchDiscoveryJobs()])
-        } else {
-          router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
+        if (sessionUser) {
+          setUser(sessionUser)
+          await Promise.all([fetchStats(sessionUser.id), fetchDiscoveryJobs()])
         }
+        // No session: middleware + the dashboard layout handle a real sign-out.
+        // Don't self-redirect to login here — that creates a login↔page loop.
       } catch (error) {
         console.error('Error loading dashboard:', error)
       } finally {

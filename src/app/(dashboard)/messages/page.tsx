@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -137,15 +138,12 @@ export default function MessagesPage() {
     let conversationsChannel: any = null
 
     const initialize = async () => {
-      // Resolve auth from the persisted session (never a blocking network
-      // getUser() that can return a transient null). Only a genuinely absent
-      // session is "signed out" — and then we send the visitor back to
-      // /messages after login, so an admin testing the member site is never
-      // bounced to the admin overview.
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      // Resolve auth from the persisted session (retries briefly to ride out a
+      // transient null). Middleware already gates /messages, so a null here is a
+      // client race — don't self-redirect to login (it loops). Just stop.
+      const user = await resolveSessionUser(supabase)
       if (!user) {
-        router.replace(`/auth/login?redirectTo=${encodeURIComponent('/messages')}`)
+        setLoading(false)
         return
       }
       if (!mounted) return

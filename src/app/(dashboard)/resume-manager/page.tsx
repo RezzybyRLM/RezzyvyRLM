@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
 import { Upload, FileText, Trash2, Download, Eye, Loader2, Plus, Mail, Sparkles } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { canPerformAction } from '@/lib/plans/usage-tracking'
 import { AIResumeBuilder } from '@/components/ui/ai-resume-builder'
 import { AICoverLetterBuilder } from '@/components/ui/ai-cover-letter-builder'
@@ -45,7 +45,6 @@ export default function ResumeManagerPage() {
   const [currentPlan, setCurrentPlan] = useState('Free')
   const [showAIResumeBuilder, setShowAIResumeBuilder] = useState(false)
   const [showAICoverLetterBuilder, setShowAICoverLetterBuilder] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
@@ -63,32 +62,12 @@ export default function ResumeManagerPage() {
           }
         }, 3000) // 3 second safety net
 
-        // Try getSession first (fastest, reads from cookies)
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!mounted) {
-          clearTimeout(safetyTimeout)
-          setLoading(false)
-          return
-        }
-
-        let user = session?.user
-
-        // If no session, try getUser as fallback (should be rare)
-        if (!user) {
-          const { data: { user: userData }, error: userError } = await supabase.auth.getUser()
-          if (userError || !userData) {
-            if (mounted) {
-              clearTimeout(safetyTimeout)
-              router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
-              setLoading(false)
-            }
-            return
-          }
-          user = userData
-        }
+        // Resolve the session (retries briefly to ride out a transient null).
+        const user = await resolveSessionUser(supabase)
 
         if (!mounted || !user) {
+          // Middleware gates this route; a null here is transient. Don't
+          // self-redirect to login (it loops). Just stop loading.
           clearTimeout(safetyTimeout)
           setLoading(false)
           return

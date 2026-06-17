@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, X, Trash2, Loader2, Save, CheckCircle, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
 
 const EXPERIENCE_LEVELS = ['Entry', 'Mid-Level', 'Senior', 'Executive']
@@ -97,10 +98,10 @@ export default function EditProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const user = session?.user
+        const user = await resolveSessionUser(supabase)
         if (!user) {
-          router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
+          // Middleware gates this route; a null here is transient. Don't
+          // self-redirect to login (it loops).
           return
         }
 

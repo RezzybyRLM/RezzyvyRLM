@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { resolveSessionUser } from '@/lib/auth/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,15 +28,15 @@ interface BookmarkedJob {
 export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<BookmarkedJob[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     const fetchBookmarks = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      const user = await resolveSessionUser(supabase)
       if (!user) {
-        router.replace(`/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)
+        // Middleware gates this route; a null here is a transient race. Don't
+        // self-redirect to login (it loops). Just stop loading.
+        setLoading(false)
         return
       }
 

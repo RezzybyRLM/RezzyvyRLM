@@ -239,24 +239,22 @@ export default function DashboardLayout({
       }
     }
 
-    // 1) Instant: read the persisted session straight from local storage (no
-    //    network validation). Only acts on a positive hit so a hydration race
-    //    can't cause a false "logged out" redirect.
+    // 1) Source of truth: getSession() reads the persisted session from storage
+    //    (refreshing if needed). Only this decides the "no session" path, so a
+    //    transient INITIAL_SESSION(null) during navigation can't false-redirect.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted && session?.user) onAuthed(session.user)
+      if (!mounted) return
+      if (session?.user) onAuthed(session.user)
+      else onNoSession()
     })
 
-    // 2) Canonical signal: onAuthStateChange fires INITIAL_SESSION on mount with
-    //    the restored session (or null), then live SIGNED_IN / SIGNED_OUT /
-    //    TOKEN_REFRESHED events — the reliable, fast logged-in/out check.
+    // 2) React to live auth changes only (never treat a null here as logout).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
       if (event === 'SIGNED_OUT') {
         onNoSession()
       } else if (session?.user) {
         onAuthed(session.user)
-      } else if (event === 'INITIAL_SESSION') {
-        onNoSession()
       }
     })
 

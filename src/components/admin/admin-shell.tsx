@@ -101,13 +101,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       setReady(true)
     }
 
-    // 1) Instant: persisted session from storage (positive hits only).
+    // 1) Source of truth for logged-in/out: getSession() reads the persisted
+    //    session from storage (and refreshes if needed). Only this decides the
+    //    "no session -> redirect" case, so a transient INITIAL_SESSION(null)
+    //    during client navigation can't bounce an authed admin to login.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled && session?.user) void validate(session.user.id)
+      if (cancelled) return
+      void validate(session?.user?.id ?? null)
     })
 
-    // 2) Canonical signal — INITIAL_SESSION fires on mount with the restored
-    //    session or null; then live events.
+    // 2) React to live auth changes only (never redirect on a null here).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
       if (event === 'SIGNED_OUT') {
@@ -115,8 +118,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         router.replace('/auth/login')
       } else if (session?.user) {
         void validate(session.user.id)
-      } else if (event === 'INITIAL_SESSION') {
-        void validate(null)
       }
     })
 

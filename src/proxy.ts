@@ -2,11 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { canAccessAdminConsole, canAccessEmployerDashboard } from '@/lib/auth/permissions'
 
-export async function middleware(request: NextRequest) {
+/**
+ * Server auth gate (Next 16 `proxy` convention, formerly `middleware`).
+ *
+ * This is the SINGLE source of truth for auth redirects. It runs on every
+ * matched request, validates the session via getUser() and — critically —
+ * writes refreshed auth cookies onto the response. That means an expired access
+ * token is transparently refreshed here (as long as the refresh token is still
+ * valid), so a hard refresh or returning after a long idle "just works" with no
+ * client redirect, flash, or loop. Client pages/layouts NEVER redirect on auth.
+ */
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   })
 
   const supabase = createServerClient(
@@ -18,20 +26,18 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+          cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
           })
 
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
 
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, {
               ...options,
-              maxAge: 60 * 60 * 24 * 14,
+              maxAge: 60 * 60 * 24 * 14, // 14 days
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax' as const,
@@ -43,16 +49,20 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Validate + refresh the session (writes new cookies via setAll above).
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
+  // Routes that require a signed-in user. `/jobs` and `/job-board` are
+  // intentionally public so visitors can browse before signing in.
   const protectedRoutes = [
     '/onboarding',
     '/dashboard',
     '/profile',
+    '/profiles',
     '/resume-manager',
     '/bookmarks',
     '/job-alerts',
@@ -60,19 +70,18 @@ export async function middleware(request: NextRequest) {
     '/employer',
     '/cart',
     '/applications',
-    '/profiles',
     '/messages',
     '/feed',
     '/admin',
     '/settings',
   ]
-  // Note: '/jobs' is intentionally public so visitors can browse jobs before signing in.
-
   const authRoutes = ['/auth/login', '/auth/register']
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
 
+  // 1) Guests hitting a protected route → login, remembering where they wanted
+  //    to go so they return there afterwards.
   if (isProtectedRoute && !user) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirectTo', pathname)
@@ -89,16 +98,16 @@ export async function middleware(request: NextRequest) {
         .select('onboarding_completed, role')
         .eq('id', user.id)
         .single()
-
       onboardingCompleted = userData?.onboarding_completed ?? false
       appRole = userData?.role ?? 'user'
     } catch (error) {
-      console.error('Error checking onboarding status:', error)
+      console.error('proxy: error reading user row', error)
       onboardingCompleted = false
       appRole = 'user'
     }
   }
 
+  // 2) Signed-in users shouldn't sit on login/register — send them home.
   if (isAuthRoute && user) {
     if (!onboardingCompleted) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
@@ -109,6 +118,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
+  // 3) Force incomplete onboarding before the rest of the app (staff may reach
+  //    /admin first).
   if (isProtectedRoute && user && !pathname.startsWith('/onboarding')) {
     if (onboardingCompleted === false) {
       const staff = appRole === 'admin' || appRole === 'super_admin'
@@ -118,6 +129,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // 4) Employer workspace is employer-only.
   if (
     user &&
     onboardingCompleted &&

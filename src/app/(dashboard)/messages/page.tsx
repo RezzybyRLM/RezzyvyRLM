@@ -1259,10 +1259,12 @@ const fetchConversations = async () => {
   }
 }
 
-const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50) => {
+const fetchMessages = async (conversationId: string, beforeDate?: string, limit: number = 50, silent: boolean = false) => {
   if (!conversationId) return
 
-  setMessagesLoading(true)
+  // `silent` refreshes update the thread in the background without toggling the
+  // section loader — so reactions/edits/deletes/forwards never flash a reload.
+  if (!silent) setMessagesLoading(true)
   try {
     let query = supabase
       .from('messages')
@@ -1446,7 +1448,7 @@ const fetchMessages = async (conversationId: string, beforeDate?: string, limit:
     console.error('Error fetching messages:', error)
     setMessages([])
   } finally {
-    setMessagesLoading(false)
+    if (!silent) setMessagesLoading(false)
   }
 }
 
@@ -1705,9 +1707,9 @@ const handleReaction = async (messageId: string, reaction: string) => {
     })
 
     if (response.ok) {
-      // Refresh messages to show updated reactions
+      // Refresh in the background — no loader flash
       if (selectedConversation) {
-        await fetchMessages(selectedConversation)
+        await fetchMessages(selectedConversation, undefined, 50, true)
       }
     }
   } catch (error) {
@@ -1724,9 +1726,9 @@ const handleEditMessage = async (messageId: string, newContent: string) => {
     })
 
     if (response.ok) {
-      // Refresh messages to show updated content
+      // Refresh in the background — no loader flash
       if (selectedConversation) {
-        await fetchMessages(selectedConversation)
+        await fetchMessages(selectedConversation, undefined, 50, true)
       }
     }
   } catch (error) {
@@ -1741,9 +1743,9 @@ const handleDeleteMessage = async (messageId: string) => {
     })
 
     if (response.ok) {
-      // Refresh messages to show deleted state
+      // Refresh in the background — no loader flash
       if (selectedConversation) {
-        await fetchMessages(selectedConversation)
+        await fetchMessages(selectedConversation, undefined, 50, true)
       }
     }
   } catch (error) {
@@ -1834,7 +1836,7 @@ const forwardMessage = async () => {
 
     setForwardingMessage(null)
     setForwardingToConversation(null)
-    fetchMessages(selectedConversation)
+    fetchMessages(selectedConversation, undefined, 50, true)
     fetchConversations()
   } catch (error) {
     console.error('Error forwarding message:', error)
@@ -2148,7 +2150,7 @@ return (
                       const oldestMessage = messages[0]
                       if (oldestMessage) {
                         setLoadingOlderMessages(true)
-                        fetchMessages(selectedConversation, oldestMessage.created_at, 50).then(() => {
+                        fetchMessages(selectedConversation, oldestMessage.created_at, 50, true).then(() => {
                           setLoadingOlderMessages(false)
                           // Maintain scroll position
                           setTimeout(() => {

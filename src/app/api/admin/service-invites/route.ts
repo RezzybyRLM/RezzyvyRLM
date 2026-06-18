@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { canAccessAdminConsole } from '@/lib/auth/permissions'
+import { emailService } from '@/lib/email/client'
 
 /**
  * Admin-only management of Service Team (RezzyMeUp) signup invites.
@@ -82,7 +83,19 @@ export async function POST(request: NextRequest) {
 
     const base = process.env.NEXT_PUBLIC_SITE_URL || ''
     const url = `${base.replace(/\/$/, '')}/join/service/${token}`
-    return NextResponse.json({ success: true, invite: row, url })
+
+    // One-click send: email the link to the invitee when an address was given.
+    let emailed = false
+    if (inviteeEmail) {
+      emailed = await emailService.sendInvite({
+        to: inviteeEmail,
+        url,
+        kind: 'service',
+        inviteeName: inviteeName || null,
+      })
+    }
+
+    return NextResponse.json({ success: true, invite: row, url, emailed })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

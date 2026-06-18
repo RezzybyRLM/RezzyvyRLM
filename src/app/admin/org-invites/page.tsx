@@ -21,8 +21,10 @@ export default function OrgInvitesPage() {
   const [invites, setInvites] = useState<InviteRow[]>([])
   const [loading, setLoading] = useState(true)
   const [companyName, setCompanyName] = useState('')
+  const [inviteeEmail, setInviteeEmail] = useState('')
   const [creating, setCreating] = useState(false)
   const [lastUrl, setLastUrl] = useState<string | null>(null)
+  const [emailed, setEmailed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,11 +48,12 @@ export default function OrgInvitesPage() {
     setCreating(true)
     setError(null)
     setLastUrl(null)
+    setEmailed(false)
     try {
       const res = await fetch('/api/admin/employer-invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName }),
+        body: JSON.stringify({ companyName, inviteeEmail }),
       })
       const j = await res.json()
       if (!res.ok) {
@@ -58,7 +61,9 @@ export default function OrgInvitesPage() {
         return
       }
       setLastUrl(j.url)
+      setEmailed(!!j.emailed)
       setCompanyName('')
+      setInviteeEmail('')
       load()
     } catch {
       setError('Request failed')
@@ -110,13 +115,25 @@ export default function OrgInvitesPage() {
                 placeholder="Acme Hiring LLC"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="orgEmail">Contact email (optional — emails the link automatically)</Label>
+              <Input
+                id="orgEmail"
+                type="email"
+                value={inviteeEmail}
+                onChange={e => setInviteeEmail(e.target.value)}
+                placeholder="hiring@acme.com"
+              />
+            </div>
             <Button type="submit" disabled={creating}>
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate one-time link
+              {inviteeEmail ? 'Generate & send invite' : 'Generate one-time link'}
             </Button>
             {lastUrl ? (
               <div className="rounded-lg border border-border/70 bg-white/60 p-3 text-sm backdrop-blur-sm">
-                <p className="mb-2 font-medium text-gray-900">Share this link once</p>
+                <p className="mb-2 font-medium text-gray-900">
+                  {emailed ? '✅ Invite emailed — you can also share this link' : 'Share this link once'}
+                </p>
                 <code className="block break-all rounded bg-slate-100/80 px-2 py-1.5 text-xs text-slate-800">
                   {lastUrl}
                 </code>

@@ -23,6 +23,7 @@ export default function ServiceInvitesPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUrl, setLastUrl] = useState<string | null>(null)
+  const [emailed, setEmailed] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const load = async () => {
@@ -46,6 +47,7 @@ export default function ServiceInvitesPage() {
     setCreating(true)
     setError(null)
     setLastUrl(null)
+    setEmailed(false)
     try {
       const res = await fetch('/api/admin/service-invites', {
         method: 'POST',
@@ -58,6 +60,7 @@ export default function ServiceInvitesPage() {
         return
       }
       setLastUrl(j.url)
+      setEmailed(!!j.emailed)
       setName('')
       setEmail('')
       void load()
@@ -106,11 +109,16 @@ export default function ServiceInvitesPage() {
           </Button>
 
           {lastUrl && (
-            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <code className="min-w-0 flex-1 truncate text-xs text-text/80">{lastUrl}</code>
+            <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              {emailed && (
+                <p className="text-sm font-medium text-emerald-700">✅ Invite emailed to the address above.</p>
+              )}
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate text-xs text-text/80">{lastUrl}</code>
               <Button size="sm" variant="outline" className="border-border" onClick={() => copy(lastUrl)}>
                 {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-              </Button>
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

@@ -4,6 +4,7 @@ import JobAlertEmail from './templates/job-alert'
 import InterviewSessionEmail from './templates/interview-session'
 import JobPostingConfirmationEmail from './templates/job-posting-confirmation'
 import PasswordResetEmail from './templates/password-reset'
+import InviteEmail from './templates/invite'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -143,6 +144,52 @@ export class EmailService {
       return true
     } catch (error) {
       console.error('Error sending job posting confirmation email:', error)
+      return false
+    }
+  }
+
+  /**
+   * Branded single-use invite email for admin-issued signup links
+   * (Service Team / RezzyMeUp and employer/organization invites).
+   */
+  async sendInvite(data: {
+    to: string
+    url: string
+    kind: 'service' | 'employer'
+    inviteeName?: string | null
+    orgName?: string | null
+  }): Promise<boolean> {
+    try {
+      const { to, url, kind, inviteeName, orgName } = data
+      const greeting = inviteeName ? `Hi ${inviteeName}, ` : ''
+
+      const subject =
+        kind === 'service'
+          ? 'You’re invited to the Rezzy service team'
+          : `You’re invited to manage ${orgName || 'your organization'} on Rezzy`
+
+      const heading = kind === 'service' ? 'Join the Rezzy service team' : 'Rezzy for Employers'
+
+      const intro =
+        kind === 'service'
+          ? `${greeting}you've been invited to join the Rezzy (RezzyMeUp) service team. Accept your invite to set up your account and start fulfilling client orders.`
+          : `${greeting}you've been invited to manage job listings for ${orgName || 'your organization'} on Rezzy. Accept your invite to set up your employer account.`
+
+      const html = await render(
+        InviteEmail({ heading, intro, ctaLabel: 'Accept invite', url })
+      )
+
+      const result = await resend.emails.send({
+        from: `${this.fromName} <${this.fromEmail}>`,
+        to,
+        subject,
+        html,
+      })
+
+      console.log('Invite email sent:', result)
+      return true
+    } catch (error) {
+      console.error('Error sending invite email:', error)
       return false
     }
   }

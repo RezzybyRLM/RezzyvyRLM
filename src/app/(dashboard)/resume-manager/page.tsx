@@ -6,9 +6,8 @@ import { resolveSessionUser } from '@/lib/auth/session'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/dashboard/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
-import { Upload, FileText, Trash2, Download, Eye, Loader2, Plus, Mail, Sparkles } from 'lucide-react'
+import { Upload, FileText, Trash2, Download, Eye, Loader2, Mail, Sparkles } from 'lucide-react'
 import { canPerformAction } from '@/lib/plans/usage-tracking'
 import { AIResumeBuilder } from '@/components/ui/ai-resume-builder'
 import { AICoverLetterBuilder } from '@/components/ui/ai-cover-letter-builder'
@@ -488,7 +487,7 @@ export default function ResumeManagerPage() {
               </div>
             )}
 
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/[0.03] p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.05]">
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -499,19 +498,25 @@ export default function ResumeManagerPage() {
               />
               <label
                 htmlFor="resume-upload"
-                className="cursor-pointer flex flex-col items-center space-y-4"
+                className="flex cursor-pointer flex-col items-center gap-3"
               >
                 {uploading ? (
                   <>
-                    <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                    <p className="text-gray-600">Uploading resume...</p>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </span>
+                    <p className="text-sm text-text/60">Uploading resume…</p>
                   </>
                 ) : (
                   <>
-                    <Plus className="h-12 w-12 text-gray-400" />
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Upload className="h-6 w-6 stroke-[1.5]" />
+                    </span>
                     <div>
-                      <p className="text-lg font-medium text-gray-900">Upload your resume</p>
-                      <p className="text-sm text-gray-600">PDF or Word document, max 5MB</p>
+                      <p className="text-base font-semibold text-text">
+                        Drag &amp; drop or <span className="text-primary">browse</span>
+                      </p>
+                      <p className="mt-1 text-sm text-text/55">Supported formats: PDF, DOCX (max 5MB)</p>
                     </div>
                   </>
                 )}
@@ -540,18 +545,24 @@ export default function ResumeManagerPage() {
                 {resumes.map((resume) => (
                   <div
                     key={resume.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-xl border border-border/70 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card-hover"
                   >
-                    <div className="flex items-center space-x-4">
-                      <FileText className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-medium text-gray-900">{resume.file_name}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <FileText className="h-5 w-5 stroke-[1.5]" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="truncate font-semibold text-text">{resume.file_name}</h3>
+                          {resume.is_active && (
+                            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-3 text-xs text-text/55">
                           <span>{formatFileSize(resume.file_size)}</span>
                           <span>{new Date(resume.created_at).toLocaleDateString()}</span>
-                          {resume.is_active && (
-                            <Badge variant="default">Active</Badge>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -622,7 +633,7 @@ export default function ResumeManagerPage() {
               </div>
             )}
 
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/[0.03] p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.05]">
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -633,19 +644,25 @@ export default function ResumeManagerPage() {
               />
               <label
                 htmlFor="cover-letter-upload"
-                className="cursor-pointer flex flex-col items-center space-y-4"
+                className="flex cursor-pointer flex-col items-center gap-3"
               >
                 {uploadingCoverLetter ? (
                   <>
-                    <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                    <p className="text-gray-600">Uploading cover letter...</p>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </span>
+                    <p className="text-sm text-text/60">Uploading cover letter…</p>
                   </>
                 ) : (
                   <>
-                    <Plus className="h-12 w-12 text-gray-400" />
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Upload className="h-6 w-6 stroke-[1.5]" />
+                    </span>
                     <div>
-                      <p className="text-lg font-medium text-gray-900">Upload your cover letter</p>
-                      <p className="text-sm text-gray-600">PDF or Word document, max 5MB</p>
+                      <p className="text-base font-semibold text-text">
+                        Drag &amp; drop or <span className="text-primary">browse</span>
+                      </p>
+                      <p className="mt-1 text-sm text-text/55">Supported formats: PDF, DOCX (max 5MB)</p>
                     </div>
                   </>
                 )}
@@ -674,18 +691,24 @@ export default function ResumeManagerPage() {
                 {coverLetters.map((coverLetter) => (
                   <div
                     key={coverLetter.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-xl border border-border/70 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card-hover"
                   >
-                    <div className="flex items-center space-x-4">
-                      <Mail className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-medium text-gray-900">{coverLetter.file_name}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Mail className="h-5 w-5 stroke-[1.5]" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="truncate font-semibold text-text">{coverLetter.file_name}</h3>
+                          {coverLetter.is_active && (
+                            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-3 text-xs text-text/55">
                           <span>{formatFileSize(coverLetter.file_size)}</span>
                           <span>{new Date(coverLetter.created_at).toLocaleDateString()}</span>
-                          {coverLetter.is_active && (
-                            <Badge variant="default">Active</Badge>
-                          )}
                         </div>
                       </div>
                     </div>

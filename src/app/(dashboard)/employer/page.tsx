@@ -1,27 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PageHeader } from '@/components/dashboard/page-header'
-import { StatCard } from '@/components/dashboard/stat-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Briefcase, 
-  Eye, 
-  MousePointer, 
-  Users, 
-  DollarSign,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Plus,
-  Settings,
-  Loader2
-} from 'lucide-react'
+import { Briefcase, Plus, TrendingUp, Users, Settings, Loader2, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface JobStats {
   totalJobs: number
@@ -55,7 +42,6 @@ export default function EmployerDashboard() {
     totalApplications: 0,
     monthlyRevenue: 0,
   })
-  
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([])
   const [loading, setLoading] = useState(true)
   const [companyId, setCompanyId] = useState<string | null>(null)
@@ -63,79 +49,42 @@ export default function EmployerDashboard() {
 
   useEffect(() => {
     let mounted = true
-
     const fetchData = async () => {
       try {
         setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          if (mounted) {
-            setLoading(false)
-          }
+          if (mounted) setLoading(false)
           return
         }
-
         const { data: profile } = await supabase
           .from('users')
           .select('employer_company_id, role')
           .eq('id', user.id)
           .single()
-
-        if (!mounted) {
-          setLoading(false)
-          return
-        }
+        if (!mounted) return
 
         const compId = profile?.employer_company_id ?? null
         if (compId) {
           setCompanyId(compId)
-
-          // Fetch stats and recent jobs in parallel
           const [statsResponse, jobsResponse] = await Promise.all([
             fetch(`/api/employer/stats?companyId=${compId}`),
-            fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=5`),
+            fetch(`/api/employer/recent-jobs?companyId=${compId}&limit=6`),
           ])
-
-          if (!mounted) {
-            setLoading(false)
-            return
-          }
-
-          const [statsData, jobsData] = await Promise.all([
-            statsResponse.json(),
-            jobsResponse.json()
-          ])
-
+          if (!mounted) return
+          const [statsData, jobsData] = await Promise.all([statsResponse.json(), jobsResponse.json()])
           if (mounted) {
-            if (statsData.success) {
-              setStats(statsData.stats)
-            }
-
-            if (jobsData.success) {
-              setRecentJobs(jobsData.jobs)
-            }
+            if (statsData.success) setStats(statsData.stats)
+            if (jobsData.success) setRecentJobs(jobsData.jobs)
           }
-        } else {
-          // No company found - user needs to create one
-          if (mounted) {
-            setLoading(false)
-          }
-          return
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
-        if (mounted) {
-          setLoading(false)
-        }
       } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+        if (mounted) setLoading(false)
       }
     }
-
     fetchData()
-
     return () => {
       mounted = false
     }
@@ -144,19 +93,19 @@ export default function EmployerDashboard() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>
+        return <Badge className="border-0 bg-emerald-100 text-emerald-800">Active</Badge>
       case 'expired':
-        return <Badge className="bg-red-100 text-red-800">Expired</Badge>
+        return <Badge className="border-0 bg-red-100 text-red-800">Expired</Badge>
       case 'draft':
-        return <Badge className="bg-yellow-100 text-yellow-800">Draft</Badge>
+        return <Badge className="border-0 bg-amber-100 text-amber-800">Draft</Badge>
       default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
+        return <Badge variant="secondary">{status}</Badge>
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -179,135 +128,185 @@ export default function EmployerDashboard() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Employer hub"
-        title="Hiring dashboard"
-        subtitle="Manage your job postings and track performance across your organization."
-        actions={
-          <Button asChild className="bg-primary text-white hover:bg-primary/90">
-            <Link href="/employer/manage-jobs/new">Post new job</Link>
-          </Button>
-        }
-      />
+  const applicantRate = stats.totalViews > 0 ? Math.round((stats.totalApplications / stats.totalViews) * 100) : 0
+  const barPct = stats.totalViews > 0 ? Math.max(4, Math.min(100, (stats.totalApplications / stats.totalViews) * 100)) : 0
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard index={0} label="Total jobs" value={stats.totalJobs} icon={Briefcase} hint={`${stats.activeJobs} active`} />
-        <StatCard index={1} label="Total views" value={stats.totalViews.toLocaleString()} icon={Eye} hint="+12% from last month" />
-        <StatCard index={2} label="Applications" value={stats.totalApplications} icon={Users} hint={`${stats.totalClicks} clicks`} />
-        <StatCard index={3} label="Monthly revenue" value={`$${stats.monthlyRevenue}`} icon={DollarSign} hint={`${stats.featuredJobs} featured jobs`} />
+  const pulse = [
+    { label: 'Listings', value: stats.totalJobs },
+    { label: 'Active', value: stats.activeJobs },
+    { label: 'Views', value: stats.totalViews },
+    { label: 'Applicants', value: stats.totalApplications },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.28, ease: easeOut }}
+      className="space-y-8"
+    >
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Command center</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-text md:text-[2.1rem]">Hiring command center</h1>
+          <p className="mt-2 inline-flex items-center gap-2 text-sm text-text/55">
+            <span className="inline-flex h-2 w-2 rounded-full bg-success" aria-hidden />
+            {stats.activeJobs} active listing{stats.activeJobs === 1 ? '' : 's'} · {stats.totalApplications} total applicant{stats.totalApplications === 1 ? '' : 's'}
+          </p>
+        </div>
+        <Button asChild className="bg-primary text-white hover:bg-primary/90">
+          <Link href="/employer/manage-jobs/new">
+            <Plus className="mr-2 h-4 w-4" /> Post new job
+          </Link>
+        </Button>
       </div>
 
-      {/* Recent Jobs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Job Postings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentJobs.map((job) => (
-              <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-gray-900">{job.title}</h3>
-                    {job.isFeatured && (
-                      <Badge className="bg-primary text-white">Featured</Badge>
-                    )}
+      {/* Live pulse hero */}
+      <div className="rounded-3xl border border-border bg-white p-6 shadow-card md:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text/45">Live pulse</p>
+            <h2 className="mt-1 text-2xl font-bold text-text">Hiring infrastructure</h2>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-bold tabular-nums text-primary">{applicantRate}%</p>
+            <p className="text-xs text-text/50">Applicant rate</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {pulse.map((m) => (
+            <div key={m.label} className="rounded-2xl bg-gradient-to-b from-primary/[0.12] to-primary/[0.04] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/80">{m.label}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-text">{m.value.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-1.5 flex justify-between text-xs text-text/50">
+            <span>Views → applicants</span>
+            <span className="font-medium text-text/70">{applicantRate}% convert</span>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-primary/10">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${barPct}%` }} />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-t border-border/70 pt-4 text-sm text-text/60">
+          <span>Featured listings: <span className="font-semibold text-text">{stats.featuredJobs}</span></span>
+          <span>Monthly revenue: <span className="font-semibold text-text">${stats.monthlyRevenue}</span></span>
+        </div>
+      </div>
+
+      {/* Active listings + side rail */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="space-y-4 xl:col-span-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-text">Active listings</h2>
+            <Link href="/employer/manage-jobs" className="text-sm font-medium text-primary hover:underline">
+              Manage all
+            </Link>
+          </div>
+          {recentJobs.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-white p-8 text-center shadow-card">
+              <Briefcase className="mx-auto mb-3 h-9 w-9 text-text/25" />
+              <p className="font-medium text-text/70">No listings yet</p>
+              <Button className="mt-4 bg-primary text-white hover:bg-primary/90" asChild>
+                <Link href="/employer/manage-jobs/new">Post your first job</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {recentJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="rounded-2xl border border-border bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate font-semibold text-text">{job.title}</h3>
+                        {job.isFeatured && (
+                          <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                            Featured
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-sm text-text/55">{job.location}</p>
+                    </div>
                     {getStatusBadge(job.status)}
                   </div>
-                  <p className="text-sm text-gray-600">{job.company} • {job.location}</p>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      {job.views} views
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {job.applications} applications
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Posted {new Date(job.createdAt).toLocaleDateString()}
-                    </span>
+                  <div className="mt-4 flex items-center gap-8">
+                    <div>
+                      <p className="text-xl font-bold tabular-nums text-text">{job.views.toLocaleString()}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-text/45">Views</p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold tabular-nums text-text">{job.applications.toLocaleString()}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-text/45">Applicants</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" variant="outline" className="border-border" asChild>
+                      <Link href={`/employer/manage-jobs/${job.id}`}>Edit</Link>
+                    </Button>
+                    <Button size="sm" className="bg-primary text-white hover:bg-primary/90" asChild>
+                      <Link href="/employer/applications">Review applicants</Link>
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/employer/manage-jobs/${job.id}`}>
-                      Edit
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/employer/analytics/${job.id}`}>
-                      Analytics
-                    </Link>
-                  </Button>
-                </div>
-              </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Side rail */}
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-border bg-white p-5 shadow-card">
+            <p className="text-sm font-semibold text-text">Recent activity</p>
+            <div className="mt-3 space-y-3">
+              {recentJobs.length === 0 ? (
+                <p className="text-sm text-text/50">No recent activity yet.</p>
+              ) : (
+                recentJobs.slice(0, 5).map((job) => (
+                  <div key={job.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 rounded-lg bg-primary/10 p-1.5 text-primary">
+                      <Briefcase className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-text">
+                        Posted <span className="font-medium">{job.title}</span>
+                      </p>
+                      <p className="text-xs text-text/45">{new Date(job.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-white p-3 shadow-card">
+            {[
+              { href: '/employer/analytics', label: 'View analytics', icon: TrendingUp },
+              { href: '/employer/applications', label: 'All applications', icon: Users },
+              { href: '/employer/profile', label: 'Company profile', icon: Settings },
+            ].map((s) => (
+              <Link
+                key={s.href}
+                href={s.href}
+                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-text/80 transition-colors hover:bg-primary/5 hover:text-text"
+              >
+                <span className="inline-flex items-center gap-2.5">
+                  <s.icon className="h-4 w-4 text-text/50" /> {s.label}
+                </span>
+                <ChevronRight className="h-4 w-4 text-text/30" />
+              </Link>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full justify-start" asChild>
-              <Link href="/employer/manage-jobs/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Post New Job
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href="/employer/analytics">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                View Analytics
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href="/employer/profile">
-                <Settings className="h-4 w-4 mr-2" />
-                Company Profile
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Tips</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Featured jobs get 3x more views</p>
-                <p className="text-xs text-gray-600">Consider upgrading to featured placement</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">2 jobs expiring soon</p>
-                <p className="text-xs text-gray-600">Renew or repost to maintain visibility</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <TrendingUp className="h-5 w-5 text-primary-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Views up 12% this month</p>
-                <p className="text-xs text-gray-600">Your job postings are performing well</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

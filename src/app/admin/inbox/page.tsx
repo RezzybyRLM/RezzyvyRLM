@@ -85,6 +85,13 @@ export default function AdminInboxPage() {
       minute: '2-digit',
     })
 
+  // Open the admin's mail client prefilled to reply to the sender.
+  const buildReplyHref = (m: ContactMessage) => {
+    const subject = m.subject ? `Re: ${m.subject}` : 'Re: your message to Rezzy'
+    const body = `\n\n\n———\nOn ${formatDate(m.created_at)}, ${m.name} <${m.email}> wrote:\n${m.message}`
+    return `mailto:${m.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-muted-foreground">
@@ -98,7 +105,9 @@ export default function AdminInboxPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Inbox</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Contact form submissions</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Contact form submissions. &ldquo;Reply by email&rdquo; opens your mail app prefilled to the sender.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
@@ -205,13 +214,17 @@ export default function AdminInboxPage() {
                       Read
                     </Button>
                     <Button
+                      asChild
                       size="sm"
-                      variant="outline"
-                      onClick={() => handleStatusUpdate(message.id, 'replied')}
-                      disabled={updating === message.id || message.status === 'replied'}
+                      className="bg-primary text-white hover:bg-primary/90"
+                      onClick={() => {
+                        if (message.status !== 'replied') void handleStatusUpdate(message.id, 'replied')
+                      }}
                     >
-                      <Reply className="mr-1 h-4 w-4" />
-                      Replied
+                      <a href={buildReplyHref(message)}>
+                        <Reply className="mr-1 h-4 w-4" />
+                        Reply by email
+                      </a>
                     </Button>
                     <Button
                       size="sm"

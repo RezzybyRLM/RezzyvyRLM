@@ -115,6 +115,7 @@ export default function JobBoardPage() {
   const [openFilter, setOpenFilter] = useState<null | 'date' | 'remote' | 'salary'>(null)
 
   const [isAuthed, setIsAuthed] = useState(false)
+  const [role, setRole] = useState<string>('user')
   const [plan, setPlan] = useState<PlanType>('free')
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [matchScore, setMatchScore] = useState<number | null>(null)
@@ -137,16 +138,17 @@ export default function JobBoardPage() {
       if (!mounted) return
       setIsAuthed(!!user)
       if (user) {
-        const [{ data: bookmarkData }, { data: planRow }] = await Promise.all([
+        const [{ data: bookmarkData }, { data: planRow }, { data: userRow }] = await Promise.all([
           supabase.from('bookmarks').select('job_id').eq('user_id', user.id),
           supabase.from('user_plans').select('plan_type').eq('user_id', user.id).maybeSingle(),
+          supabase.from('users').select('role').eq('id', user.id).maybeSingle(),
         ])
         if (!mounted) return
         setBookmarkedJobs(
           new Set((bookmarkData || []).map((b: { job_id: string | null }) => b.job_id).filter(Boolean) as string[])
         )
-        const pt = (planRow?.plan_type as PlanType | undefined) ?? 'free'
-        setPlan(pt)
+        setPlan((planRow?.plan_type as PlanType | undefined) ?? 'free')
+        setRole((userRow?.role as string | undefined) ?? 'user')
       }
     }
     void load()
@@ -384,6 +386,11 @@ export default function JobBoardPage() {
   const activeFilterCount =
     (dateFilter !== 'anytime' ? 1 : 0) + (remoteFilter !== 'all' ? 1 : 0) + (salaryFilter !== 'all' ? 1 : 0)
 
+  // Upgrade/upsell surfaces are for free *members* only. Staff (admin) and
+  // employers apply directly and never see the member upgrade prompts — that's
+  // why an admin opening the board sees a clean, role-appropriate view.
+  const isFreeMember = isAuthed && role === 'user' && !getPlanLimits(plan).canApplyDirectly
+
   const FilterButton = ({
     id,
     icon: Icon,
@@ -577,7 +584,7 @@ export default function JobBoardPage() {
                 </Button>
               </div>
             </div>
-          ) : !getPlanLimits(plan).canApplyDirectly ? (
+          ) : isFreeMember ? (
             <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="rounded-lg bg-primary/10 p-2 text-primary">
@@ -853,7 +860,7 @@ export default function JobBoardPage() {
                           return
                         }
                         // Free members can't apply directly — send them to upgrade.
-                        if (!getPlanLimits(plan).canApplyDirectly) {
+                        if (isFreeMember) {
                           setShowUpgrade(true)
                           return
                         }
@@ -865,7 +872,7 @@ export default function JobBoardPage() {
                           <LogIn className="mr-2 h-4 w-4" />
                           Sign in to apply
                         </>
-                      ) : !getPlanLimits(plan).canApplyDirectly ? (
+                      ) : isFreeMember ? (
                         <>
                           <Lock className="mr-2 h-4 w-4" />
                           Upgrade to apply
@@ -1049,7 +1056,7 @@ export default function JobBoardPage() {
                     Compare plans &amp; pricing
                   </Link>
                 </div>
-              ) : !getPlanLimits(plan).canApplyDirectly ? (
+              ) : isFreeMember ? (
                 <div className="mt-6 flex flex-col items-center gap-2">
                   <Button onClick={() => setShowUpgrade(true)}>
                     <Sparkles className="mr-2 h-4 w-4" /> Unlock direct apply

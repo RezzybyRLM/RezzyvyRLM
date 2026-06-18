@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -25,11 +26,16 @@ import {
   ChevronDown,
   Flag,
   SlidersHorizontal,
+  Sparkles,
+  Lock,
+  LogIn,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { JobApplicationModal } from '@/components/ui/job-application-modal'
+import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
 import { findBestMatchingProfile } from '@/lib/jobs/match-score'
 import { normalizeJobRows } from '@/lib/jobs/normalize-job'
+import { getPlanLimits, type PlanType } from '@/lib/plans/limitations'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -109,6 +115,8 @@ export default function JobBoardPage() {
   const [openFilter, setOpenFilter] = useState<null | 'date' | 'remote' | 'salary'>(null)
 
   const [isAuthed, setIsAuthed] = useState(false)
+  const [plan, setPlan] = useState<PlanType>('free')
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const [matchScore, setMatchScore] = useState<number | null>(null)
   const [matchScoreLoading, setMatchScoreLoading] = useState(false)
   const [matchedProfileName, setMatchedProfileName] = useState<string | null>(null)
@@ -129,14 +137,16 @@ export default function JobBoardPage() {
       if (!mounted) return
       setIsAuthed(!!user)
       if (user) {
-        const { data } = await supabase
-          .from('bookmarks')
-          .select('job_id')
-          .eq('user_id', user.id)
+        const [{ data: bookmarkData }, { data: planRow }] = await Promise.all([
+          supabase.from('bookmarks').select('job_id').eq('user_id', user.id),
+          supabase.from('user_plans').select('plan_type').eq('user_id', user.id).maybeSingle(),
+        ])
         if (!mounted) return
         setBookmarkedJobs(
-          new Set((data || []).map((b: { job_id: string | null }) => b.job_id).filter(Boolean) as string[])
+          new Set((bookmarkData || []).map((b: { job_id: string | null }) => b.job_id).filter(Boolean) as string[])
         )
+        const pt = (planRow?.plan_type as PlanType | undefined) ?? 'free'
+        setPlan(pt)
       }
     }
     void load()
@@ -544,6 +554,48 @@ export default function JobBoardPage() {
             </p>
           )}
 
+          {/* Guest / free-member upsell banner */}
+          {!isAuthed ? (
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-text">Get the full Rezzy experience</p>
+                  <p className="text-sm text-text/60">
+                    Create a free account to save jobs, track applications, and see AI match scores.
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button variant="outline" className="border-border" asChild>
+                  <Link href="/plans">See plans</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/register">Sign up free</Link>
+                </Button>
+              </div>
+            </div>
+          ) : !getPlanLimits(plan).canApplyDirectly ? (
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-text">You&apos;re on the Free plan</p>
+                  <p className="text-sm text-text/60">
+                    Upgrade to apply directly, unlock more searches, AI matches, and job alerts.
+                  </p>
+                </div>
+              </div>
+              <Button className="shrink-0" onClick={() => setShowUpgrade(true)}>
+                <Sparkles className="mr-2 h-4 w-4" /> See plans &amp; upgrade
+              </Button>
+            </div>
+          ) : null}
+
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
               <AlertCircle className="h-5 w-5 shrink-0" />
@@ -800,11 +852,30 @@ export default function JobBoardPage() {
                           signInToContinue(selectedJob.id)
                           return
                         }
+                        // Free members can't apply directly — send them to upgrade.
+                        if (!getPlanLimits(plan).canApplyDirectly) {
+                          setShowUpgrade(true)
+                          return
+                        }
                         setShowApplicationModal(true)
                       }}
                     >
-                      <Mail className="mr-2 h-4 w-4" />
-                      Apply now
+                      {!isAuthed ? (
+                        <>
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Sign in to apply
+                        </>
+                      ) : !getPlanLimits(plan).canApplyDirectly ? (
+                        <>
+                          <Lock className="mr-2 h-4 w-4" />
+                          Upgrade to apply
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Apply now
+                        </>
+                      )}
                     </Button>
                     <Button
                       type="button"
@@ -967,6 +1038,27 @@ export default function JobBoardPage() {
               <p className="mt-1 max-w-xs text-sm text-text/45">
                 Pick a role from the list to view the full description, requirements, and your match score.
               </p>
+              {!isAuthed ? (
+                <div className="mt-6 flex flex-col items-center gap-2">
+                  <Button asChild>
+                    <Link href="/auth/register">
+                      <LogIn className="mr-2 h-4 w-4" /> Create a free account
+                    </Link>
+                  </Button>
+                  <Link href="/plans" className="text-sm font-medium text-primary hover:underline">
+                    Compare plans &amp; pricing
+                  </Link>
+                </div>
+              ) : !getPlanLimits(plan).canApplyDirectly ? (
+                <div className="mt-6 flex flex-col items-center gap-2">
+                  <Button onClick={() => setShowUpgrade(true)}>
+                    <Sparkles className="mr-2 h-4 w-4" /> Unlock direct apply
+                  </Button>
+                  <Link href="/plans" className="text-sm font-medium text-primary hover:underline">
+                    See plans &amp; pricing
+                  </Link>
+                </div>
+              ) : null}
             </div>
           )}
         </AnimatePresence>
@@ -988,6 +1080,16 @@ export default function JobBoardPage() {
           onSuccess={() => void fetchJobs()}
         />
       )}
+
+      {/* Upgrade / pricing modal for free members */}
+      <UpgradePrompt
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        title="Upgrade your plan"
+        message="Direct apply, more job searches, AI match scores and job alerts are available on paid plans."
+        feature="direct apply & AI tools"
+        currentPlan={plan}
+      />
     </div>
   )
 }

@@ -29,12 +29,17 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Guests on a public dashboard-group route → marketing chrome.
+  // Guests on a public dashboard-group route (only /jobs & /job-board) → marketing
+  // chrome. These pages are authored for the dashboard's padded content shell
+  // (they use full-bleed `-mx-8` headers), so we mirror the SidebarShell content
+  // container here — otherwise the page collapses into the corner.
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Navbar user={null} />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-[1600px] p-4 md:p-8">{children}</div>
+        </main>
         <Footer />
       </div>
     )

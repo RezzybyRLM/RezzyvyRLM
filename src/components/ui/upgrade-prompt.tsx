@@ -109,10 +109,11 @@ export function UpgradePrompt({
                       ))}
                     </ul>
                     <Button
+                      asChild
                       className={`w-full ${plan.highlight ? 'bg-primary-600 hover:bg-primary-700' : ''}`}
                       onClick={onUpgrade}
                     >
-                      Choose {plan.name}
+                      <Link href="/plans">Choose {plan.name}</Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -130,7 +131,7 @@ export function UpgradePrompt({
               Maybe Later
             </Button>
             <Button asChild className="flex-1">
-              <Link href="/donate">View Pricing</Link>
+              <Link href="/plans">View Pricing</Link>
             </Button>
           </div>
         </CardContent>

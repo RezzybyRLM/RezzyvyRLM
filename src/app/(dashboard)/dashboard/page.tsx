@@ -6,13 +6,14 @@ import { resolveSessionUser } from '@/lib/auth/session'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { StatCard } from '@/components/dashboard/stat-card'
 import {
   FileStack,
   Bookmark,
   BellRing,
   BriefcaseBusiness,
   Loader2,
-  ChevronRight,
   Headphones,
   Send,
   Building2,
@@ -217,48 +218,32 @@ export default function DashboardPage() {
       transition={{ duration: 0.28, ease: easeOut }}
       className="space-y-8 md:space-y-10"
     >
-      <section className="flex flex-col justify-between gap-4 border-b border-border/80 pb-8 md:flex-row md:items-end">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-text md:text-3xl">
-            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-text/60 md:text-base">
-            Track applications, saved roles, and interview practice from one place—aligned with your Rezzy workspace.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="border-border" asChild>
-            <Link href="/profile">Edit profile</Link>
-          </Button>
-          <Button className="bg-primary text-white hover:bg-primary/90" asChild>
-            <Link href="/job-board">Browse jobs</Link>
-          </Button>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Your workspace"
+        title={`Welcome back${user?.email ? `, ${user.email.split('@')[0]}` : ''}`}
+        subtitle="Track applications, saved roles, and interview practice from one place — aligned with your Rezzy workspace."
+        actions={
+          <>
+            <Button variant="outline" className="border-border" asChild>
+              <Link href="/profile">Edit profile</Link>
+            </Button>
+            <Button className="bg-primary text-white hover:bg-primary/90" asChild>
+              <Link href="/job-board">Browse jobs</Link>
+            </Button>
+          </>
+        }
+      />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, i) => (
-          <motion.div
+          <StatCard
             key={stat.label}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04, duration: 0.28, ease: easeOut }}
-          >
-            <Link href={stat.href} className="block h-full">
-              <Card className="glass-card h-full border-0 shadow-sm transition-shadow duration-200 hover:shadow-md">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="rounded-md bg-primary/10 p-2.5 text-primary">
-                    <stat.icon className="h-5 w-5 stroke-[1.5]" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-text/50">{stat.label}</p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-text">{stat.value}</p>
-                  </div>
-                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-text/30" aria-hidden />
-                </CardContent>
-              </Card>
-            </Link>
-          </motion.div>
+            index={i}
+            label={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            href={stat.href}
+          />
         ))}
       </section>
 

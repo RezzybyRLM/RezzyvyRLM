@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { StatCard } from '@/components/dashboard/stat-card'
 import { Users, Briefcase, Eye, Send, Mail, CreditCard, Inbox, Loader2 } from 'lucide-react'
 
 type Metrics = {
@@ -57,93 +59,54 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Platform totals and quick links. Data updates when you refresh.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Admin console"
+        title="Overview"
+        subtitle="Platform totals and quick links. Data updates when you refresh."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="glass-card border-0 shadow-sm">
+        <StatCard index={0} label="Users" value={metrics.users} icon={Users} href="/admin/users" hint="View directory" />
+        <StatCard index={1} label="Jobs" value={metrics.jobs} icon={Briefcase} href="/admin/jobs" hint="Manage listings" />
+        <StatCard index={2} label="Job views" value={metrics.jobViews} icon={Eye} />
+        <StatCard index={3} label="Contact messages" value={metrics.contactMessages} icon={Mail} href="/admin/inbox" hint="Open inbox" />
+
+        <Card className="rounded-2xl border border-border/70 bg-white/70 shadow-card backdrop-blur-xl">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Users className="h-4 w-4" /> Users
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-text/45">
+              <Send className="h-4 w-4 text-primary" /> Applications
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{metrics.users}</p>
-            <Button variant="link" className="mt-2 h-auto p-0 text-sm" asChild>
-              <Link href="/admin/users">Directory</Link>
-            </Button>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-text/45">Member-tracked</p>
+              <p className="text-2xl font-semibold tabular-nums text-text">{metrics.jobApplicationsMember}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text/45">Employer inbox</p>
+              <p className="text-2xl font-semibold tabular-nums text-text">{metrics.jobApplicationsReceived}</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-0 shadow-sm">
+        <Card className="rounded-2xl border border-border/70 bg-white/70 shadow-card backdrop-blur-xl">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Briefcase className="h-4 w-4" /> Jobs
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-text/45">
+              <CreditCard className="h-4 w-4 text-primary" /> Subscriptions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{metrics.jobs}</p>
-            <Button variant="link" className="mt-2 h-auto p-0 text-sm" asChild>
-              <Link href="/admin/jobs">Manage</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Eye className="h-4 w-4" /> Job views
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{metrics.jobViews}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Send className="h-4 w-4" /> Applications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Member-tracked</p>
-            <p className="text-2xl font-semibold tabular-nums">{metrics.jobApplicationsMember}</p>
-            <p className="mt-2 text-sm text-muted-foreground">Employer inbox</p>
-            <p className="text-2xl font-semibold tabular-nums">{metrics.jobApplicationsReceived}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Mail className="h-4 w-4" /> Contact
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{metrics.contactMessages}</p>
-            <Button variant="link" className="mt-2 h-auto p-0 text-sm" asChild>
-              <Link href="/admin/inbox">Inbox</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <CreditCard className="h-4 w-4" /> Subscriptions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Active Stripe links</p>
-            <p className="text-2xl font-semibold tabular-nums">{metrics.payingSubscriptions}</p>
-            <p className="mt-2 text-sm text-muted-foreground">MRR estimate (USD)</p>
-            <p className="text-2xl font-semibold tabular-nums">${metrics.mrrEstimateUsd}</p>
-            <Button variant="link" className="mt-2 h-auto p-0 text-sm" asChild>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-text/45">Active Stripe links</p>
+                <p className="text-2xl font-semibold tabular-nums text-text">{metrics.payingSubscriptions}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text/45">MRR estimate (USD)</p>
+                <p className="text-2xl font-semibold tabular-nums text-text">${metrics.mrrEstimateUsd}</p>
+              </div>
+            </div>
+            <Button variant="link" className="mt-2 h-auto p-0 text-sm text-primary" asChild>
               <Link href="/admin/billing">Billing detail</Link>
             </Button>
           </CardContent>

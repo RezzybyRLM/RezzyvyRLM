@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { StatCard } from '@/components/dashboard/stat-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -179,72 +181,23 @@ export default function EmployerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Manage your job postings and track performance</p>
-        </div>
-        <Button asChild>
-          <Link href="/employer/manage-jobs/new">
-            Post New Job
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Employer hub"
+        title="Hiring dashboard"
+        subtitle="Manage your job postings and track performance across your organization."
+        actions={
+          <Button asChild className="bg-primary text-white hover:bg-primary/90">
+            <Link href="/employer/manage-jobs/new">Post new job</Link>
+          </Button>
+        }
+      />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalJobs}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeJobs} active
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalViews.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              +12% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Applications</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalApplications}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalClicks} clicks
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.monthlyRevenue}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.featuredJobs} featured jobs
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard index={0} label="Total jobs" value={stats.totalJobs} icon={Briefcase} hint={`${stats.activeJobs} active`} />
+        <StatCard index={1} label="Total views" value={stats.totalViews.toLocaleString()} icon={Eye} hint="+12% from last month" />
+        <StatCard index={2} label="Applications" value={stats.totalApplications} icon={Users} hint={`${stats.totalClicks} clicks`} />
+        <StatCard index={3} label="Monthly revenue" value={`$${stats.monthlyRevenue}`} icon={DollarSign} hint={`${stats.featuredJobs} featured jobs`} />
       </div>
 
       {/* Recent Jobs */}

@@ -19,7 +19,7 @@ interface NavbarProps {
 const NAV_LINKS = [
   { href: '/job-board', label: 'Find Jobs' },
   { href: '/companies', label: 'Companies' },
-  { href: '/resume-services', label: 'Resume Services' },
+  { href: '/services', label: 'Services' },
   { href: '/plans', label: 'Pricing' },
 ]
 

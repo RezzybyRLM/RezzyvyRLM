@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
@@ -385,14 +386,14 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Interview Pro</h1>
-          <p className="text-gray-600">
-            Voice practice with browser speech-to-text. Only transcribed text is sent to the assistant; audio is not uploaded.
-          </p>
-        </div>
+    <div>
+      <div className="mx-auto max-w-4xl">
+        <PageHeader
+          eyebrow="Practice"
+          title="Interview Pro"
+          subtitle="Voice practice with browser speech-to-text. Only transcribed text is sent to the assistant; audio is not uploaded."
+          className="mb-8"
+        />
 
         {!session ? (
           /* Setup Phase */

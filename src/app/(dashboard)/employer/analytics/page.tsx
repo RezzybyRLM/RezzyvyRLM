@@ -192,8 +192,9 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Job performance for the selected period</p>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/80">Employer hub</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-text">Analytics</h1>
+          <p className="mt-1 text-sm text-text/55">Job performance for the selected period</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select

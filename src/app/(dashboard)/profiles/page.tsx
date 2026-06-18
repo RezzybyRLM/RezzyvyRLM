@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -169,19 +170,19 @@ export default function ProfilesPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Profiles</h1>
-          <p className="text-gray-600">Manage your professional profiles for different job roles</p>
-        </div>
-        <Button asChild className="btn-primary w-full sm:w-auto">
-          <Link href="/profiles/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create New Profile
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Profiles"
+        title="My profiles"
+        subtitle="Manage your professional profiles for different job roles."
+        actions={
+          <Button asChild className="bg-primary text-white hover:bg-primary/90 w-full sm:w-auto">
+            <Link href="/profiles/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Create new profile
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Profiles Grid */}
       {profiles.length === 0 ? (

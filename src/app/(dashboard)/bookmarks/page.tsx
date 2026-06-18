@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -86,18 +87,13 @@ export default function BookmarksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Bookmark className="h-8 w-8 mr-3 text-primary" />
-            My Bookmarks
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {bookmarks.length} {bookmarks.length === 1 ? 'job saved' : 'jobs saved'}
-          </p>
-        </div>
+    <div>
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Saved"
+          title="My bookmarks"
+          subtitle={`${bookmarks.length} ${bookmarks.length === 1 ? 'job saved' : 'jobs saved'}`}
+        />
 
         {/* Bookmarks List */}
         {bookmarks.length === 0 ? (

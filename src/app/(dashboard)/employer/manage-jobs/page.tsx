@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -250,19 +251,19 @@ export default function ManageJobsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Jobs</h1>
-          <p className="text-gray-600">Create, edit, and manage your job postings</p>
-        </div>
-        <Button asChild>
-          <Link href="/employer/manage-jobs/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Post New Job
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Employer hub"
+        title="Manage jobs"
+        subtitle="Create, edit, and manage your job postings."
+        actions={
+          <Button asChild className="bg-primary text-white hover:bg-primary/90">
+            <Link href="/employer/manage-jobs/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Post new job
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <Card>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
@@ -452,12 +453,14 @@ export default function ResumeManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Resume & Cover Letter Manager</h1>
-          <p className="text-gray-600">Upload and manage your resumes and cover letters for job applications</p>
-        </div>
+    <div>
+      <div className="mx-auto max-w-4xl">
+        <PageHeader
+          eyebrow="Documents"
+          title="Resume & cover letter manager"
+          subtitle="Upload and manage your resumes and cover letters for job applications."
+          className="mb-8"
+        />
 
         {/* Upload Section */}
         <Card className="mb-8">

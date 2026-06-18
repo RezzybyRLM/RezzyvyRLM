@@ -1453,8 +1453,13 @@ const fetchMessages = async (conversationId: string, beforeDate?: string, limit:
 const sendMessage = async () => {
   if ((!messageContent.trim() && !selectedImage) || !selectedConversation) return
 
+  // Prefer the already-resolved session user; fall back to a fresh getUser().
+  // Don't hard-block on a transient getUser() null when we already know who is
+  // signed in — that produced spurious "please sign in" failures when the
+  // client session was briefly unreadable.
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  const senderId = user?.id ?? currentUserId
+  if (!senderId) {
     alert('Please sign in to send messages')
     return
   }
@@ -1463,7 +1468,7 @@ const sendMessage = async () => {
   const tempId = `temp-${Date.now()}`
   const tempMessage: Message = {
     id: tempId,
-    sender_id: user.id,
+    sender_id: senderId,
     content: messageContent.trim() || '',
     is_read: false,
     created_at: new Date().toISOString(),
@@ -1475,9 +1480,9 @@ const sendMessage = async () => {
     reactions: {},
     read_by: [],
     sender: {
-      full_name: user.user_metadata?.full_name || null,
-      email: user.email || '',
-      phone_number: user.user_metadata?.phone_number || null
+      full_name: user?.user_metadata?.full_name || null,
+      email: user?.email || '',
+      phone_number: user?.user_metadata?.phone_number || null
     },
     reply_to: replyingTo || null,
     attachments: selectedImage ? [{
@@ -1513,7 +1518,7 @@ const sendMessage = async () => {
     // Create message with content (can be used as caption for images)
     const messageData: any = {
       conversation_id: selectedConversation,
-      sender_id: user.id,
+      sender_id: senderId,
       content: originalContent || '',
     }
 
@@ -1634,7 +1639,7 @@ const sendMessage = async () => {
           ...conv,
           last_message: {
             content: originalContent || '[Image]',
-            sender_id: user.id,
+            sender_id: senderId,
             created_at: newMessage.created_at,
             is_read: false
           },

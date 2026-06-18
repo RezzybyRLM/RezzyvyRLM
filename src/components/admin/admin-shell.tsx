@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Link2,
   Compass,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -41,6 +42,7 @@ const nav = [
   { href: '/admin/messages', label: 'Messages', icon: MessageSquare },
   { href: '/admin/job-board', label: 'Job board', icon: Compass },
   { href: '/admin/org-invites', label: 'Org invites', icon: Link2 },
+  { href: '/admin/service-invites', label: 'Service invites', icon: Sparkles },
 ]
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

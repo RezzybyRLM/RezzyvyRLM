@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import {
   canAccessAdminConsole,
   canAccessEmployerDashboard,
+  canAccessServiceConsole,
   isStaffRole,
 } from '@/lib/auth/permissions'
 
@@ -29,6 +30,7 @@ const PROTECTED = [
   '/job-alerts',
   '/interview-pro',
   '/employer',
+  '/service',
   '/cart',
   '/applications',
   '/messages',
@@ -117,6 +119,9 @@ export async function proxy(request: NextRequest) {
     if (canAccessAdminConsole(role)) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     }
+    if (role === 'service_team') {
+      return NextResponse.redirect(new URL('/service', request.url))
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -139,6 +144,11 @@ export async function proxy(request: NextRequest) {
     onboardingCompleted &&
     !canAccessEmployerDashboard(role)
   ) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // 6) RezzyMeUp service console is service-team + staff only.
+  if (pathname.startsWith('/service') && !canAccessServiceConsole(role)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

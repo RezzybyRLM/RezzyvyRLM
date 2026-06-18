@@ -17,6 +17,7 @@ export const DASHBOARD_ROUTE_PREFIXES = [
   '/job-alerts',
   '/interview-pro',
   '/employer',
+  '/service',
   '/messages',
   '/applications',
   '/jobs',

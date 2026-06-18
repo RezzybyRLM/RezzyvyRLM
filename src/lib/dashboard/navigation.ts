@@ -69,6 +69,15 @@ export function getDashboardNavigation(appRole: string | null): DashboardNavItem
     ]
   }
 
+  // Service Team (RezzyMeUp) fulfillment staff get the service queue + messaging.
+  if (r === 'service_team') {
+    return [
+      { name: 'Service queue', href: '/service', icon: ClipboardList, group: 'main' },
+      { name: 'Messages', href: '/messages', icon: MessageSquare, group: 'main' },
+      ...SUPPORT,
+    ]
+  }
+
   return [...MAIN, ...SUPPORT]
 }
 

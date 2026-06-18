@@ -68,6 +68,10 @@ export function SidebarShell({
 
   const navigation = getDashboardNavigation(role)
 
+  // Members get a distinct chrome: a warm coral-tinted sidebar with pill-style
+  // active items (vs. the white-glass + left-accent look for employer/service).
+  const isMember = role === 'user'
+
   const sidebarAccent =
     role === 'admin' || role === 'super_admin'
       ? 'border-l-[3px] border-l-primary-500/25'
@@ -191,7 +195,8 @@ export function SidebarShell({
       {/* Sidebar - Desktop */}
       <aside
         className={cn(
-          'relative z-40 hidden flex-col border-r border-white/30 bg-white/55 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          'relative z-40 hidden flex-col border-r border-white/30 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          isMember ? 'bg-primary-50/70' : 'bg-white/55',
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64',
           sidebarAccent
         )}
@@ -246,13 +251,26 @@ export function SidebarShell({
                 <Link
                   href={item.href}
                   className={cn(
-                    'group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-200',
-                    isActive
-                      ? 'border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
-                      : 'border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                    'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-200',
+                    isMember
+                      ? isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text/70 hover:bg-white/70 hover:text-text'
+                      : isActive
+                        ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
+                        : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
                   )}
                 >
-                  <Icon className={cn(iconClass, isActive ? 'text-primary' : 'text-text/45 group-hover:text-text/70')} />
+                  <Icon
+                    className={cn(
+                      iconClass,
+                      isActive
+                        ? isMember
+                          ? 'text-white'
+                          : 'text-primary'
+                        : 'text-text/45 group-hover:text-text/70'
+                    )}
+                  />
                   {!sidebarCollapsed && <span className="min-w-0 flex-1 truncate">{item.name}</span>}
                   {item.name === 'Messages' && unreadCount > 0 && (
                     <span

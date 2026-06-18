@@ -15,7 +15,6 @@ import {
   Search,
   CreditCard,
   Sparkles,
-  BellRing,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -380,13 +379,6 @@ export function SidebarShell({
                 aria-label="Search jobs"
               />
             </form>
-            <Link
-              href="/job-alerts"
-              className="rounded-lg p-2 text-text/50 transition-colors hover:bg-background hover:text-primary"
-              aria-label="Job alerts"
-            >
-              <BellRing className="h-5 w-5 stroke-[1.5]" />
-            </Link>
           </div>
         </header>
 

@@ -53,18 +53,17 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          // Canonical @supabase/ssr handling: write the cookies back with the
+          // EXACT options Supabase provides. Do NOT force httpOnly / maxAge / etc.
+          // — the browser client writes non-httpOnly auth cookies, and forcing
+          // httpOnly here creates a conflicting copy the client can't read or
+          // overwrite, which breaks session parsing and bounces every protected
+          // navigation back to /auth/login (the "stuck on login" loop).
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request: { headers: request.headers } })
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              ...options,
-              maxAge: 60 * 60 * 24 * 14, // 14 days
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax' as const,
-              path: '/',
-            })
-          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
         },
       },
     }

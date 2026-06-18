@@ -235,7 +235,7 @@ export function SidebarShell({
             const prev = index > 0 ? navigation[index - 1] : undefined
             const label = navGroupLabel(item.group)
             const showSection =
-              !!label && (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
+              !!label && (index === 0 || item.group !== prev?.group)
             return (
               <Fragment key={`${item.href}-${item.name}`}>
                 {!sidebarCollapsed && showSection && (
@@ -431,7 +431,7 @@ export function SidebarShell({
                   const prev = index > 0 ? navigation[index - 1] : undefined
                   const label = navGroupLabel(item.group)
                   const showSection =
-                    !!label && (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
+                    !!label && (index === 0 || item.group !== prev?.group)
                   return (
                     <Fragment key={`${item.href}-${item.name}`}>
                       {showSection && (

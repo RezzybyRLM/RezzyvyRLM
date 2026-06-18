@@ -12,9 +12,11 @@ import {
   Shield,
   ClipboardList,
   Send,
+  Settings,
+  LifeBuoy,
 } from 'lucide-react'
 
-export type DashboardNavGroup = 'main' | 'hiring' | 'staff'
+export type DashboardNavGroup = 'main' | 'hiring' | 'staff' | 'support'
 
 export type DashboardNavItem = {
   name: string
@@ -35,8 +37,16 @@ const MAIN: DashboardNavItem[] = [
   { name: 'Interview Pro', href: '/interview-pro', icon: Headphones, group: 'main' },
 ]
 
+// Stitch "Rezzy Dashboard" layout: a SUPPORT group pinned after the main nav.
+const SUPPORT: DashboardNavItem[] = [
+  { name: 'Settings', href: '/settings/plan', icon: Settings, group: 'support' },
+  { name: 'Support Center', href: '/contact-us', icon: LifeBuoy, group: 'support' },
+]
+
 /**
- * Sidebar / mobile nav items depend on role: staff see Admin, employers see Hiring tools, members see the core job seeker set.
+ * Sidebar / mobile nav items depend on role: staff see Admin, employers see
+ * Hiring tools, members see the core job-seeker set. Everyone gets the SUPPORT
+ * group at the bottom.
  */
 export function getDashboardNavigation(appRole: string | null): DashboardNavItem[] {
   const r = appRole ?? 'user'
@@ -45,6 +55,7 @@ export function getDashboardNavigation(appRole: string | null): DashboardNavItem
     return [
       { name: 'Admin console', href: '/admin/dashboard', icon: Shield, group: 'staff' },
       ...MAIN,
+      ...SUPPORT,
     ]
   }
 
@@ -54,14 +65,17 @@ export function getDashboardNavigation(appRole: string | null): DashboardNavItem
       { name: 'Employer hub', href: '/employer', icon: Building2, group: 'hiring' },
       { name: 'Manage listings', href: '/employer/manage-jobs', icon: ClipboardList, group: 'hiring' },
       ...MAIN.slice(1),
+      ...SUPPORT,
     ]
   }
 
-  return MAIN
+  return [...MAIN, ...SUPPORT]
 }
 
 export function navGroupLabel(group: DashboardNavGroup): string | null {
   if (group === 'staff') return 'Staff'
   if (group === 'hiring') return 'Hiring'
+  if (group === 'support') return 'Support'
+  if (group === 'main') return 'Main'
   return null
 }

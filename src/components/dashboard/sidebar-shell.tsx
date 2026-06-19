@@ -244,8 +244,11 @@ export function SidebarShell({
               </button>
             </>
           ) : (
-            <>
-              <div className="flex flex-1 justify-center">
+            // Collapsed: show only the logo; hovering the header reveals the
+            // expand button (overlaid on the logo). The button stays
+            // pointer-events-none until hover so the logo link works normally.
+            <div className="group relative flex h-full w-full items-center justify-center">
+              <div className="transition-opacity duration-200 group-hover:opacity-0">
                 {isEmployer ? (
                   <span className="inline-flex rounded-lg bg-white p-1 shadow-sm">
                     <DashboardLogo href="/" compact priority />
@@ -258,16 +261,16 @@ export function SidebarShell({
                 type="button"
                 onClick={toggleSidebar}
                 className={cn(
-                  'shrink-0 rounded-md p-1.5 transition-colors',
+                  'absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-md opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
                   isEmployer
-                    ? 'text-white/50 hover:bg-white/10 hover:text-white'
-                    : 'text-text/50 hover:bg-background hover:text-text'
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                    : 'text-text/60 hover:bg-background hover:text-text'
                 )}
                 aria-label="Expand sidebar"
               >
                 <ChevronRight className="h-5 w-5 stroke-[1.5]" />
               </button>
-            </>
+            </div>
           )}
         </div>
 

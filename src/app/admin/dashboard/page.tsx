@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/dashboard/page-header'
-import { StatCard } from '@/components/dashboard/stat-card'
-import { Users, Briefcase, Eye, Send, Mail, CreditCard, Inbox, Loader2 } from 'lucide-react'
+import { Users, Briefcase, Send, CreditCard, Inbox, Loader2, Link2, Sparkles, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Metrics = {
   users: number
@@ -23,6 +21,15 @@ type Metrics = {
   stripeMode: string
 }
 
+const MANAGE = [
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/jobs', label: 'Jobs', icon: Briefcase },
+  { href: '/admin/billing', label: 'Billing', icon: CreditCard },
+  { href: '/admin/inbox', label: 'Inbox', icon: Inbox },
+  { href: '/admin/org-invites', label: 'Org invites', icon: Link2 },
+  { href: '/admin/service-invites', label: 'Service invites', icon: Sparkles },
+]
+
 export default function AdminDashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,8 +37,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let cancelled = false
     fetch('/api/admin/metrics')
-      .then(r => r.json())
-      .then(j => {
+      .then((r) => r.json())
+      .then((j) => {
         if (cancelled) return
         if (j.success) setMetrics(j.metrics)
         else setError(j.error || 'Failed to load')
@@ -44,9 +51,7 @@ export default function AdminDashboardPage() {
     }
   }, [])
 
-  if (error) {
-    return <p className="text-sm text-red-600">{error}</p>
-  }
+  if (error) return <p className="text-sm text-red-600">{error}</p>
 
   if (!metrics) {
     return (
@@ -57,72 +62,123 @@ export default function AdminDashboardPage() {
     )
   }
 
+  const health = [
+    { label: 'Users', value: metrics.users.toLocaleString() },
+    { label: 'Jobs', value: metrics.jobs.toLocaleString() },
+    { label: 'Job views', value: metrics.jobViews.toLocaleString() },
+    { label: 'MRR (USD)', value: `$${metrics.mrrEstimateUsd.toLocaleString()}` },
+  ]
+
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow="Admin console"
-        title="Overview"
-        subtitle="Platform totals and quick links. Data updates when you refresh."
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard index={0} label="Users" value={metrics.users} icon={Users} href="/admin/users" hint="View directory" />
-        <StatCard index={1} label="Jobs" value={metrics.jobs} icon={Briefcase} href="/admin/jobs" hint="Manage listings" />
-        <StatCard index={2} label="Job views" value={metrics.jobViews} icon={Eye} />
-        <StatCard index={3} label="Contact messages" value={metrics.contactMessages} icon={Mail} href="/admin/inbox" hint="Open inbox" />
-
-        <Card className="rounded-2xl border border-border/70 bg-white/70 shadow-card backdrop-blur-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-text/45">
-              <Send className="h-4 w-4 text-primary" /> Applications
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-text/45">Member-tracked</p>
-              <p className="text-2xl font-semibold tabular-nums text-text">{metrics.jobApplicationsMember}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text/45">Employer inbox</p>
-              <p className="text-2xl font-semibold tabular-nums text-text">{metrics.jobApplicationsReceived}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border border-border/70 bg-white/70 shadow-card backdrop-blur-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-text/45">
-              <CreditCard className="h-4 w-4 text-primary" /> Subscriptions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-text/45">Active Stripe links</p>
-                <p className="text-2xl font-semibold tabular-nums text-text">{metrics.payingSubscriptions}</p>
-              </div>
-              <div>
-                <p className="text-xs text-text/45">MRR estimate (USD)</p>
-                <p className="text-2xl font-semibold tabular-nums text-text">${metrics.mrrEstimateUsd}</p>
-              </div>
-            </div>
-            <Button variant="link" className="mt-2 h-auto p-0 text-sm text-primary" asChild>
-              <Link href="/admin/billing">Billing detail</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Mission control</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900 md:text-[2.1rem]">Platform overview</h1>
+          <p className="mt-2 inline-flex items-center gap-2 text-sm text-gray-500">
+            <span
+              className={cn('inline-flex h-2 w-2 rounded-full', metrics.stripeConfigured ? 'bg-emerald-500' : 'bg-amber-500')}
+              aria-hidden
+            />
+            {metrics.stripeConfigured ? `All systems operational · Stripe ${metrics.stripeMode}` : 'Stripe not configured'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/jobs/new">New job</Link>
+          </Button>
+          <Button asChild size="sm" className="bg-primary-600 text-white hover:bg-primary-700">
+            <Link href="/admin/inbox">Open inbox</Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/inbox">
-            <Inbox className="mr-2 h-4 w-4" />
-            Inbox
+      {/* Dark platform-health command bar */}
+      <div className="overflow-hidden rounded-3xl bg-[#241813] p-6 text-white shadow-lg md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">Platform health</p>
+        <div className="mt-4 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          {health.map((m) => (
+            <div key={m.label}>
+              <p className="text-3xl font-bold tabular-nums">{m.value}</p>
+              <p className="mt-0.5 text-xs uppercase tracking-wide text-white/50">{m.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-4 text-sm text-white/70">
+          <span>
+            Paying subscriptions: <span className="font-semibold text-white">{metrics.payingSubscriptions}</span>
+          </span>
+          <span>
+            Applications:{' '}
+            <span className="font-semibold text-white">
+              {metrics.jobApplicationsMember + metrics.jobApplicationsReceived}
+            </span>
+          </span>
+          <span>
+            Contact messages: <span className="font-semibold text-white">{metrics.contactMessages}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Detail tiles */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-5 shadow-sm">
+          <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-gray-400">
+            <Send className="h-4 w-4 text-primary-600" /> Applications
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-400">Member-tracked</p>
+              <p className="text-2xl font-semibold tabular-nums text-gray-900">{metrics.jobApplicationsMember}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Employer inbox</p>
+              <p className="text-2xl font-semibold tabular-nums text-gray-900">{metrics.jobApplicationsReceived}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-5 shadow-sm">
+          <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-gray-400">
+            <CreditCard className="h-4 w-4 text-primary-600" /> Subscriptions
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-400">Active Stripe links</p>
+              <p className="text-2xl font-semibold tabular-nums text-gray-900">{metrics.payingSubscriptions}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">MRR estimate (USD)</p>
+              <p className="text-2xl font-semibold tabular-nums text-gray-900">${metrics.mrrEstimateUsd}</p>
+            </div>
+          </div>
+          <Link href="/admin/billing" className="mt-3 inline-block text-sm font-medium text-primary-600 hover:underline">
+            Billing detail
           </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/jobs/new">New job</Link>
-        </Button>
+        </div>
+      </div>
+
+      {/* Manage tiles */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Manage</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {MANAGE.map((tile) => (
+            <Link
+              key={tile.href}
+              href={tile.href}
+              className="group flex flex-col gap-3 rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md"
+            >
+              <span className="inline-flex w-fit rounded-xl bg-primary-50 p-2.5 text-primary-600">
+                <tile.icon className="h-5 w-5" />
+              </span>
+              <span className="flex items-center justify-between text-sm font-semibold text-gray-900">
+                {tile.label}
+                <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-primary-500" />
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Search,
@@ -12,13 +10,14 @@ import {
   Calendar,
   ExternalLink,
   Edit,
-  CheckCircle,
-  XCircle,
-  Clock,
   Loader2,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface JobApplication {
   id: string
@@ -36,6 +35,18 @@ interface JobApplication {
 }
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected', 'withdrawn'] as const
+
+const STATUS_META: Record<string, { label: string; chip: string; stripe: string; dot: string }> = {
+  applied: { label: 'Applied', chip: 'bg-primary/10 text-primary', stripe: 'border-l-primary', dot: 'bg-primary' },
+  interview: { label: 'Interview', chip: 'bg-secondary/10 text-secondary', stripe: 'border-l-secondary', dot: 'bg-secondary' },
+  offer: { label: 'Offer', chip: 'bg-success/10 text-success', stripe: 'border-l-success', dot: 'bg-success' },
+  rejected: { label: 'Rejected', chip: 'bg-accent/10 text-accent', stripe: 'border-l-accent', dot: 'bg-accent' },
+  withdrawn: { label: 'Withdrawn', chip: 'bg-text/5 text-text/55', stripe: 'border-l-text/20', dot: 'bg-text/40' },
+}
+
+function meta(status: string) {
+  return STATUS_META[status] ?? STATUS_META.withdrawn
+}
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<JobApplication[]>([])
@@ -79,6 +90,15 @@ export default function ApplicationsPage() {
     return list
   }, [applications, searchQuery, statusFilter])
 
+  // Status counts for the summary strip + filter tabs (real data).
+  const tabs = useMemo(() => {
+    const present = STATUSES.filter((s) => applications.some((a) => a.status === s))
+    return [
+      { key: 'all', label: 'All', count: applications.length },
+      ...present.map((s) => ({ key: s, label: meta(s).label, count: applications.filter((a) => a.status === s).length })),
+    ]
+  }, [applications])
+
   const updateApplication = async (id: string, patch: Partial<JobApplication>) => {
     const user = await resolveSessionUser(supabase)
     if (!user) return
@@ -94,23 +114,6 @@ export default function ApplicationsPage() {
     setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)))
   }
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      applied: 'bg-primary/10 text-primary',
-      interview: 'bg-primary/10 text-primary',
-      offer: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      withdrawn: 'bg-gray-100 text-gray-700',
-    }
-    return <Badge className={map[status] ?? 'bg-gray-100 text-gray-700'}>{status[0].toUpperCase() + status.slice(1)}</Badge>
-  }
-
-  const statusIcon = (status: string) => {
-    if (status === 'offer') return <CheckCircle className="h-4 w-4 text-green-500" />
-    if (status === 'rejected' || status === 'withdrawn') return <XCircle className="h-4 w-4 text-text/40" />
-    return <Clock className="h-4 w-4 text-primary" />
-  }
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -120,63 +123,100 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-text">My applications</h1>
-        <p className="mt-1 text-sm text-text/60">Track your job applications and their status.</p>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Tracker hero */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/[0.1] via-white to-white p-6 shadow-card">
+        <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Your job hunt
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">My applications</h1>
+        <p className="mt-1 text-sm text-text/55">Track every role you&apos;ve applied to and keep the momentum going.</p>
+        {applications.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {STATUSES.filter((s) => applications.some((a) => a.status === s)).map((s) => {
+              const m = meta(s)
+              const count = applications.filter((a) => a.status === s).length
+              return (
+                <span key={s} className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium', m.chip)}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', m.dot)} />
+                  {count} {m.label.toLowerCase()}
+                </span>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      <Card className="border border-border bg-white shadow-sm">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text/40" />
-              <Input
-                placeholder="Search applications…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full border-border pl-10 sm:w-64"
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-md border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="all">All status</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="text-sm text-text/55">
-            {filtered.length} of {applications.length} applications
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filter row */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-3 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {tabs.map((tab) => {
+            const isActive = statusFilter === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setStatusFilter(tab.key)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                  isActive ? 'bg-primary text-white shadow-sm' : 'text-text/65 hover:bg-background'
+                )}
+              >
+                {tab.label}
+                <span className={cn('rounded-full px-1.5 text-[11px] font-semibold tabular-nums', isActive ? 'bg-white/25 text-white' : 'bg-text/5 text-text/50')}>
+                  {tab.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="relative sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text/40" />
+          <Input
+            placeholder="Search applications…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-border pl-10"
+          />
+        </div>
+      </div>
 
       {filtered.length === 0 ? (
-        <Card className="border border-border bg-white shadow-sm">
-          <CardContent className="p-12 text-center">
-            <Briefcase className="mx-auto mb-4 h-12 w-12 text-text/30" />
-            <h3 className="mb-2 text-lg font-medium text-text">No applications found</h3>
-            <p className="text-sm text-text/55">
-              {searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your search or filter.'
-                : 'Apply to jobs and track them here.'}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border bg-white p-12 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Briefcase className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold text-text">No applications found</h3>
+          <p className="text-sm text-text/55">
+            {searchQuery || statusFilter !== 'all'
+              ? 'Try adjusting your search or filter.'
+              : 'Apply to jobs and track them here.'}
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map((app) => (
-            <Card key={app.id} className="border border-border bg-white shadow-sm">
-              <CardContent className="p-5">
+          {filtered.map((app, i) => {
+            const m = meta(app.status)
+            return (
+              <motion.div
+                key={app.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: easeOut, delay: Math.min(i * 0.04, 0.3) }}
+                className={cn('rounded-2xl border border-l-4 border-border bg-white p-5 shadow-card transition-shadow hover:shadow-card-hover', m.stripe)}
+              >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold text-text">{app.job_title}</h3>
-                      {statusBadge(app.status)}
+                      <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold', m.chip)}>
+                        <span className={cn('h-1.5 w-1.5 rounded-full', m.dot)} /> {m.label}
+                      </span>
                     </div>
                     <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text/60">
                       <span className="inline-flex items-center gap-1.5"><Building className="h-4 w-4" />{app.company_name}</span>
@@ -189,7 +229,7 @@ export default function ApplicationsPage() {
                       </Button>
                     )}
 
-                    <div className="mt-4">
+                    <div className="mt-4 rounded-xl bg-background/70 p-3">
                       {editingNotes === app.id ? (
                         <div className="space-y-2">
                           <textarea
@@ -197,10 +237,10 @@ export default function ApplicationsPage() {
                             onChange={(e) => setNotesText(e.target.value)}
                             placeholder="Add notes about this application…"
                             rows={3}
-                            className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
                           />
                           <div className="flex gap-2">
-                            <Button size="sm" onClick={async () => { await updateApplication(app.id, { notes: notesText }); setEditingNotes(null); setNotesText('') }}>
+                            <Button size="sm" className="bg-primary text-white hover:bg-primary-600" onClick={async () => { await updateApplication(app.id, { notes: notesText }); setEditingNotes(null); setNotesText('') }}>
                               Save notes
                             </Button>
                             <Button variant="outline" size="sm" className="border-border" onClick={() => { setEditingNotes(null); setNotesText('') }}>
@@ -209,40 +249,42 @@ export default function ApplicationsPage() {
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <div className="mb-1 flex items-center justify-between">
-                            <span className="text-sm font-medium text-text/70">Notes</span>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingNotes(app.id); setNotesText(app.notes || '') }}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-text/45">Notes</p>
+                            <p className="mt-0.5 text-sm text-text/60">{app.notes || 'No notes added yet.'}</p>
                           </div>
-                          <p className="text-sm text-text/55">{app.notes || 'No notes added'}</p>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingNotes(app.id); setNotesText(app.notes || '') }}
+                            className="shrink-0 rounded-lg p-1.5 text-text/40 transition-colors hover:bg-white hover:text-primary"
+                            aria-label="Edit notes"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 flex-col gap-2">
+                  <div className="flex shrink-0 flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wide text-text/45">Status</label>
                     <select
                       value={app.status}
                       onChange={(e) => updateApplication(app.id, { status: e.target.value })}
-                      className="rounded-md border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/20"
+                      className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
                     >
                       {STATUSES.map((s) => (
-                        <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>
+                        <option key={s} value={s}>{meta(s).label}</option>
                       ))}
                     </select>
-                    <div className="flex items-center gap-1 text-xs text-text/50">
-                      {statusIcon(app.status)}
-                      <span className="capitalize">{app.status}</span>
-                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </motion.div>
+            )
+          })}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

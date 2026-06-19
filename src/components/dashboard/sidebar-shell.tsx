@@ -71,13 +71,15 @@ export function SidebarShell({
   // Members get a distinct chrome: a warm coral-tinted sidebar with pill-style
   // active items (vs. the white-glass + left-accent look for employer/service).
   const isMember = role === 'user'
+  // Employers get a bold, dark warm-brown "hiring command center" rail — clearly
+  // distinct from the member's light coral rail and the admin AdminShell. Coral
+  // active pills pop against the brown.
+  const isEmployer = role === 'employer'
 
   const sidebarAccent =
     role === 'admin' || role === 'super_admin'
       ? 'border-l-[3px] border-l-primary-500/25'
-      : role === 'employer'
-        ? 'border-l-[3px] border-l-emerald-500/25'
-        : ''
+      : ''
 
   // Restore collapse preference.
   useEffect(() => {
@@ -195,22 +197,42 @@ export function SidebarShell({
       {/* Sidebar - Desktop */}
       <aside
         className={cn(
-          'relative z-40 hidden flex-col border-r border-white/30 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
-          isMember ? 'bg-primary-50/70' : 'bg-white/55',
+          'relative z-40 hidden flex-col border-r shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          isEmployer
+            ? 'border-secondary-900/30 bg-gradient-to-b from-secondary-700 via-secondary-800 to-secondary-900'
+            : isMember
+              ? 'border-white/30 bg-primary-50/70'
+              : 'border-white/30 bg-white/55',
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64',
-          sidebarAccent
+          !isEmployer && sidebarAccent
         )}
       >
-        <div className="flex h-16 items-center gap-2 border-b border-white/25 px-3">
+        <div
+          className={cn(
+            'flex h-16 items-center gap-2 border-b px-3',
+            isEmployer ? 'border-white/10' : 'border-white/25'
+          )}
+        >
           {!sidebarCollapsed ? (
             <>
               <div className="min-w-0 flex-1">
-                <DashboardLogo href="/" priority />
+                {isEmployer ? (
+                  <span className="inline-flex rounded-lg bg-white px-2 py-1 shadow-sm">
+                    <DashboardLogo href="/" priority />
+                  </span>
+                ) : (
+                  <DashboardLogo href="/" priority />
+                )}
               </div>
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                className={cn(
+                  'shrink-0 rounded-md p-1.5 transition-colors',
+                  isEmployer
+                    ? 'text-white/50 hover:bg-white/10 hover:text-white'
+                    : 'text-text/50 hover:bg-background hover:text-text'
+                )}
                 aria-label="Collapse sidebar"
               >
                 <ChevronLeft className="h-5 w-5 stroke-[1.5]" />
@@ -219,12 +241,23 @@ export function SidebarShell({
           ) : (
             <>
               <div className="flex flex-1 justify-center">
-                <DashboardLogo href="/" compact priority />
+                {isEmployer ? (
+                  <span className="inline-flex rounded-lg bg-white p-1 shadow-sm">
+                    <DashboardLogo href="/" compact priority />
+                  </span>
+                ) : (
+                  <DashboardLogo href="/" compact priority />
+                )}
               </div>
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                className={cn(
+                  'shrink-0 rounded-md p-1.5 transition-colors',
+                  isEmployer
+                    ? 'text-white/50 hover:bg-white/10 hover:text-white'
+                    : 'text-text/50 hover:bg-background hover:text-text'
+                )}
                 aria-label="Expand sidebar"
               >
                 <ChevronRight className="h-5 w-5 stroke-[1.5]" />
@@ -245,30 +278,43 @@ export function SidebarShell({
               <Fragment key={`${item.href}-${item.name}`}>
                 {!sidebarCollapsed && showSection && (
                   <div className="px-3 pb-1 pt-3 first:pt-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text/45">{label}</p>
+                    <p
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider',
+                        isEmployer ? 'text-white/40' : 'text-text/45'
+                      )}
+                    >
+                      {label}
+                    </p>
                   </div>
                 )}
                 <Link
                   href={item.href}
                   className={cn(
                     'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-200',
-                    isMember
+                    isEmployer
                       ? isActive
                         ? 'bg-primary text-white shadow-sm'
-                        : 'text-text/70 hover:bg-white/70 hover:text-text'
-                      : isActive
-                        ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
-                        : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                        : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      : isMember
+                        ? isActive
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text/70 hover:bg-white/70 hover:text-text'
+                        : isActive
+                          ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
+                          : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
                   )}
                 >
                   <Icon
                     className={cn(
                       iconClass,
                       isActive
-                        ? isMember
+                        ? isMember || isEmployer
                           ? 'text-white'
                           : 'text-primary'
-                        : 'text-text/45 group-hover:text-text/70'
+                        : isEmployer
+                          ? 'text-white/50 group-hover:text-white/80'
+                          : 'text-text/45 group-hover:text-text/70'
                     )}
                   />
                   {!sidebarCollapsed && <span className="min-w-0 flex-1 truncate">{item.name}</span>}
@@ -293,35 +339,47 @@ export function SidebarShell({
           })}
         </nav>
 
-        <div className="relative border-t border-border p-3" ref={profileDropdownRef}>
+        <div
+          className={cn(
+            'relative border-t p-3',
+            isEmployer ? 'border-white/10' : 'border-border'
+          )}
+          ref={profileDropdownRef}
+        >
           {!sidebarCollapsed ? (
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-background"
+              className={cn(
+                'flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors',
+                isEmployer ? 'hover:bg-white/10' : 'hover:bg-background'
+              )}
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             >
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full border border-border object-cover" />
+                <img src={profile.avatar_url} alt="" className={cn('h-9 w-9 rounded-full border object-cover', isEmployer ? 'border-white/20' : 'border-border')} />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background">
-                  <UserRound className="h-4 w-4 text-text/40 stroke-[1.5]" />
+                <div className={cn('flex h-9 w-9 items-center justify-center rounded-full border', isEmployer ? 'border-white/20 bg-white/10' : 'border-border bg-background')}>
+                  <UserRound className={cn('h-4 w-4 stroke-[1.5]', isEmployer ? 'text-white/70' : 'text-text/40')} />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-text">{profile.full_name || 'Account'}</p>
-                <p className="truncate text-xs text-text/50">{profile.email}</p>
+                <p className={cn('truncate text-sm font-semibold', isEmployer ? 'text-white' : 'text-text')}>{profile.full_name || 'Account'}</p>
+                <p className={cn('truncate text-xs', isEmployer ? 'text-white/50' : 'text-text/50')}>{profile.email}</p>
               </div>
-              <ChevronDown className={cn('h-4 w-4 shrink-0 text-text/40 transition-transform', profileMenuOpen && 'rotate-180')} />
+              <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', isEmployer ? 'text-white/50' : 'text-text/40', profileMenuOpen && 'rotate-180')} />
             </button>
           ) : (
             <button
               type="button"
-              className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background transition-colors hover:bg-background/80"
+              className={cn(
+                'mx-auto flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
+                isEmployer ? 'border-white/20 bg-white/10 hover:bg-white/20' : 'border-border bg-background hover:bg-background/80'
+              )}
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               aria-label="Account menu"
             >
-              <UserRound className="h-5 w-5 text-text/50 stroke-[1.5]" />
+              <UserRound className={cn('h-5 w-5 stroke-[1.5]', isEmployer ? 'text-white/70' : 'text-text/50')} />
             </button>
           )}
 

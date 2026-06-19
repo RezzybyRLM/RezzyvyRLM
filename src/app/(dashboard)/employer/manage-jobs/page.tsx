@@ -1,30 +1,27 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PageHeader } from '@/components/dashboard/page-header'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   Users,
-  Calendar,
   MapPin,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  XCircle,
   Briefcase,
-  Loader2
+  Star,
+  TrendingUp,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface Job {
   id: string
@@ -40,6 +37,13 @@ interface Job {
   createdAt: string
   expiresAt: string
   description: string
+}
+
+const STATUS_META: Record<Job['status'], { label: string; dot: string; chip: string }> = {
+  active: { label: 'Active', dot: 'bg-success', chip: 'bg-success/10 text-success' },
+  expired: { label: 'Expired', dot: 'bg-accent', chip: 'bg-accent/10 text-accent' },
+  draft: { label: 'Draft', dot: 'bg-primary', chip: 'bg-primary/10 text-primary' },
+  paused: { label: 'Paused', dot: 'bg-text/40', chip: 'bg-text/5 text-text/60' },
 }
 
 export default function ManageJobsPage() {
@@ -95,13 +99,13 @@ export default function ManageJobsPage() {
 
       if (error) {
         console.error('Error fetching jobs:', error)
-    setLoading(false)
+        setLoading(false)
         return
       }
 
       // Get views and applications for each job
       const jobIds = jobsData?.map(j => j.id) || []
-      
+
       const { data: viewsData } = await supabase
         .from('job_views')
         .select('job_id')
@@ -127,7 +131,7 @@ export default function ManageJobsPage() {
       // Map to Job format
       const mappedJobs: Job[] = (jobsData || []).map(job => {
         const isExpired = job.expires_at ? new Date(job.expires_at) < new Date() : false
-        const status: 'active' | 'expired' | 'draft' | 'paused' = 
+        const status: 'active' | 'expired' | 'draft' | 'paused' =
           isExpired ? 'expired' : 'active' // Simplified - you'd have a status field
 
         return {
@@ -176,35 +180,27 @@ export default function ManageJobsPage() {
     setFilteredJobs(filtered)
   }, [jobs, searchQuery, statusFilter])
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>
-      case 'expired':
-        return <Badge className="bg-red-100 text-red-800">Expired</Badge>
-      case 'draft':
-        return <Badge className="bg-yellow-100 text-yellow-800">Draft</Badge>
-      case 'paused':
-        return <Badge className="bg-gray-100 text-gray-800">Paused</Badge>
-      default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
+  // Aggregate KPIs — all computed from the real jobs list (no fabricated metrics).
+  const kpis = useMemo(() => {
+    const totalViews = jobs.reduce((s, j) => s + j.views, 0)
+    const totalApplicants = jobs.reduce((s, j) => s + j.applications, 0)
+    return {
+      active: jobs.filter(j => j.status === 'active').length,
+      applicants: totalApplicants,
+      views: totalViews,
+      featured: jobs.filter(j => j.isFeatured).length,
     }
-  }
+  }, [jobs])
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'expired':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case 'draft':
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      case 'paused':
-        return <Clock className="h-4 w-4 text-gray-500" />
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />
-    }
-  }
+  // Filter tabs with live counts, only for statuses actually present.
+  const statusTabs = useMemo(() => {
+    const order: Job['status'][] = ['active', 'draft', 'paused', 'expired']
+    const present = order.filter(s => jobs.some(j => j.status === s))
+    return [
+      { key: 'all', label: 'All listings', count: jobs.length },
+      ...present.map(s => ({ key: s, label: STATUS_META[s].label, count: jobs.filter(j => j.status === s).length })),
+    ]
+  }, [jobs])
 
   const handleDeleteJob = async (jobId: string) => {
     if (!confirm('Are you sure you want to delete this job posting?')) {
@@ -249,173 +245,191 @@ export default function ManageJobsPage() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Employer hub"
-        title="Manage jobs"
-        subtitle="Create, edit, and manage your job postings."
-        actions={
-          <Button asChild className="bg-primary text-white hover:bg-primary/90">
-            <Link href="/employer/manage-jobs/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Post new job
-            </Link>
-          </Button>
-        }
-      />
+  const kpiCards = [
+    { label: 'Active listings', value: kpis.active, icon: Briefcase, tint: 'bg-success/10 text-success' },
+    { label: 'Total applicants', value: kpis.applicants, icon: Users, tint: 'bg-primary/10 text-primary' },
+    { label: 'Total views', value: kpis.views, icon: Eye, tint: 'bg-secondary/10 text-secondary' },
+    { label: 'Featured', value: kpis.featured, icon: Star, tint: 'bg-accent/10 text-accent' },
+  ]
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search jobs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="expired">Expired</option>
-                <option value="paused">Paused</option>
-              </select>
-            </div>
-            <div className="text-sm text-gray-600">
-              {filteredJobs.length} of {jobs.length} jobs
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Command header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">
+            <span className="h-1.5 w-1.5 rounded-full bg-secondary" /> Hiring command center
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">Manage listings</h1>
+          <p className="mt-1 text-sm text-text/55">Track every open role, its reach, and its applicant pipeline.</p>
+        </div>
+        <Button asChild className="bg-primary text-white shadow-sm hover:bg-primary-600">
+          <Link href="/employer/manage-jobs/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Post a job
+          </Link>
+        </Button>
+      </div>
+
+      {/* KPI strip — real aggregates */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {kpiCards.map(k => (
+          <div key={k.label} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-card">
+            <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', k.tint)}>
+              <k.icon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums text-text">{k.value.toLocaleString()}</p>
+              <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-text/45">{k.label}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Jobs List */}
-      <div className="space-y-4">
-        {filteredJobs.map((job) => (
-          <Card key={job.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                    {job.isFeatured && (
-                      <Badge className="bg-primary text-white">Featured</Badge>
-                    )}
-                    {getStatusBadge(job.status)}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="font-medium">Company:</span>
-                        <span>{job.company}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        <span>{job.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <DollarSign className="h-4 w-4" />
-                        <span>{job.salaryRange}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="font-medium">Type:</span>
-                        <span>{job.jobType}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-4 w-4" />
-                        <span>Posted {new Date(job.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        <span>Expires {new Date(job.expiresAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      <span>{job.views} views</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{job.applications} applications</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(job.status)}
-                      <span className="capitalize">{job.status}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {job.description}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 ml-4">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/employer/manage-jobs/${job.id}`}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/jobs/${job.id}`}>
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteJob(job.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         ))}
       </div>
 
-      {filteredJobs.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Briefcase className="h-6 w-6 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filter criteria.'
-                : 'Get started by posting your first job.'
-              }
-            </p>
-            <Button asChild>
-              <Link href="/employer/manage-jobs/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Post New Job
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Filter row */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-3 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {statusTabs.map(tab => {
+            const isActive = statusFilter === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setStatusFilter(tab.key)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                  isActive ? 'bg-primary text-white shadow-sm' : 'text-text/65 hover:bg-background'
+                )}
+              >
+                {tab.label}
+                <span className={cn('rounded-full px-1.5 text-[11px] font-semibold tabular-nums', isActive ? 'bg-white/25 text-white' : 'bg-text/5 text-text/50')}>
+                  {tab.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="relative sm:w-72">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text/40" />
+          <Input
+            placeholder="Search roles, locations…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Job pipeline cards */}
+      {filteredJobs.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-white p-12 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Briefcase className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold text-text">No jobs found</h3>
+          <p className="mb-4 text-sm text-text/55">
+            {searchQuery || statusFilter !== 'all'
+              ? 'Try adjusting your search or filter.'
+              : 'Get started by posting your first job.'}
+          </p>
+          <Button asChild className="bg-primary text-white hover:bg-primary-600">
+            <Link href="/employer/manage-jobs/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Post a job
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {filteredJobs.map((job, i) => {
+            const conversion = job.views > 0 ? Math.round((job.applications / job.views) * 100) : 0
+            const meta = STATUS_META[job.status]
+            return (
+              <motion.div
+                key={job.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: easeOut, delay: Math.min(i * 0.04, 0.3) }}
+                className="flex flex-col rounded-2xl border border-border bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate text-base font-semibold text-text">{job.title}</h3>
+                      {job.isFeatured && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          <Star className="h-3 w-3" /> Featured
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-text/55">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" /> {job.location}
+                    </p>
+                  </div>
+                  <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold', meta.chip)}>
+                    <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} /> {meta.label}
+                  </span>
+                </div>
+
+                {/* Metric tiles — Applicants / Views / Conversion (all real) */}
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-primary/[0.07] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/80">Applicants</p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-text">{job.applications.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-secondary/[0.06] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary/80">Views</p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-text">{job.views.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-background p-3">
+                    <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-text/50">
+                      <TrendingUp className="h-3 w-3" /> Conv.
+                    </p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-text">{conversion}%</p>
+                  </div>
+                </div>
+
+                {/* Footer meta + actions */}
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/70 pt-3 text-xs text-text/55">
+                  <span className="font-medium text-text/70">{job.jobType}</span>
+                  <span>{job.salaryRange}</span>
+                  <span>Posted {new Date(job.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="border-border" asChild>
+                    <Link href={`/employer/manage-jobs/${job.id}`}>
+                      <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit
+                    </Link>
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-border" asChild>
+                    <Link href={`/jobs/${job.id}`}>
+                      <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                    </Link>
+                  </Button>
+                  <Button size="sm" className="bg-secondary text-white hover:bg-secondary-600" asChild>
+                    <Link href="/employer/applications">
+                      <Users className="mr-1.5 h-3.5 w-3.5" /> Review applicants
+                    </Link>
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteJob(job.id)}
+                    className="ml-auto rounded-lg p-2 text-text/40 transition-colors hover:bg-accent/10 hover:text-accent"
+                    aria-label="Delete listing"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
       )}
-    </div>
+    </motion.div>
   )
 }

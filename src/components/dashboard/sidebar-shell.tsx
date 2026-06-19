@@ -75,6 +75,9 @@ export function SidebarShell({
   // distinct from the member's light coral rail and the admin AdminShell. Coral
   // active pills pop against the brown.
   const isEmployer = role === 'employer'
+  // Service-team (RezzyMeUp fulfillment) get a warm-taupe "operator console" rail
+  // with feather-red (accent) active pills — a fourth distinct identity.
+  const isService = role === 'service_team'
 
   const sidebarAccent =
     role === 'admin' || role === 'super_admin'
@@ -202,7 +205,9 @@ export function SidebarShell({
             ? 'border-secondary-900/30 bg-gradient-to-b from-secondary-700 via-secondary-800 to-secondary-900'
             : isMember
               ? 'border-white/30 bg-primary-50/70'
-              : 'border-white/30 bg-white/55',
+              : isService
+                ? 'border-secondary-200/70 bg-secondary-50/80'
+                : 'border-white/30 bg-white/55',
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64',
           !isEmployer && sidebarAccent
         )}
@@ -300,16 +305,20 @@ export function SidebarShell({
                         ? isActive
                           ? 'bg-primary text-white shadow-sm'
                           : 'text-text/70 hover:bg-white/70 hover:text-text'
-                        : isActive
-                          ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
-                          : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                        : isService
+                          ? isActive
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'text-text/70 hover:bg-white/70 hover:text-text'
+                          : isActive
+                            ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
+                            : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
                   )}
                 >
                   <Icon
                     className={cn(
                       iconClass,
                       isActive
-                        ? isMember || isEmployer
+                        ? isMember || isEmployer || isService
                           ? 'text-white'
                           : 'text-primary'
                         : isEmployer
@@ -520,10 +529,14 @@ export function SidebarShell({
                         onClick={() => setMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                          active ? 'bg-primary/10 text-primary' : 'text-text/70 hover:bg-background'
+                          active
+                            ? isService
+                              ? 'bg-accent/10 text-accent'
+                              : 'bg-primary/10 text-primary'
+                            : 'text-text/70 hover:bg-background'
                         )}
                       >
-                        <item.icon className={cn(iconClass, active ? 'text-primary' : 'text-text/45')} />
+                        <item.icon className={cn(iconClass, active ? (isService ? 'text-accent' : 'text-primary') : 'text-text/45')} />
                         <span className="min-w-0 flex-1 truncate">{item.name}</span>
                       </Link>
                     </Fragment>
@@ -555,7 +568,7 @@ export function SidebarShell({
               href={item.href}
               className={cn(
                 'flex min-w-[3.5rem] flex-col items-center gap-0.5 py-1 transition-colors duration-200',
-                isActive ? 'text-primary' : 'text-text/45'
+                isActive ? (isService ? 'text-accent' : 'text-primary') : 'text-text/45'
               )}
             >
               <div className="relative">

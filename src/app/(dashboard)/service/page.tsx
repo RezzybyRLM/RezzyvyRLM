@@ -3,11 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
-import { PageHeader } from '@/components/dashboard/page-header'
-import { StatCard } from '@/components/dashboard/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Inbox, Loader2, FileCheck2, CalendarClock, ClipboardList, UserRound, ExternalLink } from 'lucide-react'
+import { Loader2, CalendarClock, ClipboardList, UserRound, ExternalLink } from 'lucide-react'
 
 type ServiceOrder = {
   id: string
@@ -112,18 +110,45 @@ export default function ServiceQueuePage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow="RezzyMeUp"
-        title="Service queue"
-        subtitle="Fulfill client orders — resumes, coaching, vCards, LinkedIn and apply-for-you."
-      />
+      {/* Operator console header */}
+      <div className="rounded-3xl border border-border bg-white p-6 shadow-card md:p-7">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">RezzyMeUp · Fulfillment</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-text md:text-3xl">Service queue</h1>
+            <p className="mt-1.5 text-sm text-text/55">
+              {orders.length} order{orders.length === 1 ? '' : 's'} in your queue · {counts.coaching} coaching booked
+            </p>
+          </div>
+          <div className="flex gap-6">
+            {[
+              { label: 'New', value: counts.new },
+              { label: 'In progress', value: counts.in_progress },
+              { label: 'Delivered', value: counts.delivered },
+            ].map((m) => (
+              <div key={m.label} className="text-right">
+                <p className="text-2xl font-bold tabular-nums text-text">{m.value}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text/45">{m.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard index={0} label="New" value={counts.new} icon={Inbox} />
-        <StatCard index={1} label="In progress" value={counts.in_progress} icon={ClipboardList} />
-        <StatCard index={2} label="Delivered" value={counts.delivered} icon={FileCheck2} />
-        <StatCard index={3} label="Coaching booked" value={counts.coaching} icon={CalendarClock} />
-      </section>
+        {orders.length > 0 && (
+          <div className="mt-5">
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-background">
+              <div className="bg-primary/40" style={{ width: `${(counts.new / orders.length) * 100}%` }} />
+              <div className="bg-primary" style={{ width: `${(counts.in_progress / orders.length) * 100}%` }} />
+              <div className="bg-emerald-500" style={{ width: `${(counts.delivered / orders.length) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-text/50">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary/40" /> New</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> In progress</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Delivered</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {orders.length === 0 ? (
         <Card className="glass-card border-0 shadow-sm">

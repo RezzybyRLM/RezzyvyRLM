@@ -274,7 +274,7 @@ export function SidebarShell({
           )}
         </div>
 
-        <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
+        <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-4">
           {navigation.map((item, index) => {
             const Icon = item.icon
             const isActive = navIsActive(item.href)
@@ -298,6 +298,7 @@ export function SidebarShell({
                 )}
                 <Link
                   href={item.href}
+                  title={sidebarCollapsed ? item.name : undefined}
                   className={cn(
                     'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-200',
                     isEmployer
@@ -339,11 +340,6 @@ export function SidebarShell({
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
-                  )}
-                  {sidebarCollapsed && (
-                    <div className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-white px-2 py-1 text-xs text-text opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
-                      {item.name}
-                    </div>
                   )}
                 </Link>
               </Fragment>

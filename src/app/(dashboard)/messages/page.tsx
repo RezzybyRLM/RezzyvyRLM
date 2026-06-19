@@ -1888,18 +1888,18 @@ const filteredConversations = conversations.filter(conv =>
 
 if (loading) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   )
 }
 
 return (
-  <div className="min-h-screen bg-gray-50">
+  <div className="min-h-screen bg-background">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
-        <p className="text-gray-600">Connect and communicate with employers and professionals</p>
+        <h1 className="text-3xl font-bold text-text mb-2">Messages</h1>
+        <p className="text-text/55">Connect and communicate with employers and professionals</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
@@ -1926,7 +1926,7 @@ return (
               </Button>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none z-10" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text/40 h-5 w-5 pointer-events-none z-10" />
               <Input
                 type="text"
                 placeholder="Search conversations..."
@@ -1939,9 +1939,9 @@ return (
           <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
             {filteredConversations.length === 0 ? (
               <div className="p-8 text-center">
-                <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No conversations yet</p>
-                <p className="text-sm text-gray-500 mt-2">Start a conversation from a job application or profile</p>
+                <MessageSquare className="h-12 w-12 text-text/40 mx-auto mb-4" />
+                <p className="text-text/55">No conversations yet</p>
+                <p className="text-sm text-text/45 mt-2">Start a conversation from a job application or profile</p>
               </div>
             ) : (
               <div className="divide-y">
@@ -1955,7 +1955,7 @@ return (
                         params.set('conversation', conv.id)
                         router.replace(`/messages?${params.toString()}`, { scroll: false })
                       }}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${selectedConversation === conv.id ? 'bg-primary-50' : ''
+                      className={`w-full p-4 text-left hover:bg-background transition-colors ${selectedConversation === conv.id ? 'bg-primary-50' : ''
                         }`}
                     >
                       <div className="flex items-start gap-3">
@@ -1987,7 +1987,7 @@ return (
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 truncate">
+                              <h3 className="font-semibold text-text truncate">
                                 {conv.type === 'group'
                                   ? conv.name || 'Group Chat'
                                   : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
@@ -2006,16 +2006,16 @@ return (
                             )}
                           </div>
                           {conv.last_message && (
-                            <p className="text-sm text-gray-600 truncate">
+                            <p className="text-sm text-text/55 truncate">
                               {conv.last_message.content || '[Message deleted]'}
                             </p>
                           )}
                           {!conv.last_message && (
-                            <p className="text-sm text-gray-400 italic truncate">
+                            <p className="text-sm text-text/40 italic truncate">
                               No messages yet
                             </p>
                           )}
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-text/45 mt-1">
                             {conv.last_message_at ? formatTime(conv.last_message_at) : 'New conversation'}
                           </p>
                         </div>
@@ -2073,14 +2073,14 @@ return (
                               : conv.other_user.full_name || conv.other_user.email.split('@')[0]}
                           </div>
                           {conv.type === 'group' ? (
-                            <div className="text-sm font-normal text-gray-500 truncate">
+                            <div className="text-sm font-normal text-text/45 truncate">
                               {conv.member_count !== undefined ? `${conv.member_count} member${conv.member_count !== 1 ? 's' : ''}` : 'Group chat'}
                             </div>
                           ) : (
                             <>
-                              <div className="text-sm font-normal text-gray-500 truncate">{conv.other_user.email}</div>
+                              <div className="text-sm font-normal text-text/45 truncate">{conv.other_user.email}</div>
                               {conv.other_user.phone_number && (
-                                <div className="text-xs font-normal text-gray-400 flex items-center gap-1 mt-1">
+                                <div className="text-xs font-normal text-text/40 flex items-center gap-1 mt-1">
                                   <Phone className="h-3 w-3" />
                                   {conv.other_user.phone_number}
                                 </div>
@@ -2127,7 +2127,7 @@ return (
                       </div>
                       <div>
                         <div>Loading conversation...</div>
-                        <div className="text-sm font-normal text-gray-500">Please wait</div>
+                        <div className="text-sm font-normal text-text/45">Please wait</div>
                       </div>
                     </CardTitle>
                   )
@@ -2173,13 +2173,15 @@ return (
                   {messagesLoading ? (
                     <div className="text-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                      <p className="text-gray-600">Loading messages...</p>
+                      <p className="text-text/55">Loading messages...</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-center py-8">
-                      <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No messages yet</p>
-                      <p className="text-sm text-gray-500 mt-2">Start the conversation!</p>
+                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <MessageSquare className="h-6 w-6 text-primary" />
+                      </div>
+                      <p className="font-medium text-text/70">No messages yet</p>
+                      <p className="mt-1 text-sm text-text/45">Start the conversation!</p>
                     </div>
                   ) : (
                     <>
@@ -2269,7 +2271,7 @@ return (
                       <button
                         type="button"
                         onClick={handleImageRemove}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                        className="absolute top-2 right-2 p-1 bg-accent text-white rounded-full hover:bg-accent/90"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -2330,6 +2332,7 @@ return (
                     </div>
                     <Button
                       type="submit"
+                      className="shrink-0 bg-primary text-white hover:bg-primary-600"
                       disabled={sending || (!messageContent.trim() && !selectedImage && !forwardingMessage)}
                       onClick={(e) => {
                         if (forwardingMessage && !replyingTo) {
@@ -2351,9 +2354,11 @@ return (
           ) : (
             <Card className="card-professional h-full flex items-center justify-center">
               <div className="text-center">
-                <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a conversation</h3>
-                <p className="text-gray-600">Choose a conversation from the list to start messaging</p>
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                  <MessageSquare className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="mb-1 text-lg font-semibold text-text">Select a conversation</h3>
+                <p className="text-sm text-text/55">Choose a conversation from the list to start messaging.</p>
               </div>
             </Card>
           )}

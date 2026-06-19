@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { getContactMessages, updateContactMessageStatus } from '@/lib/contact/actions'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Mail, Eye, Reply, Archive, User, Calendar, MessageSquare } from 'lucide-react'
 import { canManageRoles } from '@/lib/auth/permissions'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 interface ContactMessage {
   id: string
@@ -19,6 +18,13 @@ interface ContactMessage {
   status: string
   created_at: string
   updated_at: string
+}
+
+const STATUS_META: Record<string, { label: string; chip: string }> = {
+  new: { label: 'New', chip: 'bg-primary-600/10 text-primary-700' },
+  read: { label: 'Read', chip: 'bg-secondary/10 text-secondary' },
+  replied: { label: 'Replied', chip: 'bg-success/10 text-success' },
+  archived: { label: 'Archived', chip: 'bg-gray-100 text-gray-500' },
 }
 
 export default function AdminInboxPage() {
@@ -66,14 +72,8 @@ export default function AdminInboxPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      new: { color: 'bg-primary-100 text-primary-800', label: 'New' },
-      read: { color: 'bg-yellow-100 text-yellow-800', label: 'Read' },
-      replied: { color: 'bg-green-100 text-green-800', label: 'Replied' },
-      archived: { color: 'bg-gray-100 text-gray-800', label: 'Archived' },
-    }
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new
-    return <Badge className={config.color}>{config.label}</Badge>
+    const config = STATUS_META[status] || STATUS_META.new
+    return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', config.chip)}>{config.label}</span>
   }
 
   const formatDate = (dateString: string) =>
@@ -94,100 +94,74 @@ export default function AdminInboxPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 text-muted-foreground">
+      <div className="flex items-center gap-3 text-gray-500">
         <LoadingSpinner size="sm" />
         Loading messages…
       </div>
     )
   }
 
+  const stats = [
+    { label: 'Total', value: contactMessages.length, icon: Mail, tint: 'bg-primary-600/10 text-primary-600' },
+    { label: 'New', value: contactMessages.filter(m => m.status === 'new').length, icon: MessageSquare, tint: 'bg-primary-600/10 text-primary-600' },
+    { label: 'Read', value: contactMessages.filter(m => m.status === 'read').length, icon: Eye, tint: 'bg-secondary/10 text-secondary' },
+    { label: 'Replied', value: contactMessages.filter(m => m.status === 'replied').length, icon: Reply, tint: 'bg-success/10 text-success' },
+  ]
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Inbox</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Mission control</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900 md:text-[1.75rem]">Inbox</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Contact form submissions. &ldquo;Reply by email&rdquo; opens your mail app prefilled to the sender.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <Card className="glass-card border-0 shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Mail className="h-8 w-8 text-primary" />
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Total</p>
-              <p className="text-xl font-semibold tabular-nums">{contactMessages.length}</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map(s => (
+          <div key={s.label} className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-4 shadow-sm">
+            <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', s.tint)}>
+              <s.icon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums text-gray-900">{s.value}</p>
+              <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-gray-400">{s.label}</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-0 shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <MessageSquare className="h-8 w-8 text-primary" />
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">New</p>
-              <p className="text-xl font-semibold tabular-nums">
-                {contactMessages.filter(m => m.status === 'new').length}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-0 shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Eye className="h-8 w-8 text-amber-600" />
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Read</p>
-              <p className="text-xl font-semibold tabular-nums">
-                {contactMessages.filter(m => m.status === 'read').length}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-0 shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Reply className="h-8 w-8 text-emerald-600" />
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Replied</p>
-              <p className="text-xl font-semibold tabular-nums">
-                {contactMessages.filter(m => m.status === 'replied').length}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
       </div>
 
-      <Card className="glass-card border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-medium">
-            <Mail className="h-5 w-5" />
-            Messages
-            {isSuperAdmin && (
-              <Badge variant="secondary" className="font-normal">
-                Super admin summaries use AI from the API route
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-[hsl(var(--glass-border))] bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 p-4">
+          <Mail className="h-5 w-5 text-primary-600" />
+          <p className="text-sm font-semibold text-gray-900">Messages</p>
+          {isSuperAdmin && (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+              Super admin summaries use AI from the API route
+            </span>
+          )}
+        </div>
+        <div className="p-4">
           {contactMessages.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">No messages yet.</p>
+            <p className="py-12 text-center text-sm text-gray-400">No messages yet.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {contactMessages.map(message => (
-                <div
-                  key={message.id}
-                  className="rounded-lg border border-[hsl(var(--glass-border))] bg-white/50 p-5"
-                >
+                <div key={message.id} className="rounded-xl border border-gray-100 bg-white p-5 transition-shadow hover:shadow-sm">
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-muted-foreground" />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+                        <User className="h-4 w-4 text-gray-500" />
+                      </span>
                       <div>
-                        <h3 className="font-medium">{message.name}</h3>
-                        <p className="text-sm text-muted-foreground">{message.email}</p>
+                        <h3 className="font-semibold text-gray-900">{message.name}</h3>
+                        <p className="text-sm text-gray-500">{message.email}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {getStatusBadge(message.status)}
-                      <span className="flex items-center text-xs text-muted-foreground">
+                      <span className="flex items-center text-xs text-gray-400">
                         <Calendar className="mr-1 h-3.5 w-3.5" />
                         {formatDate(message.created_at)}
                       </span>
@@ -195,15 +169,14 @@ export default function AdminInboxPage() {
                   </div>
                   {message.subject ? (
                     <div className="mb-3">
-                      <h4 className="text-sm font-medium">Subject</h4>
-                      <p className="text-sm text-muted-foreground">{message.subject}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Subject</p>
+                      <p className="text-sm text-gray-700">{message.subject}</p>
                     </div>
                   ) : null}
-                  <div className="mb-4">
-                    <h4 className="mb-1 text-sm font-medium">Message</h4>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.message}</p>
+                  <div className="mb-4 rounded-lg bg-gray-50 p-3">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{message.message}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -216,7 +189,7 @@ export default function AdminInboxPage() {
                     <Button
                       asChild
                       size="sm"
-                      className="bg-primary text-white hover:bg-primary/90"
+                      className="bg-primary-600 text-white hover:bg-primary-700"
                       onClick={() => {
                         if (message.status !== 'replied') void handleStatusUpdate(message.id, 'replied')
                       }}
@@ -241,8 +214,8 @@ export default function AdminInboxPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

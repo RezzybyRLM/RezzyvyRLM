@@ -46,6 +46,11 @@ const startsWithAny = (pathname: string, prefixes: string[]) =>
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } })
 
+  // Sign-out route clears the auth cookies on its own response. Let it through
+  // WITHOUT calling getUser() here — otherwise this gate would refresh and
+  // re-write a valid session cookie, racing (and defeating) the deletion.
+  if (request.nextUrl.pathname === '/auth/signout') return response
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

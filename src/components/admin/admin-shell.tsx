@@ -142,8 +142,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [pathname])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    router.replace('/auth/login')
+    // Authoritative server-side sign-out (clears SSR cookies; never hangs).
+    try { void supabase.auth.signOut({ scope: 'local' }).catch(() => {}) } catch { /* ignore */ }
+    window.location.href = '/auth/signout?next=/auth/login'
   }
 
   if (!ready) {

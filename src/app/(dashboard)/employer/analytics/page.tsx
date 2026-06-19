@@ -273,7 +273,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-text/45">{card.label}</p>
               <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', card.tint)}>
-                <card.icon className="h-4.5 w-4.5" />
+                <card.icon className="h-5 w-5" />
               </span>
             </div>
             <p className="mt-3 text-3xl font-bold tabular-nums text-text">{card.value}</p>
@@ -389,7 +389,7 @@ export default function AnalyticsPage() {
       {/* Insights */}
       <div className="rounded-2xl border border-border bg-white p-6 shadow-card">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-text">
-          <Sparkles className="h-4.5 w-4.5 text-primary" /> Insights
+          <Sparkles className="h-5 w-5 text-primary" /> Insights
         </h2>
         <div className="mt-4 space-y-3">
           {analyticsData.insights.map((item, i) => {

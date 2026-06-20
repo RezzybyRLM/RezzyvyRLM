@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sessionChecked, setSessionChecked] = useState(false)
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
 
@@ -38,7 +37,11 @@ export default function LoginPage() {
           const defaultStaff = staff && !searchParams.get('redirectTo')
           const target = done ? (defaultStaff ? '/admin/dashboard' : redirectTo) : '/onboarding'
           if (!cancelled) {
-            router.replace(target)
+            // Full load (not a soft router nav): re-creates the browser Supabase
+            // client from the proxy-refreshed cookies so the in-memory session
+            // is fresh. A soft nav here can land on a dashboard page with a stale
+            // token, so client (RLS) queries return nothing until a hard refresh.
+            window.location.assign(target)
           }
           return
         }
@@ -50,7 +53,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true
     }
-  }, [router, redirectTo, searchParams])
+  }, [redirectTo, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

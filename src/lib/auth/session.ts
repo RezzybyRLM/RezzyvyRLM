@@ -26,9 +26,23 @@ export async function resolveSessionUser(
   supabase: SupabaseClient,
   { tries = 3, delayMs = 150 }: { tries?: number; delayMs?: number } = {}
 ): Promise<User | null> {
-  // 1) Fast path: in-memory session.
+  // 1) Fast path: in-memory session — but only trust it when the access token
+  //    is still valid. A stale/expired in-memory token (common after the tab
+  //    has been idle, or when the proxy rotated the cookie server-side) would
+  //    make client (RLS) queries return nothing until a manual hard refresh.
   const fromSession = await supabase.auth.getSession()
-  if (fromSession.data.session?.user) return fromSession.data.session.user
+  const session = fromSession.data.session
+  if (session?.user) {
+    const expSec = session.expires_at ?? 0
+    const stale = expSec > 0 && expSec * 1000 - Date.now() < 5_000
+    if (!stale) return session.user
+    // Expired/near-expiry → validate+refresh against the cookies so subsequent
+    // queries carry a fresh token. Falls back to the cached user if refresh is
+    // unavailable (page just stops loading rather than redirect-looping).
+    const refreshed = await supabase.auth.getUser()
+    if (refreshed.data.user) return refreshed.data.user
+    return session.user
+  }
 
   // 2) Reliable path: validate against the server via cookies.
   const fromUser = await supabase.auth.getUser()

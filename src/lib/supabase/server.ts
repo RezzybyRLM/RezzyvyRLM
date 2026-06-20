@@ -14,15 +14,17 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
+            // Canonical @supabase/ssr handling: write the cookies back with the
+            // EXACT options Supabase provides. Do NOT force httpOnly / maxAge /
+            // etc. — the BROWSER client writes non-httpOnly auth cookies, so
+            // forcing httpOnly here (in route handlers / server actions like the
+            // auth callback) leaves a conflicting copy the browser client can't
+            // read. That desyncs the session, so client-side (RLS) queries run
+            // unauthenticated and return no data until a hard refresh re-syncs
+            // the cookie through the proxy. Must match proxy.ts and the browser
+            // client exactly.
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, {
-                ...options,
-                maxAge: 60 * 60 * 24 * 14, // 14 days in seconds (1,209,600)
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax' as const,
-                path: '/',
-              })
+              cookieStore.set(name, value, options)
             )
           } catch {
             // The `setAll` method was called from a Server Component.

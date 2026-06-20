@@ -14,6 +14,9 @@ import { getDashboardNavigation } from '@/lib/dashboard/navigation'
 
 interface NavbarProps {
   user?: SupabaseUser | null
+  /** Role resolved server-side so the account menu (e.g. the Admin console link)
+   *  is correct on first paint without waiting on a client query. */
+  role?: string | null
 }
 
 const NAV_LINKS = [
@@ -23,14 +26,14 @@ const NAV_LINKS = [
   { href: '/plans', label: 'Pricing' },
 ]
 
-export function Navbar({ user: initialUser }: NavbarProps) {
+export function Navbar({ user: initialUser, role: initialRole = null }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<SupabaseUser | null>(initialUser || null)
   const [cartCount, setCartCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [role, setRole] = useState<string | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(canManageRoles(initialRole))
+  const [role, setRole] = useState<string | null>(initialRole)
   const [scrolled, setScrolled] = useState(false)
 
   // Compress + frost the navbar once the user scrolls past the hero fold.
@@ -43,12 +46,17 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   const supabase = createClient()
 
   useEffect(() => {
-    if (initialUser) {
-      setUser(initialUser)
+    // Keep state in sync with the server-resolved props across navigations.
+    setUser(initialUser ?? null)
+    if (initialRole !== null) {
+      setRole(initialRole)
+      setIsSuperAdmin(canManageRoles(initialRole))
     }
 
     const getUser = async () => {
-      const currentUser = initialUser || (await supabase.auth.getUser()).data.user
+      // getSession() reads the proxy-refreshed cookie instantly — NEVER getUser()
+      // here (it can hang when returning to a tab after inactivity).
+      const currentUser = initialUser || (await supabase.auth.getSession()).data.session?.user || null
       if (!initialUser && currentUser) {
         setUser(currentUser)
       }
@@ -58,18 +66,20 @@ export function Navbar({ user: initialUser }: NavbarProps) {
           const count = await getCartItemCount()
           setCartCount(count)
 
-          const { data: userData } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', currentUser.id)
-            .single()
-
-          setIsSuperAdmin(canManageRoles(userData?.role))
-          setRole(userData?.role ?? 'user')
+          // Only query the role if the server didn't already provide it.
+          if (initialRole === null) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('role')
+              .eq('id', currentUser.id)
+              .single()
+            setIsSuperAdmin(canManageRoles(userData?.role))
+            setRole(userData?.role ?? 'user')
+          }
         } catch (error) {
           console.error('Failed to get cart count:', error)
         }
-      } else {
+      } else if (initialRole === null) {
         setIsSuperAdmin(false)
         setRole(null)
       }
@@ -103,7 +113,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [supabase, initialUser, initialRole])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

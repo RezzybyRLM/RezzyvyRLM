@@ -61,6 +61,15 @@ export default async function RootLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Resolve the role server-side so the marketing navbar's account menu is
+  // correct on first paint (e.g. admins get the Admin console link) instead of
+  // depending on a client-side query that may not be ready yet.
+  let role: string | null = null
+  if (user) {
+    const { data } = await supabase.from('users').select('role').eq('id', user.id).single()
+    role = data?.role ?? 'user'
+  }
+
   return (
     <html lang="en">
       <body className={inter.className}>
@@ -68,7 +77,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>
-        <ConditionalLayout user={user}>
+        <ConditionalLayout user={user} role={role}>
           {children}
         </ConditionalLayout>
         <Analytics />

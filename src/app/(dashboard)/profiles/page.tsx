@@ -1,23 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  User, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  User,
   Briefcase,
   Award,
   GraduationCap,
   CheckCircle,
-  Loader2
+  Star,
+  Loader2,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface Profile {
   id: string
@@ -50,7 +53,7 @@ export default function ProfilesPage() {
     let timeoutId: NodeJS.Timeout | null = null
     try {
       setLoading(true)
-      
+
       // Set a timeout to prevent infinite loading
       timeoutId = setTimeout(() => {
         console.error('Profiles fetch timeout')
@@ -168,157 +171,134 @@ export default function ProfilesPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Hero */}
+      <div className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/[0.1] via-white to-white p-6 shadow-card sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Profiles</h1>
-          <p className="text-gray-600">Manage your professional profiles for different job roles</p>
+          <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+            <User className="h-3 w-3" /> Profiles
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">My profiles</h1>
+          <p className="mt-1 text-sm text-text/55">Tailor a profile for each kind of role you apply to.</p>
         </div>
-        <Button asChild className="btn-primary w-full sm:w-auto">
+        <Button asChild className="bg-primary text-white hover:bg-primary-600">
           <Link href="/profiles/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create New Profile
+            <Plus className="mr-2 h-4 w-4" />
+            Create new profile
           </Link>
         </Button>
       </div>
 
-      {/* Profiles Grid */}
       {profiles.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No profiles yet</h3>
-            <p className="text-gray-600 mb-4">
-              Create your first profile to start applying to jobs tailored to your skills and experience.
-            </p>
-            <Button asChild>
-              <Link href="/profiles/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Profile
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border bg-white p-12 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <User className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold text-text">No profiles yet</h3>
+          <p className="mb-4 text-sm text-text/55">
+            Create your first profile to start applying to jobs tailored to your skills and experience.
+          </p>
+          <Button asChild className="bg-primary text-white hover:bg-primary-600">
+            <Link href="/profiles/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create your first profile
+            </Link>
+          </Button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {profiles.map((profile) => (
-            <Card key={profile.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">{profile.profile_name}</CardTitle>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {profile.is_default && (
-                        <Badge className="bg-primary text-white">Default</Badge>
-                      )}
-                      {profile.is_active && (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          Active
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {profiles.map((profile, i) => (
+            <motion.div
+              key={profile.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: easeOut, delay: Math.min(i * 0.04, 0.3) }}
+              className={cn(
+                'flex flex-col rounded-2xl border bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover',
+                profile.is_default ? 'border-primary/40 ring-1 ring-primary/15' : 'border-border'
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="truncate text-lg font-semibold text-text">{profile.profile_name}</h3>
+                  <p className="mt-0.5 text-sm font-medium text-text/70">{profile.job_title}</p>
+                  {profile.industry && <p className="text-xs text-text/50">{profile.industry}</p>}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{profile.job_title}</p>
-                    {profile.industry && (
-                      <p className="text-xs text-gray-600">{profile.industry}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                    {profile.experience_level && (
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-3 w-3" />
-                        {profile.experience_level}
-                      </span>
-                    )}
-                    {profile.years_of_experience !== null && (
-                      <span>{profile.years_of_experience} years</span>
-                    )}
-                  </div>
-
-                  {profile.skills && profile.skills.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Skills</p>
-                      <div className="flex flex-wrap gap-1">
-                        {profile.skills.slice(0, 3).map((skill, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {profile.skills.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{profile.skills.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {profile.is_default && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                      <Star className="h-3 w-3" /> Default
+                    </span>
                   )}
-
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    {profile.education && profile.education.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <GraduationCap className="h-3 w-3" />
-                        {profile.education.length} education
-                      </span>
-                    )}
-                    {profile.certifications && profile.certifications.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Award className="h-3 w-3" />
-                        {profile.certifications.length} certifications
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      asChild
-                    >
-                      <Link href={`/profiles/${profile.id}`}>
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Link>
-                    </Button>
-                    {!profile.is_default && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetDefault(profile.id)}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {!profile.is_default && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(profile.id)}
-                        disabled={deleting === profile.id}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        {deleting === profile.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                  {profile.is_active && (
+                    <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">Active</span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text/55">
+                {profile.experience_level && (
+                  <span className="inline-flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{profile.experience_level}</span>
+                )}
+                {profile.years_of_experience !== null && <span>{profile.years_of_experience} yrs</span>}
+                {profile.education && profile.education.length > 0 && (
+                  <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{profile.education.length}</span>
+                )}
+                {profile.certifications && profile.certifications.length > 0 && (
+                  <span className="inline-flex items-center gap-1"><Award className="h-3.5 w-3.5" />{profile.certifications.length}</span>
+                )}
+              </div>
+
+              {profile.skills && profile.skills.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {profile.skills.slice(0, 4).map((skill, index) => (
+                    <span key={index} className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-text/65">{skill}</span>
+                  ))}
+                  {profile.skills.length > 4 && (
+                    <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-text/50">+{profile.skills.length - 4}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-4">
+                <Button variant="outline" size="sm" className="flex-1 border-border" asChild>
+                  <Link href={`/profiles/${profile.id}`}>
+                    <Edit className="mr-1 h-4 w-4" />
+                    Edit
+                  </Link>
+                </Button>
+                {!profile.is_default && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetDefault(profile.id)}
+                    className="rounded-lg p-2 text-text/50 transition-colors hover:bg-primary/10 hover:text-primary"
+                    aria-label="Set as default"
+                    title="Set as default"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                  </button>
+                )}
+                {!profile.is_default && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(profile.id)}
+                    disabled={deleting === profile.id}
+                    className="rounded-lg p-2 text-text/50 transition-colors hover:bg-accent/10 hover:text-accent"
+                    aria-label="Delete profile"
+                  >
+                    {deleting === profile.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </button>
+                )}
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
-

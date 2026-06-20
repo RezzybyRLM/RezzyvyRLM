@@ -19,6 +19,15 @@ import { PageLoader } from '@/components/ui/page-loader'
 import { CountUp } from '@/components/ui/count-up'
 import { Magnetic } from '@/components/ui/magnetic'
 import { JobShowcase } from '@/components/home/job-showcase'
+import dynamic from 'next/dynamic'
+
+// WebGL / Spline hero ambience — client-only, lazily loaded so they never block
+// first paint or SSR. Spline activates when NEXT_PUBLIC_SPLINE_SCENE is set
+// (drop in a logo-colored .splinecode URL); otherwise the branded three.js
+// particle field renders as the guaranteed, on-brand fallback.
+const HeroCanvas = dynamic(() => import('@/components/home/hero-canvas'), { ssr: false })
+const SplineScene = dynamic(() => import('@/components/home/spline-scene'), { ssr: false })
+const SPLINE_SCENE = process.env.NEXT_PUBLIC_SPLINE_SCENE || null
 
 const POPULAR_SEARCHES = ['Remote', 'Software Engineer', 'Nurse', 'Marketing', 'Customer Service', 'Data Analyst']
 
@@ -132,6 +141,11 @@ export default function HomePage() {
           {/* soft warm ambient glow (light + professional, not flashy) */}
           <div className="pointer-events-none absolute -top-32 right-0 h-[32rem] w-[32rem] rounded-full bg-primary-200/40 blur-3xl" />
           <div className="pointer-events-none absolute -top-20 left-1/4 h-72 w-72 rounded-full bg-primary-100/50 blur-3xl" />
+
+          {/* WebGL / Spline depth layer (logo-colored, behind the hero copy) */}
+          <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden>
+            <SplineScene scene={SPLINE_SCENE} fallback={<HeroCanvas />} />
+          </div>
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
             <div className="grid lg:grid-cols-2 gap-12 items-center">

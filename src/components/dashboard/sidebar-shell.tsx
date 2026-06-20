@@ -15,11 +15,18 @@ import {
   Search,
   CreditCard,
   Sparkles,
-  BellRing,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/signout'
 import { motion, AnimatePresence } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import { DashboardLogo } from '@/components/dashboard/dashboard-logo'
+
+// WebGL ambient is client-only (three.js) and purely decorative — load it lazily
+// so it never blocks first paint or SSR.
+const DashboardAmbient = dynamic(
+  () => import('@/components/dashboard/dashboard-ambient'),
+  { ssr: false }
+)
 import { getDashboardNavigation, navGroupLabel } from '@/lib/dashboard/navigation'
 import { cn } from '@/lib/utils'
 
@@ -61,12 +68,21 @@ export function SidebarShell({
 
   const navigation = getDashboardNavigation(role)
 
+  // Members get a distinct chrome: a warm coral-tinted sidebar with pill-style
+  // active items (vs. the white-glass + left-accent look for employer/service).
+  const isMember = role === 'user'
+  // Employers get a bold, dark warm-brown "hiring command center" rail — clearly
+  // distinct from the member's light coral rail and the admin AdminShell. Coral
+  // active pills pop against the brown.
+  const isEmployer = role === 'employer'
+  // Service-team (RezzyMeUp fulfillment) get a warm-taupe "operator console" rail
+  // with feather-red (accent) active pills — a fourth distinct identity.
+  const isService = role === 'service_team'
+
   const sidebarAccent =
     role === 'admin' || role === 'super_admin'
       ? 'border-l-[3px] border-l-primary-500/25'
-      : role === 'employer'
-        ? 'border-l-[3px] border-l-emerald-500/25'
-        : ''
+      : ''
 
   // Restore collapse preference.
   useEffect(() => {
@@ -174,72 +190,146 @@ export function SidebarShell({
   }, [profileMenuOpen])
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-background">
+    <div className="relative flex min-h-screen overflow-hidden bg-background">
+      {/* Brand WebGL ambient — subtle coral/brown haze behind the glass chrome,
+          shown to every user type. Fixed + low opacity so it never competes with
+          content and stays cheap while scrolling. */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-60" aria-hidden>
+        <DashboardAmbient />
+      </div>
       {/* Sidebar - Desktop */}
       <aside
         className={cn(
-          'relative z-40 hidden flex-col border-r border-white/30 bg-white/55 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          'relative z-40 hidden flex-col border-r shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
+          isEmployer
+            ? 'border-secondary-900/30 bg-gradient-to-b from-secondary-700 via-secondary-800 to-secondary-900'
+            : isMember
+              ? 'border-white/30 bg-primary-50/70'
+              : isService
+                ? 'border-secondary-200/70 bg-secondary-50/80'
+                : 'border-white/30 bg-white/55',
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64',
-          sidebarAccent
+          !isEmployer && sidebarAccent
         )}
       >
-        <div className="flex h-16 items-center gap-2 border-b border-white/25 px-3">
+        <div
+          className={cn(
+            'flex h-16 items-center gap-2 border-b px-3',
+            isEmployer ? 'border-white/10' : 'border-white/25'
+          )}
+        >
           {!sidebarCollapsed ? (
             <>
               <div className="min-w-0 flex-1">
-                <DashboardLogo href="/" priority />
+                {isEmployer ? (
+                  <span className="inline-flex rounded-lg bg-white px-2 py-1 shadow-sm">
+                    <DashboardLogo href="/" priority />
+                  </span>
+                ) : (
+                  <DashboardLogo href="/" priority />
+                )}
               </div>
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                className={cn(
+                  'shrink-0 rounded-md p-1.5 transition-colors',
+                  isEmployer
+                    ? 'text-white/50 hover:bg-white/10 hover:text-white'
+                    : 'text-text/50 hover:bg-background hover:text-text'
+                )}
                 aria-label="Collapse sidebar"
               >
                 <ChevronLeft className="h-5 w-5 stroke-[1.5]" />
               </button>
             </>
           ) : (
-            <>
-              <div className="flex flex-1 justify-center">
-                <DashboardLogo href="/" compact priority />
+            // Collapsed: show only the logo; hovering the header reveals the
+            // expand button (overlaid on the logo). The button stays
+            // pointer-events-none until hover so the logo link works normally.
+            <div className="group relative flex h-full w-full items-center justify-center">
+              <div className="transition-opacity duration-200 group-hover:opacity-0">
+                {isEmployer ? (
+                  <span className="inline-flex rounded-lg bg-white p-1 shadow-sm">
+                    <DashboardLogo href="/" compact priority />
+                  </span>
+                ) : (
+                  <DashboardLogo href="/" compact priority />
+                )}
               </div>
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="shrink-0 rounded-md p-1.5 text-text/50 transition-colors hover:bg-background hover:text-text"
+                className={cn(
+                  'absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-md opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
+                  isEmployer
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                    : 'text-text/60 hover:bg-background hover:text-text'
+                )}
                 aria-label="Expand sidebar"
               >
                 <ChevronRight className="h-5 w-5 stroke-[1.5]" />
               </button>
-            </>
+            </div>
           )}
         </div>
 
-        <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
+        <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-4">
           {navigation.map((item, index) => {
             const Icon = item.icon
             const isActive = navIsActive(item.href)
             const prev = index > 0 ? navigation[index - 1] : undefined
             const label = navGroupLabel(item.group)
             const showSection =
-              !!label && (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
+              !!label && (index === 0 || item.group !== prev?.group)
             return (
               <Fragment key={`${item.href}-${item.name}`}>
                 {!sidebarCollapsed && showSection && (
                   <div className="px-3 pb-1 pt-3 first:pt-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text/45">{label}</p>
+                    <p
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider',
+                        isEmployer ? 'text-white/40' : 'text-text/45'
+                      )}
+                    >
+                      {label}
+                    </p>
                   </div>
                 )}
                 <Link
                   href={item.href}
+                  title={sidebarCollapsed ? item.name : undefined}
                   className={cn(
-                    'group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-200',
-                    isActive
-                      ? 'border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
-                      : 'border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
+                    'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-200',
+                    isEmployer
+                      ? isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      : isMember
+                        ? isActive
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text/70 hover:bg-white/70 hover:text-text'
+                        : isService
+                          ? isActive
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'text-text/70 hover:bg-white/70 hover:text-text'
+                          : isActive
+                            ? 'rounded-md border-l-[3px] border-primary bg-primary/10 pl-[calc(0.75rem+3px)] text-primary -ml-[3px]'
+                            : 'rounded-md border-l-[3px] border-transparent text-text/70 hover:bg-background hover:text-text'
                   )}
                 >
-                  <Icon className={cn(iconClass, isActive ? 'text-primary' : 'text-text/45 group-hover:text-text/70')} />
+                  <Icon
+                    className={cn(
+                      iconClass,
+                      isActive
+                        ? isMember || isEmployer || isService
+                          ? 'text-white'
+                          : 'text-primary'
+                        : isEmployer
+                          ? 'text-white/50 group-hover:text-white/80'
+                          : 'text-text/45 group-hover:text-text/70'
+                    )}
+                  />
                   {!sidebarCollapsed && <span className="min-w-0 flex-1 truncate">{item.name}</span>}
                   {item.name === 'Messages' && unreadCount > 0 && (
                     <span
@@ -251,46 +341,53 @@ export function SidebarShell({
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
-                  {sidebarCollapsed && (
-                    <div className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-white px-2 py-1 text-xs text-text opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
-                      {item.name}
-                    </div>
-                  )}
                 </Link>
               </Fragment>
             )
           })}
         </nav>
 
-        <div className="relative border-t border-border p-3" ref={profileDropdownRef}>
+        <div
+          className={cn(
+            'relative border-t p-3',
+            isEmployer ? 'border-white/10' : 'border-border'
+          )}
+          ref={profileDropdownRef}
+        >
           {!sidebarCollapsed ? (
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-background"
+              className={cn(
+                'flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors',
+                isEmployer ? 'hover:bg-white/10' : 'hover:bg-background'
+              )}
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             >
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full border border-border object-cover" />
+                <img src={profile.avatar_url} alt="" className={cn('h-9 w-9 rounded-full border object-cover', isEmployer ? 'border-white/20' : 'border-border')} />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background">
-                  <UserRound className="h-4 w-4 text-text/40 stroke-[1.5]" />
+                <div className={cn('flex h-9 w-9 items-center justify-center rounded-full border', isEmployer ? 'border-white/20 bg-white/10' : 'border-border bg-background')}>
+                  <UserRound className={cn('h-4 w-4 stroke-[1.5]', isEmployer ? 'text-white/70' : 'text-text/40')} />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-text">{profile.full_name || 'Account'}</p>
-                <p className="truncate text-xs text-text/50">{profile.email}</p>
+                <p className={cn('truncate text-sm font-semibold', isEmployer ? 'text-white' : 'text-text')}>{profile.full_name || 'Account'}</p>
+                <p className={cn('truncate text-xs', isEmployer ? 'text-white/50' : 'text-text/50')}>{profile.email}</p>
               </div>
-              <ChevronDown className={cn('h-4 w-4 shrink-0 text-text/40 transition-transform', profileMenuOpen && 'rotate-180')} />
+              <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', isEmployer ? 'text-white/50' : 'text-text/40', profileMenuOpen && 'rotate-180')} />
             </button>
           ) : (
             <button
               type="button"
-              className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background transition-colors hover:bg-background/80"
+              className={cn(
+                'mx-auto flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
+                isEmployer ? 'border-white/20 bg-white/10 hover:bg-white/20' : 'border-border bg-background hover:bg-background/80'
+              )}
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               aria-label="Account menu"
             >
-              <UserRound className="h-5 w-5 text-text/50 stroke-[1.5]" />
+              <UserRound className={cn('h-5 w-5 stroke-[1.5]', isEmployer ? 'text-white/70' : 'text-text/50')} />
             </button>
           )}
 
@@ -330,7 +427,7 @@ export function SidebarShell({
       </aside>
 
       {/* Main Container */}
-      <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-white/25 bg-white/70 px-4 shadow-sm backdrop-blur-xl md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
@@ -366,17 +463,10 @@ export function SidebarShell({
                 aria-label="Search jobs"
               />
             </form>
-            <Link
-              href="/job-alerts"
-              className="rounded-lg p-2 text-text/50 transition-colors hover:bg-background hover:text-primary"
-              aria-label="Job alerts"
-            >
-              <BellRing className="h-5 w-5 stroke-[1.5]" />
-            </Link>
           </div>
         </header>
 
-        <main className="relative flex-1 overflow-y-auto bg-background">
+        <main className="relative flex-1 overflow-y-auto bg-background/70">
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.35]"
             aria-hidden
@@ -425,7 +515,7 @@ export function SidebarShell({
                   const prev = index > 0 ? navigation[index - 1] : undefined
                   const label = navGroupLabel(item.group)
                   const showSection =
-                    !!label && (index === 0 ? item.group !== 'main' : item.group !== prev?.group)
+                    !!label && (index === 0 || item.group !== prev?.group)
                   return (
                     <Fragment key={`${item.href}-${item.name}`}>
                       {showSection && (
@@ -438,10 +528,14 @@ export function SidebarShell({
                         onClick={() => setMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                          active ? 'bg-primary/10 text-primary' : 'text-text/70 hover:bg-background'
+                          active
+                            ? isService
+                              ? 'bg-accent/10 text-accent'
+                              : 'bg-primary/10 text-primary'
+                            : 'text-text/70 hover:bg-background'
                         )}
                       >
-                        <item.icon className={cn(iconClass, active ? 'text-primary' : 'text-text/45')} />
+                        <item.icon className={cn(iconClass, active ? (isService ? 'text-accent' : 'text-primary') : 'text-text/45')} />
                         <span className="min-w-0 flex-1 truncate">{item.name}</span>
                       </Link>
                     </Fragment>
@@ -473,7 +567,7 @@ export function SidebarShell({
               href={item.href}
               className={cn(
                 'flex min-w-[3.5rem] flex-col items-center gap-0.5 py-1 transition-colors duration-200',
-                isActive ? 'text-primary' : 'text-text/45'
+                isActive ? (isService ? 'text-accent' : 'text-primary') : 'text-text/45'
               )}
             >
               <div className="relative">

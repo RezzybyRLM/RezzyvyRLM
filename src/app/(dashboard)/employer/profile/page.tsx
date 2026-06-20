@@ -1,28 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Building2, 
-  MapPin, 
-  Globe, 
-  Users, 
-  Calendar,
+import {
+  Building2,
+  Globe,
   Upload,
   Save,
   Edit,
   Eye,
-  Link as LinkIcon,
-  Mail,
-  Phone,
-  Briefcase,
   Loader2,
-  X
+  X,
+  CheckCircle2,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
+
+const labelClass = 'mb-1 block text-sm font-medium text-text/70'
+const fieldClass =
+  'w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text placeholder:text-text/40 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:bg-background/60 disabled:text-text/70'
 
 interface CompanyProfile {
   id: string
@@ -68,7 +69,7 @@ export default function CompanyProfilePage() {
     createdAt: '',
     updatedAt: '',
   })
-  
+
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -240,8 +241,8 @@ export default function CompanyProfilePage() {
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop()
       const fileName = `logos/${user.id}/${Date.now()}.${fileExt}`
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
+
+      const { error: uploadError } = await supabase.storage
         .from('company-assets')
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -276,6 +277,21 @@ export default function CompanyProfilePage() {
     }
   }
 
+  // Real profile completeness — fraction of key fields actually filled in.
+  const completeness = useMemo(() => {
+    const fields = [
+      profile.name,
+      profile.description,
+      profile.website,
+      profile.industry,
+      profile.size,
+      profile.location,
+      profile.logoUrl,
+    ]
+    const filled = fields.filter(f => f && f.toString().trim().length > 0).length
+    return { filled, total: fields.length, pct: Math.round((filled / fields.length) * 100) }
+  }, [profile])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -285,69 +301,60 @@ export default function CompanyProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-xl border border-accent/30 bg-accent/10 p-4">
+          <p className="text-sm font-medium text-accent">{error}</p>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Command header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Company Profile</h1>
-          <p className="text-gray-600">Manage your company information and branding</p>
+          <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">
+            <span className="h-1.5 w-1.5 rounded-full bg-secondary" /> Hiring command center
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">Company profile</h1>
+          <p className="mt-1 text-sm text-text/55">Your company brand — what candidates see on every listing.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setPreviewMode(!previewMode)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            {previewMode ? 'Edit' : 'Preview'}
+          <Button variant="outline" className="border-border" onClick={() => setPreviewMode(!previewMode)}>
+            <Eye className="mr-2 h-4 w-4" />
+            {previewMode ? 'Hide preview' : 'Preview'}
           </Button>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Profile
+            <Button className="bg-primary text-white hover:bg-primary-600" onClick={() => setIsEditing(true)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit profile
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
+              <Button variant="outline" className="border-border" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
+              <Button className="bg-primary text-white hover:bg-primary-600" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Profile Form */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Main form */}
+        <div className="space-y-6 lg:col-span-2">
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-text">Basic information</h2>
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name *
-                  </label>
+                  <label className={labelClass}>Company name *</label>
                   <Input
                     value={profile.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
@@ -356,15 +363,14 @@ export default function CompanyProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Industry
-                  </label>
+                  <label className={labelClass}>Industry</label>
                   <select
                     value={profile.industry}
                     onChange={(e) => handleInputChange('industry', e.target.value)}
                     disabled={!isEditing}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50"
+                    className={fieldClass}
                   >
+                    <option value="">Select industry</option>
                     <option value="Technology">Technology</option>
                     <option value="Healthcare">Healthcare</option>
                     <option value="Finance">Finance</option>
@@ -376,17 +382,16 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Size
-                  </label>
+                  <label className={labelClass}>Company size</label>
                   <select
                     value={profile.size}
                     onChange={(e) => handleInputChange('size', e.target.value)}
                     disabled={!isEditing}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50"
+                    className={fieldClass}
                   >
+                    <option value="">Select size</option>
                     <option value="1-10">1-10 employees</option>
                     <option value="11-50">11-50 employees</option>
                     <option value="51-200">51-200 employees</option>
@@ -396,56 +401,7 @@ export default function CompanyProfilePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Founded Year
-                  </label>
-                  <Input
-                    type="number"
-                    value={profile.foundedYear}
-                    onChange={(e) => handleInputChange('foundedYear', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="2020"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Description *
-                </label>
-                <textarea
-                  value={profile.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  disabled={!isEditing}
-                  placeholder="Describe your company, mission, and what makes it unique..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none bg-white text-gray-900"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Website
-                  </label>
-                  <Input
-                    value={profile.website}
-                    onChange={(e) => handleInputChange('website', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="https://company.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
-                  </label>
+                  <label className={labelClass}>Location</label>
                   <Input
                     value={profile.location}
                     onChange={(e) => handleInputChange('location', e.target.value)}
@@ -455,275 +411,147 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={profile.contactEmail}
-                    onChange={(e) => handleInputChange('contactEmail', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="careers@company.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Phone
-                  </label>
-                  <Input
-                    value={profile.contactPhone}
-                    onChange={(e) => handleInputChange('contactPhone', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Social Links */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Social Media Links</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    LinkedIn
-                  </label>
-                  <Input
-                    value={profile.socialLinks.linkedin || ''}
-                    onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="https://linkedin.com/company/yourcompany"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Twitter
-                  </label>
-                  <Input
-                    value={profile.socialLinks.twitter || ''}
-                    onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="https://twitter.com/yourcompany"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Company Culture & Benefits */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Culture & Benefits</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Culture
-                </label>
+                <label className={labelClass}>Company description *</label>
                 <textarea
-                  value={profile.culture}
-                  onChange={(e) => handleInputChange('culture', e.target.value)}
+                  value={profile.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
                   disabled={!isEditing}
-                  placeholder="Describe your company culture, values, and work environment..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 h-32 resize-none bg-white text-gray-900"
+                  placeholder="Describe your company, mission, and what makes it unique…"
+                  className={cn(fieldClass, 'h-32 resize-none')}
                 />
               </div>
+            </div>
+          </section>
 
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-text">Online presence</h2>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Benefits & Perks
-                </label>
-                <div className="space-y-2">
-                  {profile.benefits.map((benefit, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        value={benefit}
-                        onChange={(e) => {
-                          const newBenefits = [...profile.benefits]
-                          newBenefits[index] = e.target.value
-                          handleInputChange('benefits', newBenefits)
-                        }}
-                        disabled={!isEditing}
-                        placeholder="Enter benefit"
-                      />
-                      {isEditing && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const newBenefits = profile.benefits.filter((_, i) => i !== index)
-                            handleInputChange('benefits', newBenefits)
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  {isEditing && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newBenefits = [...profile.benefits, '']
-                        handleInputChange('benefits', newBenefits)
-                      }}
-                    >
-                      Add Benefit
-                    </Button>
-                  )}
-                </div>
+                <label className={labelClass}>Website</label>
+                <Input
+                  value={profile.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="https://company.com"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <label className={labelClass}>LinkedIn</label>
+                <Input
+                  value={profile.socialLinks.linkedin || ''}
+                  onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="https://linkedin.com/company/yourcompany"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-text">Culture</h2>
+            <div className="mt-4">
+              <label className={labelClass}>Company culture</label>
+              <textarea
+                value={profile.culture}
+                onChange={(e) => handleInputChange('culture', e.target.value)}
+                disabled={!isEditing}
+                placeholder="Describe your company culture, values, and work environment…"
+                className={cn(fieldClass, 'h-32 resize-none')}
+              />
+            </div>
+          </section>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Logo Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Logo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gray-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                  {profile.logoUrl ? (
-                    <img src={profile.logoUrl} alt="Company logo" className="w-full h-full object-contain rounded-lg" />
-                  ) : (
-                    <Building2 className="h-8 w-8 text-gray-400" />
-                  )}
+          {/* Logo */}
+          <section className="rounded-2xl border border-border bg-white p-6 text-center shadow-card">
+            <h2 className="text-left text-lg font-semibold text-text">Company logo</h2>
+            <div className="mx-auto mt-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-border bg-background">
+              {profile.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.logoUrl} alt="Company logo" className="h-full w-full object-contain" />
+              ) : (
+                <Building2 className="h-8 w-8 text-text/30" />
+              )}
+            </div>
+            {isEditing && (
+              <div className="mt-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  id="logo-upload"
+                  disabled={uploadingLogo}
+                />
+                <Button variant="outline" className="border-border" asChild disabled={uploadingLogo}>
+                  <label htmlFor="logo-upload" className="cursor-pointer">
+                    {uploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {uploadingLogo ? 'Uploading…' : 'Upload logo'}
+                  </label>
+                </Button>
+                {profile.logoUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setProfile({ ...profile, logoUrl: '' })}
+                    className="mt-2 text-accent hover:bg-accent/10 hover:text-accent"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="mt-3 text-xs text-text/45">Recommended: 200×200px, PNG or JPG</p>
+          </section>
+
+          {/* Real completeness meter (replaces fabricated stats) */}
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-text">Profile completeness</h2>
+              <span className="text-lg font-bold tabular-nums text-secondary">{completeness.pct}%</span>
+            </div>
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-secondary/10">
+              <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${completeness.pct}%` }} />
+            </div>
+            <p className="mt-2 text-sm text-text/55">
+              {completeness.filled} of {completeness.total} key fields complete. Complete profiles earn more candidate trust.
+            </p>
+            {profile.isVerified && (
+              <Badge className="mt-3 bg-success/10 text-success">
+                <CheckCircle2 className="mr-1 h-3 w-3" /> Verified
+              </Badge>
+            )}
+          </section>
+
+          {/* Live preview */}
+          {previewMode && (
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-text">Candidate-facing preview</h2>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-text">{profile.name || 'Company name'}</h3>
+                  {profile.isVerified && <Badge className="bg-success/10 text-success">Verified</Badge>}
                 </div>
-                {isEditing && (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                      id="logo-upload"
-                      disabled={uploadingLogo}
-                    />
-                    <Button 
-                      variant="outline" 
-                      asChild
-                      disabled={uploadingLogo}
-                    >
-                      <label htmlFor="logo-upload" className="cursor-pointer">
-                        {uploadingLogo ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Logo
-                          </>
-                        )}
-                      </label>
-                    </Button>
-                    {profile.logoUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setProfile({ ...profile, logoUrl: '' })
-                        }}
-                        className="mt-2 text-red-600"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Remove Logo
-                      </Button>
-                    )}
+                <p className="text-sm text-text/55">
+                  {[profile.industry, profile.size && `${profile.size} employees`].filter(Boolean).join(' • ') || 'Industry • size'}
+                </p>
+                {profile.location && <p className="text-sm text-text/55">{profile.location}</p>}
+                {profile.description && <p className="line-clamp-3 text-sm text-text/70">{profile.description}</p>}
+                {profile.website && (
+                  <div className="flex items-center gap-2 text-sm text-text/50">
+                    <Globe className="h-3 w-3" />
+                    <span className="truncate">{profile.website}</span>
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mt-2">
-                  Recommended: 200x200px, PNG or JPG
-                </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Profile Preview */}
-          {previewMode && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900">{profile.name}</h3>
-                    {profile.isVerified && (
-                      <Badge className="bg-green-100 text-green-800">Verified</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600">{profile.industry} • {profile.size} employees</p>
-                  <p className="text-sm text-gray-600">{profile.location}</p>
-                  <p className="text-sm text-gray-600 line-clamp-3">{profile.description}</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Globe className="h-3 w-3" />
-                    <span>{profile.website}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </section>
           )}
-
-          {/* Profile Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Profile Views</span>
-                <span className="font-medium">1,247</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Jobs Posted</span>
-                <span className="font-medium">12</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Applications Received</span>
-                <span className="font-medium">89</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Profile Completion</span>
-                <span className="font-medium text-green-600">95%</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tips */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Tips</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Complete your profile</p>
-                <p>Companies with complete profiles get 3x more applications.</p>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Add your logo</p>
-                <p>Branded profiles stand out and build trust with candidates.</p>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Describe your culture</p>
-                <p>Help candidates understand what it's like to work at your company.</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

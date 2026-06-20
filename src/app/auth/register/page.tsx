@@ -43,7 +43,10 @@ function RegisterForm() {
               ? '/admin/dashboard'
               : joinInvite || '/dashboard'
             : joinInvite || '/onboarding'
-          if (!cancelled) router.replace(home)
+          // Full load (not a soft router nav) so the browser Supabase client
+          // re-hydrates the proxy-refreshed cookies; a soft nav can strand a
+          // dashboard page with a stale token until a hard refresh.
+          if (!cancelled) window.location.assign(home)
           return
         }
         await new Promise((r) => setTimeout(r, 60))

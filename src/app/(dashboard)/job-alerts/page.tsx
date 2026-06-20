@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Bell, MapPin, Calendar, Trash2, CheckCircle, XCircle, Mail, Loader2 } from 'lucide-react'
+import { Plus, Bell, MapPin, Calendar, Trash2, Mail, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface JobAlert {
   id: string
@@ -18,6 +20,9 @@ interface JobAlert {
   last_sent_at: string | null
   created_at: string
 }
+
+const fieldClass =
+  'w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text placeholder:text-text/40 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15'
 
 export default function JobAlertsPage() {
   const [alerts, setAlerts] = useState<JobAlert[]>([])
@@ -109,122 +114,141 @@ export default function JobAlertsPage() {
     )
   }
 
+  const activeCount = alerts.filter((a) => a.is_active).length
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Hero */}
+      <div className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/[0.1] via-white to-white p-6 shadow-card sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-text">Job alerts</h1>
-          <p className="mt-1 text-sm text-text/60">Get notified when new jobs match your criteria.</p>
+          <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+            <Bell className="h-3 w-3" /> Alerts
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">Job alerts</h1>
+          <p className="mt-1 text-sm text-text/55">
+            Get notified when new jobs match your criteria · {activeCount} active.
+          </p>
         </div>
         {!showCreateForm && (
-          <Button onClick={() => setShowCreateForm(true)}>
+          <Button className="bg-primary text-white hover:bg-primary-600" onClick={() => setShowCreateForm(true)}>
             <Plus className="mr-2 h-4 w-4" /> Create alert
           </Button>
         )}
       </div>
 
       {showCreateForm && (
-        <Card className="border border-border bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle>Create a new job alert</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateAlert} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-text/70">Job title or keywords *</label>
-                  <Input
-                    value={newAlert.search_query}
-                    onChange={(e) => setNewAlert((p) => ({ ...p, search_query: e.target.value }))}
-                    placeholder="e.g. Software Engineer"
-                    className="border-border"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-text/70">Location</label>
-                  <Input
-                    value={newAlert.location}
-                    onChange={(e) => setNewAlert((p) => ({ ...p, location: e.target.value }))}
-                    placeholder="e.g. Remote or San Francisco, CA"
-                    className="border-border"
-                  />
-                </div>
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-card">
+          <h2 className="text-lg font-semibold text-text">Create a new job alert</h2>
+          <form onSubmit={handleCreateAlert} className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text/70">Job title or keywords *</label>
+                <Input
+                  value={newAlert.search_query}
+                  onChange={(e) => setNewAlert((p) => ({ ...p, search_query: e.target.value }))}
+                  placeholder="e.g. Software Engineer"
+                  className="border-border"
+                  required
+                />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-text/70">Frequency</label>
-                <select
-                  value={newAlert.frequency}
-                  onChange={(e) => setNewAlert((p) => ({ ...p, frequency: e.target.value as 'daily' | 'weekly' }))}
-                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                </select>
+                <label className="mb-1 block text-sm font-medium text-text/70">Location</label>
+                <Input
+                  value={newAlert.location}
+                  onChange={(e) => setNewAlert((p) => ({ ...p, location: e.target.value }))}
+                  placeholder="e.g. Remote or San Francisco, CA"
+                  className="border-border"
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : <><Bell className="mr-2 h-4 w-4" />Create alert</>}
-                </Button>
-                <Button type="button" variant="outline" className="border-border" onClick={() => setShowCreateForm(false)} disabled={saving}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+            <div className="md:w-1/2">
+              <label className="mb-1 block text-sm font-medium text-text/70">Frequency</label>
+              <select
+                value={newAlert.frequency}
+                onChange={(e) => setNewAlert((p) => ({ ...p, frequency: e.target.value as 'daily' | 'weekly' }))}
+                className={fieldClass}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="submit" className="bg-primary text-white hover:bg-primary-600" disabled={saving}>
+                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : <><Bell className="mr-2 h-4 w-4" />Create alert</>}
+              </Button>
+              <Button type="button" variant="outline" className="border-border" onClick={() => setShowCreateForm(false)} disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
       )}
 
       {alerts.length === 0 ? (
-        <Card className="border border-border bg-white shadow-sm">
-          <CardContent className="p-12 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Bell className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mb-2 text-lg font-medium text-text">No job alerts yet</h3>
-            <p className="mb-4 text-sm text-text/55">Create your first alert to get notified about new opportunities.</p>
-            <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Create your first alert
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border bg-white p-12 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Bell className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold text-text">No job alerts yet</h3>
+          <p className="mb-4 text-sm text-text/55">Create your first alert to get notified about new opportunities.</p>
+          <Button className="bg-primary text-white hover:bg-primary-600" onClick={() => setShowCreateForm(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Create your first alert
+          </Button>
+        </div>
       ) : (
         <div className="space-y-4">
-          {alerts.map((a) => (
-            <Card key={a.id} className="border border-border bg-white shadow-sm">
-              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold text-text">{a.search_query}</h3>
-                    <Badge className={a.frequency === 'daily' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-800'}>
-                      {a.frequency === 'daily' ? 'Daily' : 'Weekly'}
-                    </Badge>
-                    <span className="inline-flex items-center gap-1 text-sm text-text/60">
-                      {a.is_active ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-text/40" />}
-                      {a.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text/60">
-                    <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{a.location || 'Anywhere'}</span>
-                    <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Created {new Date(a.created_at).toLocaleDateString()}</span>
-                    {a.last_sent_at && (
-                      <span className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />Last sent {new Date(a.last_sent_at).toLocaleDateString()}</span>
-                    )}
-                  </div>
+          {alerts.map((a, i) => (
+            <motion.div
+              key={a.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: easeOut, delay: Math.min(i * 0.04, 0.3) }}
+              className={cn(
+                'flex flex-col gap-4 rounded-2xl border border-l-4 border-border bg-white p-5 shadow-card transition-shadow hover:shadow-card-hover sm:flex-row sm:items-start sm:justify-between',
+                a.is_active ? 'border-l-success' : 'border-l-text/20'
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-text">{a.search_query}</h3>
+                  <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', a.frequency === 'daily' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary')}>
+                    {a.frequency === 'daily' ? 'Daily' : 'Weekly'}
+                  </span>
+                  <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold', a.is_active ? 'bg-success/10 text-success' : 'bg-text/5 text-text/55')}>
+                    <span className={cn('h-1.5 w-1.5 rounded-full', a.is_active ? 'bg-success' : 'bg-text/40')} />
+                    {a.is_active ? 'Active' : 'Paused'}
+                  </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="outline" size="sm" className="border-border" onClick={() => handleToggleAlert(a.id)}>
-                    {a.is_active ? 'Pause' : 'Activate'}
-                  </Button>
-                  <Button variant="outline" size="sm" className="border-border text-red-600 hover:text-red-700" onClick={() => handleDeleteAlert(a.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text/60">
+                  <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{a.location || 'Anywhere'}</span>
+                  <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Created {new Date(a.created_at).toLocaleDateString()}</span>
+                  {a.last_sent_at && (
+                    <span className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />Last sent {new Date(a.last_sent_at).toLocaleDateString()}</span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="outline" size="sm" className="border-border" onClick={() => handleToggleAlert(a.id)}>
+                  {a.is_active ? 'Pause' : 'Activate'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAlert(a.id)}
+                  className="rounded-lg p-2 text-text/40 transition-colors hover:bg-accent/10 hover:text-accent"
+                  aria-label="Delete alert"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

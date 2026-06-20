@@ -3,19 +3,20 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveSessionUser } from '@/lib/auth/session'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { 
+import {
   Bookmark,
   MapPin,
   DollarSign,
   ExternalLink,
   Loader2,
-  Trash2
+  Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { formatRelativeTime, formatSalary } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { formatRelativeTime, formatSalary, cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 interface BookmarkedJob {
   id: string
@@ -76,132 +77,105 @@ export default function BookmarksPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading bookmarks...</p>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Bookmark className="h-8 w-8 mr-3 text-primary" />
-            My Bookmarks
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {bookmarks.length} {bookmarks.length === 1 ? 'job saved' : 'jobs saved'}
-          </p>
-        </div>
-
-        {/* Bookmarks List */}
-        {bookmarks.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Bookmark className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No bookmarks yet
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Start saving jobs that interest you to view them here.
-              </p>
-              <Button asChild>
-                <Link href="/jobs">
-                  Browse Jobs
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {bookmarks.map((bookmark) => {
-              const job = bookmark.job_snapshot
-              return (
-                <Card key={bookmark.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                              {job?.title || 'Job Title'}
-                            </h3>
-                            <p className="text-lg text-gray-700">
-                              {job?.company_name || 'Company Name'}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="ml-4">
-                            {bookmark.source}
-                          </Badge>
-                        </div>
-
-                        <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
-                          {job?.location && (
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {job.location}
-                            </div>
-                          )}
-                          {job?.salary_range && (
-                            <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 mr-1" />
-                              {formatSalary(job.salary_range)}
-                            </div>
-                          )}
-                          {job?.job_type && (
-                            <Badge variant="secondary">{job.job_type}</Badge>
-                          )}
-                        </div>
-
-                        {job?.description && (
-                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                            {job.description.substring(0, 200)}...
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-3">
-                          {job?.apply_url && (
-                            <Button size="sm" asChild>
-                              <a 
-                                href={job.apply_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center"
-                              >
-                                Apply Now
-                                <ExternalLink className="h-4 w-4 ml-2" />
-                              </a>
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRemoveBookmark(bookmark.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove
-                          </Button>
-                        </div>
-
-                        <p className="text-xs text-gray-500 mt-3">
-                          Saved {formatRelativeTime(bookmark.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Hero */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/[0.1] via-white to-white p-6 shadow-card">
+        <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+          <Bookmark className="h-3 w-3" /> Saved
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">My bookmarks</h1>
+        <p className="mt-1 text-sm text-text/55">
+          {bookmarks.length} {bookmarks.length === 1 ? 'job saved' : 'jobs saved'} — revisit them anytime.
+        </p>
       </div>
-    </div>
+
+      {bookmarks.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-white p-12 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Bookmark className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold text-text">No bookmarks yet</h3>
+          <p className="mb-4 text-sm text-text/55">Start saving jobs that interest you to view them here.</p>
+          <Button asChild className="bg-primary text-white hover:bg-primary-600">
+            <Link href="/jobs">Browse jobs</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {bookmarks.map((bookmark, i) => {
+            const job = bookmark.job_snapshot
+            return (
+              <motion.div
+                key={bookmark.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: easeOut, delay: Math.min(i * 0.04, 0.3) }}
+                className="flex flex-col rounded-2xl border border-border bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-lg font-semibold text-text">{job?.title || 'Job title'}</h3>
+                    <p className="truncate text-sm text-text/60">{job?.company_name || 'Company'}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[11px] font-medium capitalize text-secondary">
+                    {bookmark.source}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text/55">
+                  {job?.location && (
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{job.location}</span>
+                  )}
+                  {job?.salary_range && (
+                    <span className="inline-flex items-center gap-1"><DollarSign className="h-4 w-4" />{formatSalary(job.salary_range)}</span>
+                  )}
+                  {job?.job_type && (
+                    <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-text/60">{job.job_type}</span>
+                  )}
+                </div>
+
+                {job?.description && (
+                  <p className="mt-3 line-clamp-2 text-sm text-text/55">
+                    {job.description.substring(0, 200)}
+                  </p>
+                )}
+
+                <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-4">
+                  {job?.apply_url && (
+                    <Button size="sm" className="bg-primary text-white hover:bg-primary-600" asChild>
+                      <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                        Apply now
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBookmark(bookmark.id)}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-text/50 transition-colors hover:bg-accent/10 hover:text-accent"
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove
+                  </button>
+                </div>
+
+                <p className={cn('mt-3 text-xs text-text/45')}>Saved {formatRelativeTime(bookmark.created_at)}</p>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
+    </motion.div>
   )
 }
-

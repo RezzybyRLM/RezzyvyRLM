@@ -6,7 +6,7 @@ import { Footer } from './footer'
 import { User } from '@supabase/supabase-js'
 import { isDashboardPath } from '@/lib/dashboard/routes'
 
-export function ConditionalLayout({ children, user }: { children: React.ReactNode, user?: User | null }) {
+export function ConditionalLayout({ children, user, role }: { children: React.ReactNode, user?: User | null, role?: string | null }) {
   const pathname = usePathname()
 
   // Routes in the (dashboard) group and /admin own their own chrome (the
@@ -23,7 +23,7 @@ export function ConditionalLayout({ children, user }: { children: React.ReactNod
   // Return full layout with navbar and footer for other routes
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar user={user} />
+      <Navbar user={user} role={role} />
       <main className="flex-1">
         {children}
       </main>

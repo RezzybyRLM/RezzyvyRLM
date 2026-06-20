@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StripeStatusBanner } from '@/components/stripe/stripe-status-banner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CreditCard, DollarSign, Server, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function AdminBillingPage() {
   const [stripe, setStripe] = useState<{
@@ -40,69 +39,74 @@ export default function AdminBillingPage() {
   }, [])
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Stripe connection status and rough subscription estimates from plan assignments.
-        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Mission control</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900 md:text-[1.75rem]">Billing</h1>
+        <p className="mt-1 text-sm text-gray-500">Stripe connection status and rough subscription estimates from plan assignments.</p>
       </div>
 
       <StripeStatusBanner />
 
       {error ? (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-accent">{error}</p>
       ) : !stripe ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-gray-500">
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading…
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="glass-card border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium">Server configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Secret key loaded</span>
-                <span className="font-medium">{stripe.stripeConfigured ? 'Yes' : 'No'}</span>
+        <>
+          {/* Headline estimates */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-5 shadow-sm">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600/10 text-primary-600">
+                <CreditCard className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-gray-900">{stripe.payingSubscriptions.toLocaleString()}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Paying subscriptions</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mode</span>
-                <span className="font-medium capitalize">{stripe.stripeMode}</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-5 shadow-sm">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success">
+                <DollarSign className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-gray-900">${stripe.mrrEstimateUsd.toLocaleString()}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">MRR estimate (USD)</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last webhook stored</span>
-                <span className="max-w-[200px] truncate text-right font-medium">
-                  {stripe.lastStripeWebhookAt
-                    ? new Date(stripe.lastStripeWebhookAt).toLocaleString()
-                    : '—'}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[hsl(var(--glass-border))] bg-white p-5 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-gray-400">
+              <Server className="h-4 w-4 text-primary-600" /> Server configuration
+            </p>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Secret key loaded</span>
+                <span className={`inline-flex items-center gap-1.5 font-medium ${stripe.stripeConfigured ? 'text-success' : 'text-accent'}`}>
+                  {stripe.stripeConfigured ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                  {stripe.stripeConfigured ? 'Yes' : 'No'}
                 </span>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium">Estimates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Rows with Stripe subscription id</span>
-                <span className="font-semibold tabular-nums">{stripe.payingSubscriptions}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Mode</span>
+                <span className="font-medium capitalize text-gray-900">{stripe.stripeMode}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">MRR (USD, env-priced)</span>
-                <span className="font-semibold tabular-nums">${stripe.mrrEstimateUsd}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Last webhook stored</span>
+                <span className="max-w-[220px] truncate text-right font-medium text-gray-900">
+                  {stripe.lastStripeWebhookAt ? new Date(stripe.lastStripeWebhookAt).toLocaleString() : '—'}
+                </span>
               </div>
-              <p className="pt-2 text-xs text-muted-foreground">
-                MRR uses STRIPE_BASIC_MONTHLY_CENTS and STRIPE_PRO_MONTHLY_CENTS when set (defaults
-                999 / 1999 cents).
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <p className="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">
+              MRR uses STRIPE_BASIC_MONTHLY_CENTS and STRIPE_PRO_MONTHLY_CENTS when set (defaults 999 / 1999 cents).
+            </p>
+          </div>
+        </>
       )}
     </div>
   )

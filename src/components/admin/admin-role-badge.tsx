@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils'
 
-const ROLE_STYLES: Record<string, string> = {
-  super_admin:
-    'border-violet-200 bg-violet-50 text-violet-950 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100',
-  admin:
-    'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100',
-  employer:
-    'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100',
-  user: 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
+// Soft, on-brand, role-distinct pills. Each pairs a tinted background + matching
+// text with a small status dot so roles are scannable at a glance.
+const ROLE_STYLES: Record<string, { wrap: string; dot: string }> = {
+  super_admin: { wrap: 'border-accent/20 bg-accent/10 text-accent', dot: 'bg-accent' },
+  admin: { wrap: 'border-primary/25 bg-primary/10 text-primary-700', dot: 'bg-primary' },
+  service_team: { wrap: 'border-violet-200 bg-violet-50 text-violet-700', dot: 'bg-violet-500' },
+  employer: { wrap: 'border-amber-200 bg-amber-50 text-amber-800', dot: 'bg-amber-500' },
+  user: { wrap: 'border-slate-200 bg-slate-100 text-slate-700', dot: 'bg-slate-400' },
 }
 
 /** Human-readable labels for account roles (consistent across admin UI). */
@@ -18,6 +18,8 @@ export function formatRoleLabel(role: string | null | undefined): string {
       return 'Super admin'
     case 'admin':
       return 'Admin'
+    case 'service_team':
+      return 'Service team'
     case 'employer':
       return 'Employer'
     case 'user':
@@ -38,11 +40,12 @@ export function AdminRoleBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-medium',
-        style,
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+        style.wrap,
         className
       )}
     >
+      <span className={cn('h-1.5 w-1.5 rounded-full', style.dot)} aria-hidden />
       {formatRoleLabel(role)}
     </span>
   )

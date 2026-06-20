@@ -1,4 +1,4 @@
-export type AppRole = 'user' | 'employer' | 'admin' | 'super_admin'
+export type AppRole = 'user' | 'employer' | 'service_team' | 'admin' | 'super_admin'
 
 export type UserPermissionRow = {
   role: string | null
@@ -34,6 +34,11 @@ export function canAccessAdminConsole(role: string | null | undefined): boolean 
 /** Member `/employer` hub — only for employer accounts (not general members or staff). */
 export function canAccessEmployerDashboard(role: string | null | undefined): boolean {
   return role === 'employer'
+}
+
+/** RezzyMeUp `/service` fulfillment console — service_team accounts plus staff. */
+export function canAccessServiceConsole(role: string | null | undefined): boolean {
+  return role === 'service_team' || isStaffRole(role)
 }
 
 /** Contact messages and similar content moderation */

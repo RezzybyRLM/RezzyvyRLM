@@ -2,23 +2,29 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
+import {
+  ArrowLeft,
+  Save,
+  Eye,
   DollarSign,
   MapPin,
-  Calendar,
-  Clock,
   Briefcase,
-  Users,
-  Star
+  Star,
+  Loader2,
+  Lightbulb,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
+
+const labelClass = 'mb-1 block text-sm font-medium text-text/70'
+const fieldClass =
+  'w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text placeholder:text-text/40 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15'
 
 interface JobFormData {
   title: string
@@ -51,7 +57,7 @@ export default function NewJobPage() {
     isFeatured: false,
     applicationDeadline: '',
   })
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
 
@@ -108,47 +114,44 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/employer/manage-jobs">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: easeOut }}
+      className="space-y-6"
+    >
+      {/* Command header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex items-start gap-4">
+          <Button variant="outline" size="icon" className="mt-1 h-9 w-9 border-border" asChild>
+            <Link href="/employer/manage-jobs" aria-label="Back to listings">
+              <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Post New Job</h1>
-            <p className="text-gray-600">Create a new job posting to attract top talent</p>
+            <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">
+              <span className="h-1.5 w-1.5 rounded-full bg-secondary" /> Hiring command center
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-text md:text-[1.75rem]">Post a job</h1>
+            <p className="mt-1 text-sm text-text/55">Create a new listing to reach Rezzy candidates.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setPreviewMode(!previewMode)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            {previewMode ? 'Edit' : 'Preview'}
-          </Button>
-        </div>
+        <Button variant="outline" className="border-border" onClick={() => setPreviewMode(!previewMode)}>
+          <Eye className="mr-2 h-4 w-4" />
+          {previewMode ? 'Hide preview' : 'Preview'}
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Form */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-text">Basic information</h2>
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Title *
-                    </label>
+                    <label className={labelClass}>Job title *</label>
                     <Input
                       value={formData.title}
                       onChange={(e) => handleInputChange('title', e.target.value)}
@@ -157,9 +160,7 @@ export default function NewJobPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Company Name *
-                    </label>
+                    <label className={labelClass}>Company name *</label>
                     <Input
                       value={formData.company}
                       onChange={(e) => handleInputChange('company', e.target.value)}
@@ -169,11 +170,9 @@ export default function NewJobPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Location *
-                    </label>
+                    <label className={labelClass}>Location *</label>
                     <Input
                       value={formData.location}
                       onChange={(e) => handleInputChange('location', e.target.value)}
@@ -182,13 +181,11 @@ export default function NewJobPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Type *
-                    </label>
+                    <label className={labelClass}>Job type *</label>
                     <select
                       value={formData.jobType}
                       onChange={(e) => handleInputChange('jobType', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className={fieldClass}
                       required
                     >
                       <option value="full-time">Full-time</option>
@@ -199,11 +196,9 @@ export default function NewJobPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Salary Range (Min)
-                    </label>
+                    <label className={labelClass}>Salary (min)</label>
                     <Input
                       type="number"
                       value={formData.salaryMin}
@@ -212,9 +207,7 @@ export default function NewJobPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Salary Range (Max)
-                    </label>
+                    <label className={labelClass}>Salary (max)</label>
                     <Input
                       type="number"
                       value={formData.salaryMax}
@@ -223,124 +216,98 @@ export default function NewJobPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Experience Level
-                    </label>
+                    <label className={labelClass}>Experience level</label>
                     <select
                       value={formData.experienceLevel}
                       onChange={(e) => handleInputChange('experienceLevel', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className={fieldClass}
                     >
-                      <option value="entry">Entry Level</option>
-                      <option value="mid">Mid Level</option>
-                      <option value="senior">Senior Level</option>
+                      <option value="entry">Entry level</option>
+                      <option value="mid">Mid level</option>
+                      <option value="senior">Senior level</option>
                       <option value="executive">Executive</option>
                     </select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* Job Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Description</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-text">Role details</h2>
+              <div className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Description *
-                  </label>
+                  <label className={labelClass}>Job description *</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
-                    placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
+                    placeholder="Describe the role, responsibilities, and what makes this opportunity exciting…"
+                    className={cn(fieldClass, 'h-32 resize-none')}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Requirements
-                  </label>
+                  <label className={labelClass}>Requirements</label>
                   <textarea
                     value={formData.requirements}
                     onChange={(e) => handleInputChange('requirements', e.target.value)}
-                    placeholder="List the required skills, experience, and qualifications..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
+                    placeholder="List the required skills, experience, and qualifications…"
+                    className={cn(fieldClass, 'h-32 resize-none')}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Benefits & Perks
-                  </label>
+                  <label className={labelClass}>Benefits &amp; perks</label>
                   <textarea
                     value={formData.benefits}
                     onChange={(e) => handleInputChange('benefits', e.target.value)}
-                    placeholder="List the benefits, perks, and what makes your company a great place to work..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-none bg-white text-gray-900"
+                    placeholder="List the benefits, perks, and what makes your company a great place to work…"
+                    className={cn(fieldClass, 'h-32 resize-none')}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* Additional Options */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Additional Options</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Star className="h-5 w-5 text-yellow-500" />
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-text">Visibility</h2>
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Star className="h-5 w-5" />
+                    </span>
                     <div>
-                      <h4 className="font-medium text-gray-900">Featured Job Posting</h4>
-                      <p className="text-sm text-gray-600">
-                        Get 3x more visibility with featured placement at the top of search results
-                      </p>
+                      <h4 className="font-semibold text-text">Featured placement</h4>
+                      <p className="text-sm text-text/55">Pin this role to the top of search results for more visibility.</p>
                     </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label className="relative inline-flex cursor-pointer items-center">
                     <input
                       type="checkbox"
                       checked={formData.isFeatured}
                       onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
-                      className="sr-only peer"
+                      className="peer sr-only"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    <div className="h-6 w-11 rounded-full bg-text/15 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:ring-4 peer-focus:ring-primary/20" />
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Application Deadline
-                  </label>
+                  <label className={labelClass}>Application deadline</label>
                   <Input
                     type="date"
                     value={formData.applicationDeadline}
                     onChange={(e) => handleInputChange('applicationDeadline', e.target.value)}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* Submit Button */}
-            <div className="flex items-center justify-end gap-4">
-              <Button type="button" variant="outline" asChild>
+            <div className="flex items-center justify-end gap-3">
+              <Button type="button" variant="outline" className="border-border" asChild>
                 <Link href="/employer/manage-jobs">Cancel</Link>
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating Job...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Create Job Posting
-                  </>
-                )}
+              <Button type="submit" className="bg-primary text-white hover:bg-primary-600" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSubmitting ? 'Creating…' : 'Create job posting'}
               </Button>
             </div>
           </form>
@@ -348,94 +315,65 @@ export default function NewJobPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Pricing Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Job Posting</span>
-                <span className="font-medium">$49</span>
+          {/* Pricing */}
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-text">Pricing</h2>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text/55">Job posting</span>
+                <span className="font-medium tabular-nums text-text">$49</span>
               </div>
               {formData.isFeatured && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Featured Placement</span>
-                  <span className="font-medium">+$50</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text/55">Featured placement</span>
+                  <span className="font-medium tabular-nums text-text">+$50</span>
                 </div>
               )}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="text-lg font-bold text-primary">${calculateCost()}</span>
-                </div>
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <span className="font-semibold text-text">Total</span>
+                <span className="text-xl font-bold tabular-nums text-primary">${calculateCost()}</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          {/* Preview */}
+          {/* Live preview */}
           {previewMode && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900">{formData.title || 'Job Title'}</h3>
-                    {formData.isFeatured && (
-                      <Badge className="bg-primary text-white">Featured</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600">{formData.company || 'Company Name'}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {formData.location || 'Location'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="h-3 w-3" />
-                      {formData.jobType || 'Job Type'}
-                    </span>
-                  </div>
-                  {formData.salaryMin && formData.salaryMax && (
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <DollarSign className="h-3 w-3" />
-                      <span>${parseInt(formData.salaryMin).toLocaleString()} - ${parseInt(formData.salaryMax).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {formData.description && (
-                    <p className="text-sm text-gray-600 line-clamp-3">
-                      {formData.description}
-                    </p>
-                  )}
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-text">Listing preview</h2>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-text">{formData.title || 'Job title'}</h3>
+                  {formData.isFeatured && <Badge className="bg-primary text-white">Featured</Badge>}
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-sm text-text/55">{formData.company || 'Company name'}</p>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-text/50">
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{formData.location || 'Location'}</span>
+                  <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{formData.jobType}</span>
+                </div>
+                {formData.salaryMin && formData.salaryMax && (
+                  <div className="flex items-center gap-1 text-sm text-text/50">
+                    <DollarSign className="h-3 w-3" />
+                    <span>${parseInt(formData.salaryMin).toLocaleString()} – ${parseInt(formData.salaryMax).toLocaleString()}</span>
+                  </div>
+                )}
+                {formData.description && <p className="line-clamp-3 text-sm text-text/70">{formData.description}</p>}
+              </div>
+            </section>
           )}
 
           {/* Tips */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tips for Success</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Write compelling descriptions</p>
-                <p>Use action words and be specific about what makes your role unique.</p>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Include salary ranges</p>
-                <p>Jobs with salary information get 3x more applications.</p>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Consider featured placement</p>
-                <p>Featured jobs appear at the top of search results and get more visibility.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <section className="rounded-2xl border border-secondary/15 bg-secondary/[0.04] p-6">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-secondary">
+              <Lightbulb className="h-4 w-4" /> Tips for a strong post
+            </h2>
+            <ul className="mt-3 space-y-3 text-sm text-text/65">
+              <li><span className="font-medium text-text/80">Be specific.</span> Use clear titles and concrete responsibilities.</li>
+              <li><span className="font-medium text-text/80">Show the range.</span> Listings with salary get noticeably more applicants.</li>
+              <li><span className="font-medium text-text/80">Feature key roles.</span> Featured placement surfaces priority hires first.</li>
+            </ul>
+          </section>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

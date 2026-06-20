@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { UpgradePrompt } from '@/components/ui/upgrade-prompt'
@@ -385,25 +386,30 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Interview Pro</h1>
-          <p className="text-gray-600">
-            Voice practice with browser speech-to-text. Only transcribed text is sent to the assistant; audio is not uploaded.
-          </p>
-        </div>
+    <div>
+      <div className="mx-auto max-w-4xl">
+        <PageHeader
+          eyebrow="Practice"
+          title="Interview Pro"
+          subtitle="Voice practice with browser speech-to-text. Only transcribed text is sent to the assistant; audio is not uploaded."
+          className="mb-8"
+        />
 
         {!session ? (
           /* Setup Phase */
-          <Card>
+          <Card className="glass-card border-0 shadow-card">
             <CardHeader>
-              <CardTitle>Start Your AI Interview</CardTitle>
+              <CardTitle className="flex items-center gap-2.5 text-text">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Mic className="h-5 w-5 stroke-[1.5]" />
+                </span>
+                Start your AI interview
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {error && (
-                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                  <p className="text-sm text-gray-800">{error}</p>
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{error}</p>
                 </div>
               )}
 
@@ -501,15 +507,18 @@ ${updatedConversationHistory.map(msg => `${msg.role === 'user' ? 'Candidate' : '
                 onClick={startNewSession}
                 disabled={!selectedRole || isProcessing}
                 size="lg"
-                className="w-full"
+                className="w-full bg-primary text-white hover:bg-primary/90"
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Preparing Interview...
+                    Preparing interview…
                   </>
                 ) : (
-                  'Start Interview'
+                  <>
+                    <Mic className="mr-2 h-4 w-4" />
+                    Start interview
+                  </>
                 )}
               </Button>
             </CardContent>

@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { canAccessAdminConsole } from '@/lib/auth/permissions'
+import { emailService } from '@/lib/email/client'
 
 export async function GET() {
   try {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const companyName = typeof body.companyName === 'string' ? body.companyName.trim() : ''
+    const inviteeEmail = typeof body.inviteeEmail === 'string' ? body.inviteeEmail.trim() : ''
     const expiresInDays = typeof body.expiresInDays === 'number' ? body.expiresInDays : 14
 
     if (!companyName) {
@@ -85,7 +87,18 @@ export async function POST(request: NextRequest) {
     const base = process.env.NEXT_PUBLIC_SITE_URL || ''
     const url = `${base.replace(/\/$/, '')}/join/employer/${token}`
 
-    return NextResponse.json({ success: true, invite: row, url })
+    // One-click send: email the link to the org contact when an address was given.
+    let emailed = false
+    if (inviteeEmail) {
+      emailed = await emailService.sendInvite({
+        to: inviteeEmail,
+        url,
+        kind: 'employer',
+        orgName: companyName,
+      })
+    }
+
+    return NextResponse.json({ success: true, invite: row, url, emailed })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
